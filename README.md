@@ -1,213 +1,215 @@
 <div align="center">
 
-```
-                     ╔═╗
-                    ╔╝ ╚╗
-                   ╔╝   ╚╗
-                  ╔╝     ╚╗
-                 ╔╝  ▲▲▲  ╚╗
-                ╔╝         ╚╗
-               ╔╝           ╚╗
-              ╚╗             ╔╝
-```
+# ⬡ A R I E S
 
-# A R I E S
-
-### The AI Command Center That Runs On Your Machine
+### AI Runtime Intelligence & Execution System
 
 [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-00fff7?style=for-the-badge&logo=nodedotjs&logoColor=00fff7&labelColor=0d1117)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/ZERO-DEPENDENCIES-ff00ff?style=for-the-badge&labelColor=0d1117)](/)
 [![MIT License](https://img.shields.io/badge/LICENSE-MIT-00fff7?style=for-the-badge&labelColor=0d1117)](LICENSE)
 [![Docker](https://img.shields.io/badge/DOCKER-READY-2496ED?style=for-the-badge&logo=docker&logoColor=white&labelColor=0d1117)](/)
-[![MCP](https://img.shields.io/badge/MCP-SERVER-8B5CF6?style=for-the-badge&labelColor=0d1117)](/)
+[![MCP Compatible](https://img.shields.io/badge/MCP-COMPATIBLE-8B5CF6?style=for-the-badge&labelColor=0d1117)](/)
 [![PWA](https://img.shields.io/badge/PWA-MOBILE-34D399?style=for-the-badge&labelColor=0d1117)](/)
 [![OpenAI API](https://img.shields.io/badge/OpenAI_API-COMPATIBLE-10A37F?style=for-the-badge&logo=openai&logoColor=white&labelColor=0d1117)](/)
 
-**Your machine. Your data. Your AI. Zero compromises.**
-
-A fully local AI platform with 50+ modules, specialist agents, distributed compute, RAG, code execution, browser automation, MCP server, OpenAI-compatible API — and literally zero npm dependencies. Runs in 60 seconds.
-
-[⚡ Quick Start](#-quick-start) · [🎯 Why Aries](#-why-aries-wins) · [🚀 Features](#-features) · [🐳 Docker](#-docker) · [🔌 MCP Server](#-mcp-server) · [📱 Mobile](#-mobile--pwa)
+**Your machine. Your models. Your data. Zero compromises.**
 
 ---
 
+Aries is a self-contained AI platform that runs entirely on your hardware with **zero npm dependencies**. Connect any model — Ollama, OpenAI, Anthropic, Groq — and get a full-featured AI operating system: multi-agent swarms, RAG, code execution, browser automation, an MCP server for your IDE, an OpenAI-compatible API, scheduled tasks, a cyberpunk dashboard, and a PWA for your phone. Clone the repo, run `node launcher.js`, and you're live in 60 seconds.
+
+[⚡ Quick Start](#-quick-start) · [🏆 Why Aries](#-why-aries-wins) · [🚀 Features](#-feature-deep-dives) · [🔌 MCP Setup](#-mcp-setup) · [📖 API Reference](#-api-reference) · [❓ FAQ](#-faq)
+
 </div>
+
+---
 
 ## ⚡ Quick Start
 
-### Option A: One Command
+Four ways to get running. Pick one.
+
+### 1. Git Clone (recommended)
+
 ```bash
 git clone https://github.com/dsfgsdgf33/aries.git
 cd aries
 node launcher.js
 ```
-Open **http://localhost:3333** → done.
 
-### Option B: One-Click Install (Windows)
+Open **http://localhost:3333** — done.
+
+### 2. Windows One-Click
+
 ```powershell
 irm https://raw.githubusercontent.com/dsfgsdgf33/aries/main/install-windows.ps1 | iex
 ```
 
-### Option C: One-Click Install (macOS/Linux)
+### 3. macOS / Linux One-Click
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dsfgsdgf33/aries/main/install-mac-linux.sh | bash
 ```
 
-### Option D: Docker
+### 4. Docker
+
 ```bash
-docker run -p 3333:3333 -p 18800:18800 ghcr.io/dsfgsdgf33/aries
+# CPU
+docker run -d -p 3333:3333 -p 18800:18800 --name aries ghcr.io/dsfgsdgf33/aries
+
+# GPU (with local Ollama)
+docker compose --profile gpu up -d
 ```
 
-That's it. No `npm install`. No Python venv. No Docker compose files. No config files. **It just works.**
+No `npm install`. No Python venv. No config files. **It just works.**
 
-<br>
+> **Requirements:** Node.js 18+ and ~200 MB disk. That's it. Ollama is optional (auto-installed by the setup wizard if you want local models).
 
-## 🎯 Why Aries Wins
+---
 
-Other tools make you choose. Aries doesn't.
+## 🏆 Why Aries Wins
 
-| Feature | ChatGPT | LM Studio | Jan | Open WebUI | **ARIES** |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| Runs 100% locally | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Zero dependencies | ❌ | ❌ | ❌ | ❌ | **✅** |
-| Web dashboard | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Specialist AI agents | ❌ | ❌ | ❌ | ❌ | **✅ 14 agents** |
-| Agent swarm / parallel | ❌ | ❌ | ❌ | ❌ | **✅** |
-| RAG (chat with files) | Plugin | ❌ | ❌ | ✅ | **✅ Built-in** |
-| Code interpreter | ✅ (cloud) | ❌ | ❌ | ❌ | **✅ Local** |
-| Browser automation | ❌ | ❌ | ❌ | ❌ | **✅** |
-| Browser extension | ❌ | ❌ | ❌ | ❌ | **✅** |
-| MCP server | ❌ | ❌ | ❌ | ❌ | **✅** |
-| OpenAI-compatible API | — | ✅ | ❌ | ✅ | **✅** |
-| Distributed compute | ❌ | ❌ | ❌ | ❌ | **✅** |
-| Scheduled tasks / cron | ❌ | ❌ | ❌ | ❌ | **✅** |
-| PWA / mobile access | ✅ | ❌ | ❌ | ✅ | **✅** |
-| Self-evolution | ❌ | ❌ | ❌ | ❌ | **✅** |
-| Ollama auto-fallback | — | — | — | ❌ | **✅** |
-| Screenshot + vision | ✅ (cloud) | ❌ | ❌ | ❌ | **✅ Local** |
-| Plugin system | Plugin | ❌ | ❌ | ✅ | **✅ Hot-reload** |
-| One-command setup | N/A | Installer | Installer | Docker | **✅** |
-| Cost | $20/mo | Free | Free | Free | **Free** |
+| Feature | **Aries** | ChatGPT | LM Studio | Jan | Open WebUI |
+|:--------|:---------:|:-------:|:---------:|:---:|:----------:|
+| Runs 100% locally | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Zero npm dependencies | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Works with ANY model provider | **✅** | ❌ | Partial | Partial | ✅ |
+| Automatic Ollama fallback | **✅** | — | — | ❌ | ❌ |
+| Built-in MCP server | **✅** | ❌ | ❌ | ❌ | ❌ |
+| OpenAI-compatible API | **✅** | — | ✅ | ❌ | ✅ |
+| RAG (chat with files) | **✅ Built-in** | Plugin | ❌ | ❌ | ✅ |
+| Code interpreter (local) | **✅** | Cloud only | ❌ | ❌ | ❌ |
+| Screenshot + Vision | **✅ Local** | Cloud only | ❌ | ❌ | ❌ |
+| Scheduled tasks / Cron | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Browser extension | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Browser automation | **✅** | ❌ | ❌ | ❌ | ❌ |
+| PWA mobile access | **✅** | ✅ | ❌ | ❌ | ✅ |
+| Multi-agent swarm | **✅ 14 agents** | ❌ | ❌ | ❌ | ❌ |
+| Distributed compute (swarm networking) | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Persona system | **✅** | Limited | ❌ | ❌ | ❌ |
+| Persistent memory | **✅** | Limited | ❌ | ❌ | ❌ |
+| Knowledge graph | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Workflow engine | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Plugin marketplace | **✅ Hot-reload** | Plugins | ❌ | ❌ | ✅ |
+| Cyberpunk UI themes | **✅ 4 themes** | ❌ | ❌ | ❌ | ❌ |
+| One-command install | **✅** | N/A | Installer | Installer | Docker |
+| Cost | **Free** | $20/mo | Free | Free | Free |
 
-**Aries isn't just another chat UI.** It's a full AI operating system that runs on your machine.
+---
 
-<br>
+## 🚀 Feature Deep-Dives
 
-## 🚀 Features
+### 🤖 Multi-Model AI Chat
 
-### 💬 AI Chat — Any Model, Any Provider
-Stream responses from **Ollama** (local), **Anthropic** (Claude), **OpenAI** (GPT), **Groq**, or **OpenRouter**. Switch with one click. Automatic Ollama fallback when API limits hit — your conversations never stop.
+Stream responses from **Ollama**, **Anthropic** (Claude), **OpenAI** (GPT), **Groq**, or **OpenRouter**. Switch providers with one click mid-conversation. The setup wizard auto-detects your hardware and picks the best local model:
 
-### 🤖 14 Specialist AI Agents
-Not one AI — **fourteen**. Each optimized for a task:
+| Your Hardware | Recommended Model |
+|:---|:---|
+| 16 GB+ RAM / GPU | `deepseek-r1:14b` |
+| 8–16 GB RAM | `llama3.1:8b` |
+| Under 8 GB | `phi3:mini` |
 
-> 👑 Commander · 💻 Coder · 🔍 Researcher · 📊 Analyst · 🎨 Creative · 🛰️ Scout · ⚡ Executor · 🛡️ Security · 📈 Trader · 🐛 Debugger · 🏗️ Architect · ⚙️ Optimizer · 🧭 Navigator · 📝 Scribe
+### 🔄 Automatic Ollama Fallback
 
-Deploy a **swarm** — multiple agents work in parallel on complex tasks, debate solutions, and synthesize results.
+API key expired? Rate limited? Aries **automatically** switches to a local Ollama model — no config, no interruption. A notification appears, and your chat keeps going. When the API recovers, it switches back silently.
 
-### 📚 RAG — Chat With Your Files
-Drop a folder. Ask questions. Aries indexes your documents with TF-IDF scoring and retrieves relevant context automatically. No vector database needed. No embeddings API. **Works offline.**
+### 📁 Chat With Your Files (RAG)
 
-### 💻 Code Interpreter
-Run **JavaScript, Python, PowerShell, or Bash** directly in chat. Like ChatGPT's code interpreter — but fully local, no limits, no upload restrictions. Sandboxed with timeout and memory limits.
+Point Aries at a folder. It indexes your documents with TF-IDF scoring and retrieves relevant chunks at query time. No vector database, no embeddings API — works fully offline.
 
-### 🌐 Browser Automation
-Control a browser through natural language. Open pages, click elements, fill forms, take screenshots, extract data. All from the chat.
-
-### 🔌 MCP Server — Connect Claude Desktop, Cursor, VS Code
-Aries exposes its tools via the **Model Context Protocol**. Claude Desktop, Cursor, and VS Code can use Aries for:
-- Web search & summarization
-- Memory storage & retrieval
-- Code execution
-- RAG queries
-- Screenshots
-
-```json
-{
-  "mcpServers": {
-    "aries": {
-      "command": "node",
-      "args": ["/path/to/aries/launcher.js", "--mcp-stdio"]
-    }
-  }
-}
+```
+Supported: PDF, TXT, MD, JSON, CSV, HTML, source code
 ```
 
-### ⚡ OpenAI-Compatible API
-Drop-in replacement on port **18800**. Any tool that works with OpenAI's API works with Aries — routing to local Ollama or cloud providers.
+### 🔌 MCP Server (Claude Desktop / Cursor / VS Code)
+
+Aries exposes its tools via the **Model Context Protocol**. Your IDE gets superpowers:
+
+| MCP Tool | What It Does |
+|:---------|:-------------|
+| `aries_chat` | Chat with any model through Aries |
+| `aries_search` | Web search with summaries |
+| `aries_memory_search` | Query persistent memory |
+| `aries_memory_save` | Save to memory bank |
+| `aries_rag_query` | Query indexed documents |
+| `aries_run_code` | Execute code in sandbox |
+| `aries_screenshot` | Capture screen |
+| `aries_system_status` | System stats |
+
+> See [MCP Setup](#-mcp-setup) below for config snippets, or the full guide at [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md).
+
+### 🌐 OpenAI-Compatible API
+
+Drop-in replacement on port **18800**. Any tool that speaks OpenAI's API works with Aries — it routes to local Ollama or cloud providers transparently.
 
 ```bash
 curl http://localhost:18800/v1/chat/completions \
+  -H "Content-Type: application/json" \
   -H "Authorization: Bearer aries-gateway-2026" \
   -d '{"model": "llama3", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
-### 📸 Screenshot + Vision
+### 💻 Code Interpreter
+
+Run **JavaScript, Python, PowerShell, or Bash** in chat. Like ChatGPT's code interpreter, but local — no upload limits, no timeouts, sandboxed with memory caps.
+
+### 👁️ Screenshot + Vision
+
 Capture your screen and analyze it with local multimodal models (LLaVA, Qwen-VL via Ollama). Computer vision without sending your screen to the cloud.
 
-### ⏰ Scheduled Tasks & Cron
-Full cron scheduling system built in. Schedule AI tasks, automated workflows, periodic checks — all from the dashboard UI. Standard cron expressions supported.
+### ⏰ Scheduled Tasks
 
-### 🌍 Chrome Extension
-A browser companion that overlays Aries on any webpage. Highlight text, ask questions, get instant answers without leaving the page.
+Built-in cron scheduler with a calendar UI. Schedule AI tasks, automated workflows, periodic checks — standard cron expressions.
 
-### 📱 Mobile & PWA
-Open Aries on your phone. It installs as a PWA — looks and feels like a native app. QR code on the dashboard for instant mobile access.
+### 🌍 Browser Extension
 
-### 🔄 Automatic Ollama Fallback
-API key expired? Rate limited? Aries **automatically** switches to local Ollama models. No configuration. No interruption. A notification appears, and your conversation continues seamlessly. When the API comes back, Aries switches back.
+Chrome extension that overlays Aries on any webpage. Highlight text, ask questions, get answers without leaving the page. Source in `extensions/aries-browser/`.
 
-### 🔐 Desktop App Experience
-System tray icon, startup integration, desktop shortcuts. One-click installers for Windows, macOS, and Linux. Feels like a native app — because it is.
+### 📱 PWA Mobile Access
 
-<br>
+Open `http://your-pc-ip:3333` on your phone → "Add to Home Screen" → native-feeling app. The dashboard shows a QR code for instant access.
 
-## 🐳 Docker
+### 🐳 Docker Support
 
-### Quick Start
 ```bash
+# Basic
 docker run -d -p 3333:3333 -p 18800:18800 --name aries ghcr.io/dsfgsdgf33/aries
-```
 
-### With Local Ollama (GPU)
-```bash
+# With Ollama + GPU
 docker compose --profile gpu up -d
+
+# Build from source
+docker build -t aries . && docker run -d -p 3333:3333 aries
 ```
 
-### Build From Source
-```bash
-docker build -t aries .
-docker run -d -p 3333:3333 aries
-```
+The image is tiny — zero dependencies means no `npm install` step.
 
-The Docker image has **no `npm install` step** — because there are zero dependencies. The image is tiny.
+### 🕸️ Swarm Networking
 
-<br>
+Distribute AI workloads across machines. Connect nodes into a compute mesh — share models, parallelize tasks, and scale horizontally. Fully opt-in, token-authenticated.
 
-## 🔌 MCP Server
+### 🧠 Memory & Knowledge Graph
 
-Aries is a full MCP server. Connect it to your IDE and get AI superpowers everywhere.
+Persistent memory bank with categories, priorities, and automatic pruning. Knowledge graph with entity extraction builds connections across your conversations over time.
 
-<details>
-<summary><b>Claude Desktop Setup</b></summary>
+### 🎭 Persona System
+
+Five built-in personas (Default, Coder, Creative, Analyst, Trader) plus a custom agent factory. Create specialized agents with unique system prompts and tool access.
+
+### ⚡ Workflow Engine
+
+Chain AI steps into pipelines — research → analyze → summarize → notify. Up to 20 steps per workflow, with conditional branching and error handling.
+
+---
+
+## 🔌 MCP Setup
+
+### Claude Desktop
 
 Add to `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "aries": {
-      "command": "node",
-      "args": ["C:/path/to/aries/launcher.js", "--mcp-stdio"]
-    }
-  }
-}
-```
-</details>
 
-<details>
-<summary><b>Cursor Setup</b></summary>
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add to `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
@@ -218,12 +220,26 @@ Add to `.cursor/mcp.json`:
   }
 }
 ```
-</details>
 
-<details>
-<summary><b>VS Code Setup</b></summary>
+### Cursor
+
+Add to `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "aries": {
+      "command": "node",
+      "args": ["/path/to/aries/launcher.js", "--mcp-stdio"]
+    }
+  }
+}
+```
+
+### VS Code
 
 Add to VS Code `settings.json`:
+
 ```json
 {
   "mcp.servers": {
@@ -234,228 +250,255 @@ Add to VS Code `settings.json`:
   }
 }
 ```
-</details>
 
-<details>
-<summary><b>Available MCP Tools</b></summary>
+### SSE Transport
 
-| Tool | What It Does |
-|------|-------------|
-| `aries_chat` | Send messages to Aries AI |
-| `aries_search` | Web search with summaries |
-| `aries_memory_search` | Search persistent memory |
-| `aries_memory_save` | Save to memory bank |
-| `aries_rag_query` | Query indexed documents |
-| `aries_run_code` | Execute code in sandbox |
-| `aries_screenshot` | Capture screen |
-| `aries_system_status` | System stats |
-</details>
+For HTTP/SSE-based MCP connections: `http://localhost:18801/sse` (available automatically when Aries is running).
 
-<br>
+> Full guide with troubleshooting: [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md)
 
-## 📱 Mobile & PWA
-
-1. Open Aries on your phone's browser: `http://your-pc-ip:3333`
-2. Tap **"Add to Home Screen"** / **"Install App"**
-3. Done — Aries is now a native-feeling app on your phone
-
-The dashboard generates a QR code for instant mobile access.
-
-<br>
-
-## 🛠️ Setup — How It Works
-
-On first launch, Aries runs a **setup wizard** that configures everything:
-
-### Local AI with Ollama (Recommended)
-The wizard detects your hardware and:
-1. Downloads and installs [Ollama](https://ollama.com) automatically
-2. Selects the best model for your system:
-   - **16GB+ RAM / GPU** → `deepseek-r1:14b`
-   - **8–16GB RAM** → `llama3.1:8b`
-   - **Under 8GB** → `phi3:mini`
-3. You're chatting in ~60 seconds
-
-### Cloud AI
-Paste an API key for Anthropic (`sk-ant-*`), OpenAI (`sk-*`), Groq (`gsk_*`), or OpenRouter (`sk-or-*`). Validated instantly.
-
-### Hybrid Mode
-Use cloud APIs when available, **auto-fallback to Ollama** when rate limited. Best of both worlds.
-
-<br>
-
-## 📖 All Features
-
-<details>
-<summary><b>🏠 Dashboard & UI</b></summary>
-
-- Cyberpunk web dashboard at `localhost:3333`
-- 4 themes: Neon, Matrix, Synthwave, Midnight
-- Real-time CPU, RAM, GPU monitoring
-- Global search (Ctrl+K)
-- Built-in terminal
-- Notification center
-</details>
-
-<details>
-<summary><b>🤖 AI & Agents</b></summary>
-
-- Multi-model support (Ollama, Anthropic, OpenAI, Groq, OpenRouter)
-- 14 specialist agents with parallel swarm execution
-- Agent debate system (multiple perspectives on problems)
-- Custom agent factory
-- Conversation branching (like git for chats)
-- 5 personas: Default, Coder, Creative, Analyst, Trader
-- Autonomous goal execution
-- Self-evolution & optimization
-</details>
-
-<details>
-<summary><b>📚 Knowledge & Memory</b></summary>
-
-- Persistent memory bank with categories & priorities
-- RAG engine with TF-IDF scoring
-- Knowledge graph with entity extraction
-- Daily notes & long-term memory
-- Semantic search
-</details>
-
-<details>
-<summary><b>🛠️ Tools & Automation</b></summary>
-
-- Code sandbox (JS, Python, PowerShell, Bash)
-- Browser automation (Playwright)
-- Screenshot & vision analysis
-- Cron scheduler with calendar view
-- Workflow engine & pipelines
-- Web scraping & search
-- File management
-</details>
-
-<details>
-<summary><b>🌐 Integration</b></summary>
-
-- MCP server (Claude Desktop, Cursor, VS Code)
-- OpenAI-compatible API (port 18800)
-- Chrome browser extension
-- Telegram & Discord bots
-- PWA / mobile access
-- Docker deployment
-</details>
-
-<details>
-<summary><b>🌍 Network & Swarm</b></summary>
-
-- Distributed AI compute mesh
-- One-click network join
-- Model sharing across nodes
-- Parallel task execution
-- Remote worker management
-</details>
-
-<details>
-<summary><b>🔒 Security & Reliability</b></summary>
-
-- Token-based authentication
-- Rate limiting
-- Audit trail
-- Self-healing (crash detection & auto-fix)
-- Automated backups
-- Config encryption (vault)
-</details>
-
-<br>
+---
 
 ## 🏗️ Architecture
 
 ```
-aries/
-├── launcher.js          # Entry point
-├── core/
-│   ├── ai.js            # Multi-model AI with fallback chain
-│   ├── ai-gateway.js    # OpenAI-compatible API server (port 18800)
-│   ├── api-server.js    # HTTP server & REST API
-│   ├── ollama-fallback.js  # Automatic Ollama fallback system
-│   ├── mcp-server.js    # MCP server for Claude/Cursor/VS Code
-│   ├── rag-engine.js    # Document indexing & retrieval
-│   ├── code-sandbox.js  # Sandboxed code execution
-│   ├── scheduler.js     # Cron-based task scheduling
-│   ├── swarm-agents.js  # Multi-agent swarm system
-│   └── ...              # 50+ core modules
-├── web/
-│   ├── index.html       # Dashboard UI
-│   ├── manifest.json    # PWA manifest
-│   └── sw.js            # Service worker
-├── extensions/
-│   └── aries-browser/   # Chrome extension
-├── Dockerfile           # Docker support
-├── docker-compose.yml   # Docker Compose with Ollama
-└── docs/
-    └── MCP-SETUP.md     # MCP configuration guide
+┌──────────────────────────────────────────────────────────┐
+│                    Web Dashboard (:3333)                  │
+│              Cyberpunk UI · PWA · 4 Themes               │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│                   API Server (core)                       │
+│  REST endpoints · WebSocket · Auth · Rate limiting        │
+├──────────┬──────────┬──────────┬──────────┬──────────────┤
+│ AI Chat  │ RAG      │ Code     │ Scheduler│ Swarm        │
+│ Engine   │ Engine   │ Sandbox  │ (Cron)   │ Agents (14)  │
+├──────────┼──────────┼──────────┼──────────┼──────────────┤
+│ MCP      │ Memory & │ Browser  │ Vision & │ Workflow     │
+│ Server   │ KGraph   │ Control  │ Screenshot│ Engine      │
+└──────────┴──────────┴──────────┴──────────┴──────────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│              AI Gateway (:18800)                          │
+│   OpenAI-compatible API · Provider routing · Fallback    │
+├──────────┬──────────┬──────────┬─────────────────────────┤
+│ Ollama   │ Anthropic│ OpenAI   │ Groq / OpenRouter       │
+│ (local)  │ (Claude) │ (GPT)    │ (cloud)                 │
+└──────────┴──────────┴──────────┴─────────────────────────┘
 ```
 
-**Zero dependencies.** Every module uses Node.js built-in APIs (`http`, `fs`, `crypto`, `child_process`, `os`, `zlib`). No `node_modules`. No supply chain risk.
+**Zero dependencies.** Every module uses Node.js built-ins (`http`, `fs`, `crypto`, `child_process`, `os`, `zlib`). No `node_modules`. No supply chain risk.
 
-<br>
+```
+aries/
+├── launcher.js            # Entry point — run this
+├── core/
+│   ├── ai.js              # Multi-model chat with fallback chain
+│   ├── ai-gateway.js      # OpenAI-compatible API (port 18800)
+│   ├── api-server.js      # HTTP server & REST API
+│   ├── ollama-fallback.js # Automatic Ollama fallback
+│   ├── mcp-server.js      # MCP server (stdio + SSE)
+│   ├── rag-engine.js      # Document indexing & retrieval
+│   ├── code-sandbox.js    # Sandboxed code execution
+│   ├── scheduler.js       # Cron task scheduling
+│   ├── swarm-agents.js    # Multi-agent swarm system
+│   └── ...                # 50+ modules
+├── web/
+│   ├── index.html         # Dashboard UI
+│   ├── manifest.json      # PWA manifest
+│   └── sw.js              # Service worker
+├── extensions/
+│   └── aries-browser/     # Chrome extension
+├── docs/
+│   └── MCP-SETUP.md       # MCP configuration guide
+├── Dockerfile
+├── docker-compose.yml
+└── config.example.json    # Reference configuration
+```
 
-## 📋 Requirements
+---
 
-- **Node.js 18+** — that's it
-- ~200MB disk (+ AI model if using Ollama)
-- Any OS: Windows, macOS, Linux
-- **Optional:** Docker, Ollama
+## ⚙️ Configuration
 
-<br>
+Aries generates `config.json` on first launch via the setup wizard. Here's a trimmed example:
 
-## 🤝 Contributing
+```jsonc
+{
+  "version": "7.0.0",
 
-MIT License. PRs welcome.
+  // AI Gateway — OpenAI-compatible API server
+  "ariesGateway": {
+    "enabled": true,
+    "port": 18800,
+    "providers": {
+      "anthropic": { "apiKey": "", "defaultModel": "claude-sonnet-4-20250514" },
+      "openai":    { "apiKey": "", "defaultModel": "gpt-4o" },
+      "groq":      { "apiKey": "", "defaultModel": "llama-3.1-70b-versatile" }
+    }
+  },
 
-1. Fork → branch → PR
-2. Zero dependencies rule: use only Node.js built-ins
-3. Test before submitting
+  // Automatic fallback to local Ollama when APIs fail
+  "ollamaFallback": {
+    "enabled": true,
+    "url": "http://localhost:11434",
+    "model": "auto",
+    "triggerOn": ["429", "500", "502", "503", "timeout"]
+  },
 
-<br>
+  // RAG — chat with your files
+  "rag": { "enabled": true, "chunkSize": 500, "topK": 5 },
+
+  // Code execution sandbox
+  "sandbox": {
+    "enabled": true,
+    "timeoutMs": 30000,
+    "maxMemoryMb": 256,
+    "allowedLanguages": ["javascript", "python", "shell"]
+  },
+
+  // Scheduled tasks
+  "scheduler": { "enabled": true, "maxJobs": 100 },
+
+  // MCP server
+  "mcp": { "enabled": true },
+
+  // Multi-agent swarm
+  "swarm": { "maxWorkers": 14, "concurrency": 2 },
+
+  // Dashboard
+  "apiPort": 3333,
+  "theme": "cyan"
+}
+```
+
+See [`config.example.json`](config.example.json) for the full reference with all options.
+
+---
+
+## 📖 API Reference
+
+### Dashboard & UI
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `GET` | `/` | Web dashboard |
+| `GET` | `/api/status` | System status (CPU, RAM, GPU, uptime) |
+| `GET` | `/api/models` | List available models |
+
+### Chat
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `POST` | `/api/chat/stream` | Stream a chat response (SSE) |
+| `GET` | `/api/conversations` | List conversations |
+| `DELETE` | `/api/conversations/:id` | Delete a conversation |
+
+### RAG
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `POST` | `/api/rag/index` | Index a directory |
+| `POST` | `/api/rag/query` | Query indexed documents |
+| `GET` | `/api/rag/status` | Index stats |
+
+### OpenAI-Compatible (port 18800)
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `POST` | `/v1/chat/completions` | Chat completions (streaming supported) |
+| `GET` | `/v1/models` | List models |
+| `GET` | `/health` | Gateway health check |
+
+### Other
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `POST` | `/api/code/run` | Execute code in sandbox |
+| `POST` | `/api/memory/save` | Save to memory bank |
+| `POST` | `/api/memory/search` | Search memory |
+| `GET` | `/api/scheduler/jobs` | List scheduled jobs |
+| `POST` | `/api/scheduler/jobs` | Create a scheduled job |
+
+All endpoints accept JSON. Authentication via `Authorization: Bearer <apiKey>` header.
+
+---
 
 ## ❓ FAQ
 
 <details>
-<summary><b>How is this zero dependencies?</b></summary>
-Every module is written using only Node.js built-in APIs. The HTTP server, WebSocket server, crypto, file system operations — all use `require('http')`, `require('crypto')`, etc. No npm packages needed. The `package.json` lists optional deps for the TUI mode, but the core runs without them.
+<summary><b>How is this truly zero dependencies?</b></summary>
+
+Every module is built on Node.js built-in APIs: `http`, `https`, `fs`, `crypto`, `child_process`, `os`, `zlib`, `path`, `url`, `stream`. No npm packages. The `package.json` exists only for metadata — `node_modules` is empty. This means zero supply chain risk and instant startup.
 </details>
 
 <details>
 <summary><b>Is my data private?</b></summary>
-Yes. Everything runs on your machine. When using Ollama, your data never leaves localhost. When using cloud APIs (Anthropic/OpenAI), data goes to their servers — but your config, memory, and files stay local.
+
+Yes. Everything runs on your machine. When using Ollama, data never leaves localhost. Cloud APIs (Anthropic/OpenAI) send your prompts to their servers, but your config, memory, files, and RAG index stay local.
 </details>
 
 <details>
-<summary><b>Can I use this with Claude Desktop?</b></summary>
-Yes! Aries is an MCP server. Add it to your Claude Desktop config and all Aries tools (search, memory, code execution, RAG) become available directly in Claude.
+<summary><b>Can I use this with Claude Desktop / Cursor?</b></summary>
+
+Yes — Aries is a full MCP server. Add it to your IDE config and you get web search, memory, code execution, RAG, and more — all inside Claude or Cursor. See the [MCP Setup](#-mcp-setup) section.
 </details>
 
 <details>
-<summary><b>What happens when my API key runs out?</b></summary>
-Aries automatically falls back to local Ollama models. A subtle notification appears. When the API is available again, it switches back. You don't have to do anything.
+<summary><b>What happens when my API key hits rate limits?</b></summary>
+
+Aries detects 429/5xx errors and automatically falls back to local Ollama models. A notification appears in the UI. When the API recovers, it switches back. No action required.
 </details>
 
-<br>
+<details>
+<summary><b>Can I run this on a server / headless?</b></summary>
+
+Yes. `node launcher.js` works headless — access the dashboard remotely at `http://your-server:3333`. Docker works the same way. The MCP server and API gateway function without a browser.
+</details>
+
+<details>
+<summary><b>What models work with Aries?</b></summary>
+
+Any model available through Ollama (llama3, mistral, deepseek, phi3, qwen, codellama, etc.), OpenAI (GPT-4o, GPT-4, etc.), Anthropic (Claude Opus/Sonnet/Haiku), Groq, or OpenRouter. If it has an API, Aries can talk to it.
+</details>
+
+<details>
+<summary><b>How do I update?</b></summary>
+
+```bash
+cd aries && git pull
+```
+
+That's it. No build step, no dependency install.
+</details>
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full guide.
+
+**Quick version:**
+
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. **Zero dependencies rule** — use only Node.js built-in modules
+4. Test your changes: `node launcher.js`
+5. Submit a PR with a clear description
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) — use it however you want.
 
 ---
 
 <div align="center">
 
-```
-              ╔═╗
-             ╔╝ ╚╗
-            ╔╝   ╚╗
-           ╔╝ ▲▲▲ ╚╗
-          ╔╝       ╚╗
-         ╚╗         ╔╝
-```
+**Built with pure Node.js — zero dependencies, infinite possibilities.**
 
-**MIT License** · Zero dependencies · Built with pure Node.js
+[Report a Bug](https://github.com/dsfgsdgf33/aries/issues) · [Request a Feature](https://github.com/dsfgsdgf33/aries/issues) · [Discussions](https://github.com/dsfgsdgf33/aries/discussions)
 
-**[⬆ Back to top](#)**
+**[⬆ Back to top](#-a-r-i-e-s)**
 
 </div>
