@@ -202,9 +202,28 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
     FlipperDeployer: lazyRequire(path.join(baseDir, 'core', 'flipper-deployer')),
     PacketSend: lazyRequire(path.join(baseDir, 'core', 'packet-send')),
     CaptivePortal: lazyRequire(path.join(baseDir, 'core', 'captive-portal')),
+    OllamaFallback: lazyRequire(path.join(baseDir, 'core', 'ollama-fallback')),
+    MCPServer: lazyRequire(path.join(baseDir, 'core', 'mcp-server')),
   };
 
   bootLog('ai-core', 'ok');
+
+  // Initialize Ollama Fallback
+  try {
+    const OllamaFallback = require(path.join(baseDir, 'core', 'ollama-fallback'));
+    var ollamaFallback = new OllamaFallback(config.ollamaFallback || {});
+    ollamaFallback.checkOllama().then(function(avail) {
+      if (avail) console.log('[BOOT] Ollama fallback ready: ' + ollamaFallback.currentModel);
+      else console.log('[BOOT] Ollama not detected (fallback will activate if needed)');
+    }).catch(function() {});
+  } catch (e) { console.log('[BOOT] Ollama fallback init skipped:', e.message); var ollamaFallback = null; }
+
+  // Initialize MCP Server
+  try {
+    const MCPServer = require(path.join(baseDir, 'core', 'mcp-server'));
+    var mcpServer = new MCPServer(config.mcp || {});
+  } catch (e) { console.log('[BOOT] MCP server init skipped:', e.message); var mcpServer = null; }
+
 
   const startTime = Date.now();
   let aiOnline = false;
@@ -856,6 +875,8 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
     bootLabels,
     bootVersion: BOOT_VERSION,
     screenshotTool,
+    ollamaFallback,
+    mcpServer,
     clipboardMonitor,
     netScanner,
     sysMonitor,
@@ -865,6 +886,8 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
     webhookSrv,
     aiPlayground,
     notificationHub,
+    ollamaFallback: null,
+    mcpServer: null,
   };
 
   // Now that refs is built, start deferred modules that need refs

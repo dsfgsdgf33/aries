@@ -1,0 +1,17 @@
+{
+  "name": "ARIES — AI Command Center",
+  "short_name": "ARIES",
+  "description": "Personal AI Command Center with local-first AI, agents, RAG, and browser automation.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#00fff7",
+  "orientation": "any",
+  "icons": [
+    { "src": "/api/icon/192", "sizes": "192x192", "type": "image/png" },
+    { "src": "/api/icon/512", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["productivity", "utilities", "developer"],
+  "lang": "en",
+  "dir": "ltr"
+}

@@ -1,0 +1,9 @@
+node_modules
+.git
+logs
+data
+backups
+*.log
+$null
+config.json
+package-lock.json

@@ -1,5 +1,5 @@
 {
-    "version": "5.0.0",
+    "version": "7.0.0",
     "gateway": {
         "url": "http://127.0.0.1:18800/v1/chat/completions",
         "token": "aries-gateway-2026",
@@ -23,6 +23,30 @@
         "fallbackChain": ["claude-opus-4-6", "claude-sonnet-4-20250514"],
         "costTracking": true,
         "token": "aries-gateway-2026"
+    },
+    "ollamaFallback": {
+        "enabled": true,
+        "url": "http://localhost:11434",
+        "model": "auto",
+        "triggerOn": ["429", "500", "502", "503", "529", "timeout"],
+        "autoSwitch": true
+    },
+    "providers": {
+        "openai": {
+            "apiKey": "",
+            "baseUrl": "https://api.openai.com/v1/chat/completions",
+            "defaultModel": "gpt-4o"
+        },
+        "groq": {
+            "apiKey": "",
+            "baseUrl": "https://api.groq.com/openai/v1/chat/completions",
+            "defaultModel": "llama-3.1-70b-versatile"
+        },
+        "openrouter": {
+            "apiKey": "",
+            "baseUrl": "https://openrouter.ai/api/v1/chat/completions",
+            "defaultModel": "anthropic/claude-sonnet-4-20250514"
+        }
     },
     "fallback": {
         "enabled": true,

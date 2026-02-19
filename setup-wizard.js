@@ -89,12 +89,34 @@ function getSystemRAM() {
   return Math.round(os.totalmem() / (1024 * 1024 * 1024));
 }
 
+function detectGpuVram() {
+  try {
+    const out = execSync('nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits', { encoding: 'utf8', timeout: 5000 }).trim();
+    const vramMb = parseInt(out.split('\n')[0]);
+    if (!isNaN(vramMb)) return Math.round(vramMb / 1024);
+  } catch {}
+  // Try AMD on Linux
+  try {
+    const out = execSync('rocm-smi --showmeminfo vram', { encoding: 'utf8', timeout: 5000 });
+    const match = out.match(/Total.*?(\d+)/);
+    if (match) return Math.round(parseInt(match[1]) / (1024 * 1024));
+  } catch {}
+  return 0;
+}
+
 function pickOllamaModel() {
   const ram = getSystemRAM();
-  if (ram >= 32) return { model: 'llama3.1:70b', label: 'Llama 3.1 70B', reason: `${ram}GB RAM — flagship model` };
-  if (ram >= 16) return { model: 'llama3.1:8b', label: 'Llama 3.1 8B', reason: `${ram}GB RAM — excellent balance` };
-  if (ram >= 8) return { model: 'llama3.2:3b', label: 'Llama 3.2 3B', reason: `${ram}GB RAM — fast & capable` };
-  return { model: 'llama3.2:1b', label: 'Llama 3.2 1B', reason: `${ram}GB RAM — lightweight` };
+  const vram = detectGpuVram();
+  const effectiveMem = vram > 0 ? vram : ram;
+  const gpuLabel = vram > 0 ? `GPU ${vram}GB VRAM` : `${ram}GB RAM (CPU mode)`;
+
+  // With GPU VRAM, prefer larger quantized models
+  if (effectiveMem >= 48) return { model: 'qwen2.5:32b', label: 'Qwen 2.5 32B', reason: `${gpuLabel} — large model, excellent quality`, hardware: { ram, vram } };
+  if (effectiveMem >= 24) return { model: 'qwen2.5:14b', label: 'Qwen 2.5 14B', reason: `${gpuLabel} — great quality/speed balance`, hardware: { ram, vram } };
+  if (effectiveMem >= 16) return { model: 'llama3.1:8b', label: 'Llama 3.1 8B', reason: `${gpuLabel} — excellent balance`, hardware: { ram, vram } };
+  if (effectiveMem >= 8) return { model: 'qwen2.5:7b', label: 'Qwen 2.5 7B', reason: `${gpuLabel} — fast & capable`, hardware: { ram, vram } };
+  if (effectiveMem >= 4) return { model: 'llama3.2:3b', label: 'Llama 3.2 3B', reason: `${gpuLabel} — lightweight`, hardware: { ram, vram } };
+  return { model: 'llama3.2:1b', label: 'Llama 3.2 1B', reason: `${gpuLabel} — minimal`, hardware: { ram, vram } };
 }
 
 function pullOllamaModel(model) {
@@ -186,9 +208,17 @@ async function setupOllama(config) {
 
   console.log(`  ${green('✓')} Ollama detected!\n`);
 
-  const { model, label, reason } = pickOllamaModel();
-  console.log(`  ${dim('Hardware:')} ${os.cpus()[0].model}`);
-  console.log(`  ${dim('RAM:')} ${getSystemRAM()}GB`);
+  const picked = pickOllamaModel();
+  const { model, label, reason, hardware } = picked;
+  console.log(`  ${cyan('╔══ Hardware Detected ══╗')}`);
+  console.log(`  ${cyan('║')} CPU: ${os.cpus()[0].model}`);
+  console.log(`  ${cyan('║')} RAM: ${getSystemRAM()}GB`);
+  if (hardware && hardware.vram > 0) {
+    console.log(`  ${cyan('║')} GPU VRAM: ${green(hardware.vram + 'GB')} ${green('(GPU acceleration ✓)')}`);
+  } else {
+    console.log(`  ${cyan('║')} GPU: ${yellow('None detected (CPU mode)')}`);
+  }
+  console.log(`  ${cyan('╚════════════════════════╝')}\n`);
   console.log(`  ${dim('Recommended model:')} ${bold(label)} ${dim(`(${reason})`)}\n`);
 
   const custom = await ask(`  Use ${bold(label)}? (Y/n, or type model name): `);

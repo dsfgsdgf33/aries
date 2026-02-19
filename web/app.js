@@ -470,6 +470,17 @@
               msgDiv.querySelector('.msg-body').innerHTML = formatMessage(fullText);
               scrollChatToBottom();
             }
+            // Update active model badge when done event arrives
+            if (parsed.type === 'done' && parsed.usedModel) {
+              var badge = document.getElementById('activeModelBadge');
+              if (badge) {
+                var isOllama = parsed.usedModel.indexOf('ollama') >= 0;
+                badge.textContent = parsed.usedModel.split('/').pop();
+                badge.style.background = isOllama ? '#f97316' : '#22c55e';
+                badge.style.color = '#000';
+                badge.title = 'Last model: ' + parsed.usedModel;
+              }
+            }
           } catch (e) {}
         }
         return reader.read().then(processChunk);

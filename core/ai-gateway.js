@@ -1,13 +1,16 @@
 /**
- * ARIES v5.0 — Smart AI Gateway (INDEPENDENT)
+ * ARIES v7.0 — Smart AI Gateway (INDEPENDENT + MULTI-PROVIDER)
  * 
- * Routes AI requests directly to api.anthropic.com:
+ * Routes AI requests to multiple providers:
  *   1. sk-ant-oat*  → Direct to Anthropic via OAuth Bearer + special headers
  *   2. sk-ant-api*  → Direct to Anthropic via x-api-key header
+ *   3. sk-*         → OpenAI-compatible (OpenAI, Groq, Together, OpenRouter)
+ *   4. Ollama       → Local fallback via Ollama API
  * 
  * Fully independent — no external gateway dependencies.
  * OpenAI-compatible /v1/chat/completions endpoint on port 18800.
  * Streaming SSE, token tracking, caching, rate limiting, cost estimation.
+ * Auto-detects provider from API key prefix.
  * Uses only Node.js built-in modules — zero npm dependencies.
  */
 
@@ -46,6 +49,14 @@ const MODEL_PRICING = {
 var ROUTE = {
   OAUTH_DIRECT: 'oauth-direct',   // sk-ant-oat* → api.anthropic.com with Bearer
   API_DIRECT: 'api-direct',       // sk-ant-api* → api.anthropic.com with x-api-key
+  OPENAI_COMPAT: 'openai-compat', // sk-* → OpenAI / Groq / Together / OpenRouter
+};
+
+/** OpenAI-compatible provider detection from API key prefix */
+var OPENAI_PROVIDERS = {
+  'sk-or-': { name: 'openrouter', url: 'https://openrouter.ai/api/v1/chat/completions' },
+  'gsk_': { name: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions' },
+  'sk-': { name: 'openai', url: 'https://api.openai.com/v1/chat/completions' },
 };
 
 class AIGateway extends EventEmitter {
@@ -157,8 +168,25 @@ class AIGateway extends EventEmitter {
       return { mode: ROUTE.OAUTH_DIRECT, token: oauthToken, url: baseUrl };
     }
 
-    // No valid Anthropic key found — Aries requires a direct API key or OAuth token
-    throw new Error('No valid Anthropic API key or OAuth token configured. Aries requires direct API access.');
+    // 4. Check for OpenAI-compatible keys
+    var openaiProvider = self._detectOpenAIProvider(apiKey);
+    if (openaiProvider) {
+      return { mode: ROUTE.OPENAI_COMPAT, token: apiKey, url: openaiProvider.url, providerName: openaiProvider.name };
+    }
+
+    // 5. Check additional providers config
+    var additionalProviders = self.parentConfig.providers || {};
+    var providerKeys = Object.keys(additionalProviders);
+    for (var pi = 0; pi < providerKeys.length; pi++) {
+      var pCfg = additionalProviders[providerKeys[pi]];
+      if (pCfg && pCfg.apiKey) {
+        var detected = self._detectOpenAIProvider(pCfg.apiKey);
+        if (detected) return { mode: ROUTE.OPENAI_COMPAT, token: pCfg.apiKey, url: pCfg.baseUrl || detected.url, providerName: detected.name };
+      }
+    }
+
+    // No valid key found — Aries requires an API key
+    throw new Error('No valid API key configured. Aries supports Anthropic, OpenAI, Groq, and OpenRouter keys.');
   }
 
   // ═══════════════════════════════════════════════════
@@ -471,7 +499,148 @@ class AIGateway extends EventEmitter {
         throw e;
       }
     }
-    throw new Error('All models failed for streaming');
+    // Last resort: try Ollama fallback
+    var ollamaCfg = self.parentConfig.ollamaFallback || {};
+    if (ollamaCfg.enabled !== false) {
+      try {
+        console.log('[AI-GATEWAY] All cloud models failed, trying Ollama fallback...');
+        var ollamaResult = await self._streamOllamaFallback(body, res);
+        ollamaResult.usedModel = 'ollama/' + (ollamaResult.ollamaModel || 'local');
+        console.log('[AI-GATEWAY] Ollama fallback succeeded with model: ' + ollamaResult.usedModel);
+        return ollamaResult;
+      } catch (ollamaErr) {
+        console.log('[AI-GATEWAY] Ollama fallback also failed: ' + ollamaErr.message);
+      }
+    }
+    throw new Error('All models failed for streaming (including Ollama fallback)');
+  }
+
+  /**
+   * Stream from local Ollama instance as last-resort fallback
+   * @param {object} body - OpenAI-format request body
+   * @param {http.ServerResponse} res - Client response to stream to
+   * @returns {Promise<{inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, ollamaModel}>}
+   */
+  async _streamOllamaFallback(body, res) {
+    var self = this;
+    var ollamaCfg = self.parentConfig.ollamaFallback || {};
+    var ollamaUrl = ollamaCfg.url || 'http://localhost:11434';
+    var ollamaModel = ollamaCfg.model || 'auto';
+
+    // Auto-detect best available model
+    if (ollamaModel === 'auto') {
+      try {
+        var tagsResp = await self._httpPost(ollamaUrl + '/api/tags', '{}', { 'Content-Type': 'application/json' });
+        if (tagsResp.json && tagsResp.json.models && tagsResp.json.models.length > 0) {
+          // Prefer larger models: qwen2.5, llama3, mistral, etc.
+          var preferred = ['qwen2.5:32b', 'qwen2.5:14b', 'qwen2.5:7b', 'llama3.1:70b', 'llama3.1:8b', 'llama3:70b', 'llama3:8b', 'mistral', 'deepseek-coder', 'codellama'];
+          var available = tagsResp.json.models.map(function(m) { return m.name; });
+          ollamaModel = available[0]; // default to first available
+          for (var pi = 0; pi < preferred.length; pi++) {
+            for (var ai = 0; ai < available.length; ai++) {
+              if (available[ai].indexOf(preferred[pi]) >= 0) { ollamaModel = available[ai]; pi = preferred.length; break; }
+            }
+          }
+        } else {
+          ollamaModel = 'llama3.1:8b';
+        }
+      } catch (e) {
+        ollamaModel = 'llama3.1:8b';
+      }
+    }
+
+    // Convert messages for Ollama
+    var messages = body.messages || [];
+    var ollamaBody = JSON.stringify({
+      model: ollamaModel,
+      messages: messages,
+      stream: true
+    });
+
+    return new Promise(function(resolve, reject) {
+      try {
+        var parsed = new URL(ollamaUrl + '/api/chat');
+        var isHttps = parsed.protocol === 'https:';
+        var mod = isHttps ? https : http;
+        var opts = {
+          hostname: parsed.hostname,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 180000
+        };
+
+        var req = mod.request(opts, function(apiRes) {
+          if (apiRes.statusCode >= 400) {
+            var errData = '';
+            apiRes.on('data', function(c) { errData += c; });
+            apiRes.on('end', function() { reject(new Error('Ollama error ' + apiRes.statusCode + ': ' + errData.substring(0, 200))); });
+            return;
+          }
+
+          var buffer = '';
+          var completionId = 'chatcmpl-ollama-' + crypto.randomBytes(6).toString('hex');
+          var totalTokens = 0;
+
+          apiRes.on('data', function(chunk) {
+            try {
+              buffer += chunk.toString();
+              var lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (var li = 0; li < lines.length; li++) {
+                var line = lines[li].trim();
+                if (!line) continue;
+                try {
+                  var event = JSON.parse(line);
+                  if (event.message && event.message.content) {
+                    var openaiChunk = {
+                      id: completionId,
+                      object: 'chat.completion.chunk',
+                      created: Math.floor(Date.now() / 1000),
+                      model: 'ollama/' + ollamaModel,
+                      choices: [{ index: 0, delta: { content: event.message.content }, finish_reason: null }]
+                    };
+                    res.write('data: ' + JSON.stringify(openaiChunk) + '\n\n');
+                  }
+                  if (event.done) {
+                    totalTokens = (event.eval_count || 0) + (event.prompt_eval_count || 0);
+                    var finalChunk = {
+                      id: completionId,
+                      object: 'chat.completion.chunk',
+                      created: Math.floor(Date.now() / 1000),
+                      model: 'ollama/' + ollamaModel,
+                      choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+                      usage: { prompt_tokens: event.prompt_eval_count || 0, completion_tokens: event.eval_count || 0, total_tokens: totalTokens }
+                    };
+                    res.write('data: ' + JSON.stringify(finalChunk) + '\n\n');
+                  }
+                } catch (parseErr) { /* skip malformed */ }
+              }
+            } catch (chunkErr) { /* ignore */ }
+          });
+
+          apiRes.on('end', function() {
+            try {
+              res.write('data: ' + JSON.stringify({ _meta: true, _usedModel: 'ollama/' + ollamaModel }) + '\n\n');
+              res.write('data: [DONE]\n\n');
+              res.end();
+            } catch (e3) { /* ignore */ }
+            resolve({ inputTokens: 0, outputTokens: totalTokens, cacheReadTokens: 0, cacheWriteTokens: 0, ollamaModel: ollamaModel });
+          });
+
+          apiRes.on('error', function(err) {
+            reject(err);
+          });
+        });
+
+        req.on('error', reject);
+        req.on('timeout', function() { req.destroy(); reject(new Error('Ollama request timeout')); });
+        req.write(ollamaBody);
+        req.end();
+      } catch (e) { reject(e); }
+    });
   }
 
   async _streamAnthropicDirect(body, model, token, isOAuth, res, isFallbackAttempt) {
@@ -634,6 +803,122 @@ class AIGateway extends EventEmitter {
   }
 
   // ═══════════════════════════════════════════════════
+  //  OPENAI-COMPATIBLE PROVIDER SUPPORT
+  // ═══════════════════════════════════════════════════
+
+  /**
+   * Detect OpenAI-compatible provider from API key
+   * @param {string} key
+   * @returns {{name: string, url: string}|null}
+   */
+  _detectOpenAIProvider(key) {
+    if (!key || typeof key !== 'string') return null;
+    // Check specific prefixes first (longer prefixes before shorter)
+    var prefixes = Object.keys(OPENAI_PROVIDERS).sort(function(a, b) { return b.length - a.length; });
+    for (var i = 0; i < prefixes.length; i++) {
+      if (key.startsWith(prefixes[i]) && !key.startsWith('sk-ant-')) {
+        return OPENAI_PROVIDERS[prefixes[i]];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Stream from an OpenAI-compatible provider
+   */
+  async _streamOpenAICompat(body, providerUrl, apiKey, res) {
+    var self = this;
+    var bodyStr = JSON.stringify({
+      model: body.model || 'gpt-4o',
+      messages: body.messages || [],
+      max_tokens: body.max_tokens || 4096,
+      temperature: body.temperature || 0.7,
+      stream: true
+    });
+
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    };
+
+    return new Promise(function(resolve, reject) {
+      try {
+        var parsed = new URL(providerUrl);
+        var isHttps = parsed.protocol === 'https:';
+        var mod = isHttps ? https : http;
+        var opts = {
+          hostname: parsed.hostname,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname + parsed.search,
+          method: 'POST',
+          headers: headers,
+          timeout: 120000
+        };
+
+        var req = mod.request(opts, function(apiRes) {
+          if (apiRes.statusCode >= 400) {
+            var errData = '';
+            apiRes.on('data', function(c) { errData += c; });
+            apiRes.on('end', function() {
+              res.write('data: ' + JSON.stringify({ error: 'Provider error ' + apiRes.statusCode + ': ' + errData.substring(0, 200) }) + '\n\n');
+              res.write('data: [DONE]\n\n');
+              res.end();
+              resolve({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+            });
+            return;
+          }
+
+          var buffer = '';
+          var inputTokens = 0, outputTokens = 0;
+
+          apiRes.on('data', function(chunk) {
+            buffer += chunk.toString();
+            var lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (var li = 0; li < lines.length; li++) {
+              var line = lines[li].trim();
+              if (!line.startsWith('data:')) continue;
+              var dataStr = line.slice(5).trim();
+              if (dataStr === '[DONE]') continue;
+              try {
+                var parsed = JSON.parse(dataStr);
+                // Pass through OpenAI-format chunks directly
+                res.write('data: ' + dataStr + '\n\n');
+                if (parsed.usage) {
+                  inputTokens = parsed.usage.prompt_tokens || 0;
+                  outputTokens = parsed.usage.completion_tokens || 0;
+                }
+              } catch (e) { /* skip */ }
+            }
+          });
+
+          apiRes.on('end', function() {
+            try {
+              res.write('data: ' + JSON.stringify({ _meta: true, _usedModel: body.model || 'openai-compat' }) + '\n\n');
+              res.write('data: [DONE]\n\n');
+              res.end();
+            } catch (e) { /* ignore */ }
+            resolve({ inputTokens: inputTokens, outputTokens: outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 });
+          });
+
+          apiRes.on('error', function(err) {
+            try { res.write('data: ' + JSON.stringify({ error: err.message }) + '\n\n'); res.write('data: [DONE]\n\n'); res.end(); } catch (e) { /* ignore */ }
+            resolve({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+          });
+        });
+
+        req.on('error', function(err) {
+          try { res.write('data: ' + JSON.stringify({ error: err.message }) + '\n\n'); res.write('data: [DONE]\n\n'); res.end(); } catch (e) { /* ignore */ }
+          resolve({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+        });
+        req.on('timeout', function() { req.destroy(); reject(new Error('Request timeout')); });
+        req.write(bodyStr);
+        req.end();
+      } catch (e) { reject(e); }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
   //  HTTP HELPERS
   // ═══════════════════════════════════════════════════
 
@@ -782,7 +1067,7 @@ class AIGateway extends EventEmitter {
     // GET /health
     if (reqUrl === '/health' && method === 'GET') {
       var route = self._resolveRoute();
-      var modeLabel = route.mode === ROUTE.OAUTH_DIRECT ? 'OAUTH → api.anthropic.com' : 'DIRECT → api.anthropic.com';
+      var modeLabel = route.mode === ROUTE.OAUTH_DIRECT ? 'OAUTH → api.anthropic.com' : route.mode === ROUTE.OPENAI_COMPAT ? (route.providerName || 'openai') + ' → ' + (route.url || '').split('/')[2] : 'DIRECT → api.anthropic.com';
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({
         status: 'ok', gateway: 'aries', version: '5.0',
@@ -903,6 +1188,38 @@ class AIGateway extends EventEmitter {
                 if (mi < modelsToTry.length - 1) continue;
               }
             }
+            // Try Ollama fallback for non-streaming
+            if (!result) {
+              var ollamaCfg = self.parentConfig.ollamaFallback || {};
+              if (ollamaCfg.enabled !== false) {
+                try {
+                  console.log('[AI-GATEWAY] All cloud models failed for non-streaming, trying Ollama...');
+                  var ollamaUrl = ollamaCfg.url || 'http://localhost:11434';
+                  var ollamaModel = ollamaCfg.model || 'auto';
+                  if (ollamaModel === 'auto') {
+                    try {
+                      var tagsResp = await self._httpPost(ollamaUrl + '/api/tags', '{}', { 'Content-Type': 'application/json' });
+                      ollamaModel = (tagsResp.json && tagsResp.json.models && tagsResp.json.models[0]) ? tagsResp.json.models[0].name : 'llama3.1:8b';
+                    } catch (e) { ollamaModel = 'llama3.1:8b'; }
+                  }
+                  var ollamaBody = JSON.stringify({ model: ollamaModel, messages: body.messages || [], stream: false });
+                  var ollamaResp = await self._httpPost(ollamaUrl + '/api/chat', ollamaBody, { 'Content-Type': 'application/json' });
+                  if (ollamaResp.json && ollamaResp.json.message) {
+                    result = {
+                      id: 'chatcmpl-ollama-' + crypto.randomBytes(6).toString('hex'),
+                      object: 'chat.completion', created: Math.floor(Date.now() / 1000),
+                      model: 'ollama/' + ollamaModel,
+                      choices: [{ index: 0, message: { role: 'assistant', content: ollamaResp.json.message.content || '' }, finish_reason: 'stop' }],
+                      usage: { prompt_tokens: ollamaResp.json.prompt_eval_count || 0, completion_tokens: ollamaResp.json.eval_count || 0, total_tokens: (ollamaResp.json.prompt_eval_count || 0) + (ollamaResp.json.eval_count || 0) }
+                    };
+                    usedModelName = 'ollama/' + ollamaModel;
+                    console.log('[AI-GATEWAY] Ollama fallback succeeded: ' + ollamaModel);
+                  }
+                } catch (ollamaErr) {
+                  console.log('[AI-GATEWAY] Ollama fallback failed: ' + ollamaErr.message);
+                }
+              }
+            }
             if (!result) throw lastError || new Error('All models failed');
 
             // Add metadata about which model was used
@@ -919,6 +1236,24 @@ class AIGateway extends EventEmitter {
             res.end(JSON.stringify(result));
           }
 
+        }
+        // ─── OPENAI-COMPATIBLE PROVIDER (OpenAI, Groq, Together, OpenRouter) ───
+        else if (route.mode === ROUTE.OPENAI_COMPAT) {
+          if (isStream) {
+            res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*' });
+            var sr = await self._streamOpenAICompat(body, route.url, route.token, res);
+            self._trackUsage(body.model || 'openai-compat', sr.inputTokens || 0, sr.outputTokens || 0, 0, 0, Date.now() - startMs, route.mode);
+          } else {
+            var bodyStr2 = JSON.stringify({ model: body.model || 'gpt-4o', messages: body.messages || [], max_tokens: body.max_tokens || 4096, temperature: body.temperature || 0.7 });
+            var headers2 = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + route.token };
+            var resp2 = route.url.startsWith('https') ? await self._httpsPost(route.url, bodyStr2, headers2) : await self._httpPost(route.url, bodyStr2, headers2);
+            if (resp2.statusCode >= 400) throw new Error('Provider error ' + resp2.statusCode + ': ' + (resp2.body || '').substring(0, 200));
+            var result2 = resp2.json || {};
+            self._trackUsage(body.model || 'openai-compat', (result2.usage || {}).prompt_tokens || 0, (result2.usage || {}).completion_tokens || 0, 0, 0, Date.now() - startMs, route.mode);
+            self._setCache(cacheKey, result2);
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(result2));
+          }
         }
       } catch (e) {
         if (!res.headersSent) {

@@ -3,9 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARIES v5.0 &#x2014; Command Center</title>
+  <title>ARIES v7.0 &#x2014; Command Center</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;&#x25B2;&lt;/text&gt;&lt;/svg&gt;">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00fff7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ARIES">
 </head>
 <body>
   <!-- Tron Boot Screen -->
@@ -22,7 +27,8 @@
   <header id="topbar">
     <div class="topbar-left">
       <div class="logo">&#x25B2; ARIES</div>
-      <span class="version">v5.0</span>
+      <span class="version">v7.0</span>
+      <span id="activeModelBadge" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#22c55e;color:#000;margin-left:8px;cursor:help" title="Active AI model">cloud</span>
       <span id="connDot" class="conn-dot offline" title="Disconnected"></span>
       <span id="connLabel" class="conn-label">Offline</span>
     </div>
@@ -870,6 +876,29 @@
       });
     });
   })();
+  </script>
+  <!-- Ollama Fallback Notification -->
+  <div id="ollamaFallbackBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:linear-gradient(90deg,#ff6b00,#ff8c00);color:#000;padding:8px 16px;font-size:13px;font-weight:600;text-align:center;cursor:pointer" onclick="this.style.display='none'">
+    ⚡ API limit reached — Seamlessly switched to local Ollama AI. Your data stays on your machine. <span style="opacity:0.7">(click to dismiss)</span>
+  </div>
+
+  <!-- PWA Install Prompt -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function(){});
+    }
+    // Check fallback status periodically
+    setInterval(function() {
+      fetch('/api/ollama-fallback/status', { headers: { 'x-aries-key': 'aries-api-2026' } })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var banner = document.getElementById('ollamaFallbackBanner');
+          if (banner) banner.style.display = d.active ? 'block' : 'none';
+          var badge = document.getElementById('activeModelBadge');
+          if (badge && d.active) { badge.textContent = 'ollama'; badge.style.background = '#ff6b00'; }
+          else if (badge && !d.active) { badge.style.background = '#22c55e'; }
+        }).catch(function(){});
+    }, 15000);
   </script>
 </body>
 </html>

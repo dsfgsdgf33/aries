@@ -426,6 +426,7 @@ async function chatStream(messages, onToken, onToolExec) {
 
       let content = '';
       let buffer = '';
+      let _usedModel = null;
 
       await new Promise((resolve, reject) => {
         resp.body.on('data', chunk => {
@@ -438,6 +439,11 @@ async function chatStream(messages, onToken, onToolExec) {
               if (data === '[DONE]') { resolve(); return; }
               try {
                 const parsed = JSON.parse(data);
+                // Capture model metadata from gateway
+                if (parsed._meta && parsed._usedModel) {
+                  _usedModel = parsed._usedModel;
+                  continue;
+                }
                 const delta = parsed.choices?.[0]?.delta?.content;
                 if (delta) { content += delta; if (onToken) onToken(delta); }
               } catch {}
@@ -451,7 +457,7 @@ async function chatStream(messages, onToken, onToolExec) {
       apiMessages.push({ role: 'assistant', content });
       const toolCalls = parseTools(content);
 
-      if (toolCalls.length === 0) { fullResponse = content; break; }
+      if (toolCalls.length === 0) { fullResponse = content; return { response: fullResponse, iterations, usedModel: _usedModel }; }
 
       const results = [];
       for (const call of toolCalls) {
@@ -481,7 +487,7 @@ async function chatStreamChunked(messages, onChunk) {
     fullResponse += chunk;
     if (onChunk) onChunk(chunk);
   }, null);
-  return { response: result.response || fullResponse, iterations: result.iterations };
+  return { response: result.response || fullResponse, iterations: result.iterations, usedModel: result.usedModel };
 }
 
 async function chat(messages, onToolExec) {

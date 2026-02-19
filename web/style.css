@@ -85,6 +85,23 @@
   --bg-sidebar: #0f0a1a;
 }
 
+[data-theme="amber"] {
+  --accent: #f59e0b;
+  --accent-dim: rgba(245,158,11,0.15);
+  --accent-glow: rgba(245,158,11,0.3);
+  --accent2: #ef4444;
+  --accent2-dim: rgba(239,68,68,0.15);
+  --accent2-glow: rgba(239,68,68,0.3);
+  --cyan: #f59e0b;
+  --cyan-dim: rgba(245,158,11,0.15);
+  --cyan-glow: rgba(245,158,11,0.3);
+  --magenta: #ef4444;
+  --magenta-dim: rgba(239,68,68,0.15);
+  --magenta-glow: rgba(239,68,68,0.3);
+  --border: rgba(245,158,11,0.1);
+  --bg-sidebar: #1a1200;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

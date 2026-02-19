@@ -602,9 +602,11 @@ async function handleRequest(req, res) {
           res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
         };
 
+        let usedModel = null;
         if (ai.chatStreamChunked) {
           const result = await ai.chatStreamChunked(messages, onChunk);
           fullResponse = result.response || fullResponse;
+          usedModel = result.usedModel || null;
         } else {
           const result = await ai.chatStream(messages, null, null);
           fullResponse = (result.response || '').replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').replace(/<tool:[^/]*\/>/g, '').trim();
@@ -617,7 +619,7 @@ async function handleRequest(req, res) {
         refs.saveHistory?.();
         wsBroadcast({ type: 'chat', role: 'assistant', content: clean, timestamp: Date.now() });
 
-        res.write(`data: ${JSON.stringify({ type: 'done', stats: { tokens: Math.ceil(clean.length / 4) } })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', stats: { tokens: Math.ceil(clean.length / 4) }, usedModel: usedModel })}\n\n`);
         res.write('data: [DONE]\n\n');
       } catch (e) {
         res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
@@ -2423,6 +2425,37 @@ async function handleRequest(req, res) {
         fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 4));
       } catch (e) { /* config save failed, key still set in memory */ }
       return json(res, 200, { status: 'updated', provider: body.provider });
+    }
+
+    // GET /api/ollama-fallback/status
+    if (method === 'GET' && reqPath === '/api/ollama-fallback/status') {
+      var ofb = refs.ollamaFallback;
+      if (!ofb) return json(res, 200, { enabled: false });
+      return json(res, 200, ofb.getStatus());
+    }
+
+    // POST /api/ollama-fallback/check
+    if (method === 'POST' && reqPath === '/api/ollama-fallback/check') {
+      var ofb2 = refs.ollamaFallback;
+      if (!ofb2) return json(res, 500, { error: 'Ollama fallback not available' });
+      ofb2.checkOllama().then(function(avail) { json(res, 200, { available: avail, model: ofb2.currentModel }); }).catch(function(e) { json(res, 500, { error: e.message }); });
+      return;
+    }
+
+    // GET /api/mcp-server/config
+    if (method === 'GET' && reqPath === '/api/mcp-server/config') {
+      try {
+        var MCPServer = require('./mcp-server');
+        return json(res, 200, MCPServer.getConfigExamples());
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // GET /api/icon/:size - PWA icon
+    if (method === 'GET' && reqPath.startsWith('/api/icon/')) {
+      var size = parseInt(reqPath.split('/api/icon/')[1]) || 192;
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#0a0a1a"/><polygon points="50,15 85,85 15,85" fill="none" stroke="#00fff7" stroke-width="4"/><text x="50" y="65" text-anchor="middle" font-size="24" font-weight="bold" fill="#00fff7" font-family="monospace">A</text></svg>';
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+      return res.end(svg);
     }
 
     // â•â•â• GET /api/swarm/health â•â•â•
