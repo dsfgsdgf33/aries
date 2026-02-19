@@ -68,32 +68,31 @@ No `npm install`. No Python venv. No config files. **It just works.**
 
 ## 🏆 Why Aries Wins
 
-| Feature | **Aries** | ChatGPT | LM Studio | Jan | Open WebUI |
-|:--------|:---------:|:-------:|:---------:|:---:|:----------:|
-| Runs 100% locally | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Zero npm dependencies | **✅** | ❌ | ❌ | ❌ | ❌ |
-| Works with ANY model provider | **✅** | ❌ | Partial | Partial | ✅ |
-| Automatic Ollama fallback | **✅** | — | — | ❌ | ❌ |
-| Built-in MCP server | **✅** | ❌ | ❌ | ❌ | ❌ |
-| OpenAI-compatible API | **✅** | — | ✅ | ❌ | ✅ |
-| RAG (chat with files) | **✅ Built-in** | Plugin | ❌ | ❌ | ✅ |
-| Code interpreter (local) | **✅** | Cloud only | ❌ | ❌ | ❌ |
-| Screenshot + Vision | **✅ Local** | Cloud only | ❌ | ❌ | ❌ |
-| Scheduled tasks / Cron | **✅** | ❌ | ❌ | ❌ | ❌ |
-| Browser extension | **✅** | ❌ | ❌ | ❌ | ❌ |
-| Browser automation | **✅** | ❌ | ❌ | ❌ | ❌ |
-| PWA mobile access | **✅** | ✅ | ❌ | ❌ | ✅ |
-| Multi-agent swarm | **✅ 14 agents** | ❌ | ❌ | ❌ | ❌ |
-| Distributed compute (swarm networking) | **✅** | ❌ | ❌ | ❌ | ❌ |
-| Persona system | **✅** | Limited | ❌ | ❌ | ❌ |
-| Persistent memory + Knowledge graph | **✅** | Limited | ❌ | ❌ | ❌ |
-| AES-256-GCM encrypted config | **✅** | N/A | ❌ | ❌ | ❌ |
-| Machine-locked encryption | **✅** | N/A | ❌ | ❌ | ❌ |
-| Workflow engine | **✅** | ❌ | ❌ | ❌ | ❌ |
-| Plugin marketplace | **✅ Hot-reload** | Plugins | ❌ | ❌ | ✅ |
-| Cyberpunk UI themes | **✅ 4 themes** | ❌ | ❌ | ❌ | ❌ |
-| One-command install | **✅** | N/A | Installer | Installer | Docker |
-| Cost | **Free** | $20/mo | Free | Free | Free |
+While tools like OpenClaw give you a single AI agent with tool access, Aries gives you an entire distributed AI **NETWORK**. 14 specialized agents, swarm compute across unlimited machines, and it's all zero-dependency pure Node.js.
+
+| Feature | **Aries** | ChatGPT | LM Studio | Jan | Open WebUI | OpenClaw |
+|:--------|:---------:|:-------:|:---------:|:---:|:----------:|:--------:|
+| Zero Dependencies | **✅ Pure Node.js** | ❌ Cloud | ❌ Electron | ❌ Electron | ❌ Python/Docker | ❌ Node.js + npm |
+| Local AI (Ollama) | **✅** | ❌ | ✅ | ✅ | ✅ | ✅ (via tools) |
+| Cloud AI (Anthropic/OpenAI) | **✅** | ✅ OpenAI only | ❌ | ✅ | ✅ | ✅ |
+| Auto Ollama Fallback | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Swarm Network (P2P AI) | **✅ Join & contribute** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Free AI via Swarm | **✅ Join = free compute** | ❌ $20/mo | ❌ | ❌ | ❌ | ❌ |
+| MCP Server | **✅ Built-in** | ❌ | ❌ | ❌ | ❌ | ✅ Client |
+| OpenAI-Compatible API | **✅ Port 18800** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| RAG (Chat with Files) | **✅** | ✅ Paid | ❌ | ✅ | ✅ | ❌ |
+| Code Interpreter | **✅ Local sandbox** | ✅ Cloud | ❌ | ❌ | ❌ | ✅ (via tools) |
+| Screenshot + Vision | **✅** | ✅ | ✅ | ✅ | ✅ | ✅ (via tools) |
+| Browser Extension | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PWA Mobile | **✅** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Docker Support | **✅** | N/A | ❌ | ❌ | ✅ | ❌ |
+| Agent System | **✅ 14 agents** | ❌ | ❌ | ❌ | ❌ | ✅ Single agent |
+| Memory System | **✅** | ✅ | ❌ | ✅ | ❌ | ✅ |
+| Encrypted Config | **✅ AES-256-GCM** | N/A | ❌ | ❌ | ❌ | ❌ |
+| Scheduled Tasks | **✅** | ❌ | ❌ | ❌ | ❌ | ✅ Cron |
+| Cyberpunk UI | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Price | **Free** | $20/mo | Free | Free | Free | Free |
+| Self-Hosted | **✅** | ❌ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -186,14 +185,24 @@ The image is tiny — zero dependencies means no `npm install` step.
 
 ### 🕸️ Join the ARIES Swarm Network
 
-Join the ARIES distributed AI network to access shared compute and AI models across the swarm. When you join, you contribute compute power and get access to the distributed AI network in return.
+The ARIES Swarm is a distributed P2P AI compute network. The more people who join, the more powerful it becomes for everyone.
+
+#### Why Join?
+
+- **Download Aries** → use it free as a standalone AI platform, no swarm required
+- **Join the Swarm** → get access to distributed AI compute from all members
+- **Your machine contributes** Ollama compute + processing power to the network
+- **In return, you get free AI** from the entire swarm — no API keys needed
+- **More members = more powerful AI** for everyone in the network
+- **One-click join, one-click leave** — completely opt-in, zero commitment
 
 #### How It Works
 
 1. Click **"Join Swarm"** in the dashboard UI — one click, that's it
 2. Authentication credentials are auto-generated on join
-3. You get access to the swarm's AI models and distributed compute
-4. The swarm is managed by the ARIES team — you're joining their network
+3. Your machine contributes Ollama compute and processing power
+4. You get access to the swarm's distributed AI models and compute from all members
+5. Leave anytime with one click — no lock-in
 
 #### Swarm Is Opt-In Only
 

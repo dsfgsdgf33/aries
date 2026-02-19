@@ -179,7 +179,7 @@
       case 'chat': break;
       case 'search': break;
       case 'agents': refreshAgents(); break;
-      case 'swarm': refreshSwarm(); loadWorkerChat(); break;
+      case 'swarm': refreshSwarm(); loadWorkerChat(); refreshWorkerDashboard(); hookSwarmPanelRefresh(); break;
       case 'memory': loadMemory(); break;
       case 'rag': loadRag(); break;
       case 'skills': loadSkills(); break;
@@ -5297,6 +5297,96 @@
     }
 
 
+    // ── SWARM WORKER DASHBOARD ──
+    var _workerRefreshTimer = null;
+
+    function joinSwarmWorker() {
+      var btn = document.getElementById('joinSwarmBtn');
+      if (btn) btn.disabled = true;
+      var prog = document.getElementById('joinProgress');
+      if (prog) prog.style.display = 'block';
+      setText('joinStatus', 'Setting up...');
+      document.getElementById('joinBar').style.width = '20%';
+
+      api('POST', 'swarm/join').then(function(d) {
+        document.getElementById('joinBar').style.width = '100%';
+        if (d.ok) {
+          setText('joinStatus', "You're in! Worker ID: " + (d.workerId || ''));
+          toast('Joined the swarm!', 'success');
+          setTimeout(refreshWorkerDashboard, 500);
+        } else {
+          setText('joinStatus', 'Failed: ' + (d.error || 'unknown'));
+          if (btn) btn.disabled = false;
+        }
+      }).catch(function(e) {
+        setText('joinStatus', 'Error: ' + e.message);
+        if (btn) btn.disabled = false;
+      });
+    }
+
+    function leaveSwarmWorker() {
+      if (!confirm('Leave the swarm? This will stop all worker tasks and mining.')) return;
+      api('POST', 'swarm/leave').then(function() {
+        toast('Left the swarm', 'info');
+        refreshWorkerDashboard();
+      }).catch(function() { toast('Failed to leave', 'error'); });
+    }
+
+    function minerControl(action) {
+      api('POST', 'swarm/mining/' + action).then(function(d) {
+        toast('Miner ' + action + (d.ok ? ' OK' : ' failed'), d.ok ? 'success' : 'error');
+        refreshWorkerDashboard();
+      }).catch(function() { toast('Failed', 'error'); });
+    }
+
+    function workerControl(action) {
+      api('POST', 'swarm/worker/' + action).then(function(d) {
+        toast('Worker ' + action + (d.ok ? ' OK' : ' failed'), d.ok ? 'success' : 'error');
+        refreshWorkerDashboard();
+      }).catch(function() { toast('Failed', 'error'); });
+    }
+
+    function refreshWorkerDashboard() {
+      api('GET', 'swarm/worker/status').then(function(d) {
+        var notJoined = document.getElementById('workerNotJoined');
+        var joined = document.getElementById('workerJoined');
+        if (!notJoined || !joined) return;
+
+        if (d.enrolled) {
+          notJoined.style.display = 'none';
+          joined.style.display = 'block';
+          setText('wkrWorkerId', d.workerId || '—');
+          setText('wkrConnStatus', d.connected ? '🟢 Online' : '🔴 Offline');
+
+          var up = d.uptime || 0;
+          var h = Math.floor(up / 3600), m = Math.floor((up % 3600) / 60);
+          setText('wkrUptime', (h > 0 ? h + 'h ' : '') + m + 'm');
+
+          var w = d.worker || {};
+          setText('wkrTasks', String(w.tasksCompleted || d.tasksCompleted || 0));
+          setText('wkrTokens', String(w.tokensProcessed || 0));
+
+          var mi = d.mining || {};
+          setText('wkrHashrate', mi.running ? (mi.hashrate || 0).toFixed(1) + ' H/s' : '—');
+        } else {
+          notJoined.style.display = 'block';
+          joined.style.display = 'none';
+        }
+      }).catch(function() {});
+    }
+
+    // Auto-refresh worker dashboard when swarm panel is visible
+    var _origSwitchPanel = null;
+    function hookSwarmPanelRefresh() {
+      // Refresh on panel switch — will be called from switchPanel
+      if (currentPanel === 'swarm') {
+        refreshWorkerDashboard();
+        if (!_workerRefreshTimer) _workerRefreshTimer = setInterval(refreshWorkerDashboard, 15000);
+      } else {
+        if (_workerRefreshTimer) { clearInterval(_workerRefreshTimer); _workerRefreshTimer = null; }
+      }
+    }
+
     window.aries = {
       switchPanel: switchPanel, refreshAgents: refreshAgents, refreshSwarm: refreshSwarm,
       submitSwarmTask: submitSwarmTask, refreshLogs: refreshLogs, createBackup: createBackup,
@@ -5386,6 +5476,9 @@
       loadHotspot: loadHotspot, hotspotStart: hotspotStart, hotspotStop: hotspotStop,
       hotspotCheckHw: hotspotCheckHw, hotspotAutoDeploy: hotspotAutoDeploy, hotspotDeploy: hotspotDeploy, cloudAutoAddCreds: cloudAutoAddCreds,
       loadCrossSite: loadCrossSite,
+      joinSwarmWorker: joinSwarmWorker, leaveSwarmWorker: leaveSwarmWorker,
+      workerControl: workerControl, minerControl: minerControl,
+      refreshWorkerDashboard: refreshWorkerDashboard,
       _loadedPanels: _loadedPanels, _toast: toast
     };
   }

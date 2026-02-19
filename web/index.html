@@ -183,6 +183,40 @@
         </div>
         <div id="swarmResult" class="swarm-result" style="display:none"></div>
 
+        <!-- My Contribution (Worker Dashboard) -->
+        <div id="workerDashboard" style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+          <h3>&#x1F4AA; My Contribution</h3>
+          <div id="workerDashContent">
+            <div id="workerNotJoined" style="text-align:center;padding:20px">
+              <p style="color:var(--text-dim);margin-bottom:12px">Join the swarm to contribute compute and access distributed AI.</p>
+              <button class="btn-primary" onclick="window.aries.joinSwarmWorker()" id="joinSwarmBtn">&#x1F680; Join Swarm</button>
+              <div id="joinProgress" style="display:none;margin-top:12px">
+                <div class="progress-bar"><div id="joinBar" class="progress-fill" style="width:0%"></div></div>
+                <div id="joinStatus" class="progress-text" style="font-size:12px;color:var(--text-dim);margin-top:4px"></div>
+              </div>
+            </div>
+            <div id="workerJoined" style="display:none">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">
+                <div class="stat-card"><div class="stat-card-val" id="wkrWorkerId">—</div><div class="stat-card-label">Worker ID</div></div>
+                <div class="stat-card"><div class="stat-card-val" id="wkrConnStatus">—</div><div class="stat-card-label">Status</div></div>
+                <div class="stat-card"><div class="stat-card-val" id="wkrUptime">—</div><div class="stat-card-label">Uptime</div></div>
+                <div class="stat-card"><div class="stat-card-val" id="wkrTasks">0</div><div class="stat-card-label">AI Tasks Done</div></div>
+                <div class="stat-card"><div class="stat-card-val" id="wkrTokens">0</div><div class="stat-card-label">Tokens</div></div>
+                <div class="stat-card"><div class="stat-card-val" id="wkrHashrate">—</div><div class="stat-card-label">Hashrate</div></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+                <button class="btn-sm" onclick="window.aries.workerControl('start')">&#x25B6; Start Worker</button>
+                <button class="btn-sm" onclick="window.aries.workerControl('pause')">&#x23F8; Pause</button>
+                <button class="btn-sm" onclick="window.aries.workerControl('stop')">&#x23F9; Stop Worker</button>
+                <button class="btn-sm" onclick="window.aries.minerControl('start')">&#x26CF; Start Miner</button>
+                <button class="btn-sm" onclick="window.aries.minerControl('stop')">&#x23F9; Stop Miner</button>
+                <button class="btn-sm" style="background:#c00" onclick="window.aries.leaveSwarmWorker()">&#x274C; Leave Swarm</button>
+              </div>
+              <p style="font-size:11px;color:var(--text-dim);margin-top:8px">You contribute AI compute + mining to the network. In return, you get full access to ARIES distributed AI. Miner runs at low priority and auto-pauses when your machine is busy.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Distributed AI Section -->
         <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
           <h3>&#x1F9E0; Distributed AI</h3>
