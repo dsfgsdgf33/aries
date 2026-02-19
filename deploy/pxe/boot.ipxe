@@ -1,0 +1,55 @@
+#!ipxe
+
+# ARIES Swarm Worker — PXE Boot Script
+# Boots Alpine Linux, installs Aries worker, starts mining
+
+set retry-count 0
+set max-retries 3
+
+echo ==============================
+echo  ARIES Swarm Worker PXE Boot
+echo ==============================
+echo
+echo MAC:  ${mac}
+echo IP:   ${ip}
+echo
+
+# Try to get dynamic config from PXE server
+isset ${next-server} || set next-server ${dhcp-server}
+set http-base http://${next-server}:8888
+
+# Chainload dynamic boot script from server (has relay URL + secret)
+:chainload
+chain ${http-base}/boot.ipxe || goto static-boot
+
+:static-boot
+echo Dynamic chainload failed, using static config...
+
+# Default relay settings (override via DHCP or kernel cmdline)
+isset ${relay-url} || set relay-url http://45.76.232.5:9700
+isset ${relay-secret} || set relay-secret aries-swarm-jdw-2026
+
+:retry
+imgfree
+
+# Boot Alpine Linux
+kernel ${http-base}/vmlinuz-lts alpine_repo=http://dl-cdn.alpinelinux.org/alpine/latest-stable/main modloop=${http-base}/modloop-lts modules=loop,squashfs,sd-mod,usb-storage quiet aries_relay=${relay-url} aries_secret=${relay-secret} aries_mac=${mac} || goto retry-check
+initrd ${http-base}/initramfs-lts || goto retry-check
+boot || goto retry-check
+
+:retry-check
+set retry-count ${retry-count}
+inc retry-count
+iseq ${retry-count} ${max-retries} && goto fallback ||
+echo Retry ${retry-count}/${max-retries}...
+sleep 5
+goto retry
+
+:fallback
+echo
+echo ================================
+echo  PXE boot failed after retries
+echo  Falling back to local disk...
+echo ================================
+sleep 3
+exit 1

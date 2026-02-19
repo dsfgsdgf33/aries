@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARIES v5.0 &#x2014; Command Center</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;&#x25B2;&lt;/text&gt;&lt;/svg&gt;">
+</head>
+<body>
+  <!-- Tron Boot Screen -->
+  <div id="bootScreen" class="boot-screen" style="display:none">
+    <div class="boot-grid"></div>
+    <div class="boot-content">
+      <div class="boot-logo">&#x25B2; ARIES</div>
+      <div class="boot-terminal"></div>
+      <div class="boot-progress"><div class="boot-progress-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Top Bar -->
+  <header id="topbar">
+    <div class="topbar-left">
+      <div class="logo">&#x25B2; ARIES</div>
+      <span class="version">v5.0</span>
+      <span id="connDot" class="conn-dot offline" title="Disconnected"></span>
+      <span id="connLabel" class="conn-label">Offline</span>
+    </div>
+    <div class="global-search-wrap">
+      <span class="search-icon">&#x1F50D;</span>
+      <input id="globalSearch" type="text" placeholder="Search everything..." autocomplete="off" aria-label="Global search" />
+      <span class="search-kbd">Ctrl+K</span>
+      <div id="globalSearchResults"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="stat-chip"><span class="stat-label">CPU</span><span id="statCpu" class="stat-val">--</span></div>
+      <div class="stat-chip"><span class="stat-label">RAM</span><span id="statRam" class="stat-val">--</span></div>
+      <div class="stat-chip"><span class="stat-label">Uptime</span><span id="statUptime" class="stat-val">--</span></div>
+      <div class="stat-chip"><span class="stat-label">Agents</span><span id="statAgents" class="stat-val">--</span></div>
+      <div class="stat-chip"><span class="stat-label">Workers</span><span id="statWorkers" class="stat-val">--</span></div>
+      <div id="notifBell" class="notif-bell" onclick="window.aries.toggleNotifications()" title="Notifications" data-tooltip="Notifications" role="button" aria-label="Notifications" tabindex="0">
+        &#x1F514;<span id="notifBadge" class="notif-badge" style="display:none">0</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="app">
+    <!-- Sidebar -->
+    <nav id="sidebar" role="navigation" aria-label="Main navigation">
+      <div class="nav-group">
+        <div class="nav-group-label">CORE</div>
+        <a class="nav-item" data-panel="home">&#x1F3E0; Home</a>
+        <a class="nav-item active" data-panel="chat">&#x1F4AC; Chat</a>
+        <a class="nav-item" data-panel="agents">&#x1F916; Agents</a>
+        <a class="nav-item" data-panel="swarm">&#x1F310; Swarm</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">INTELLIGENCE</div>
+        <a class="nav-item" data-panel="memory">&#x1F9E0; Memory</a>
+        <a class="nav-item" data-panel="rag">&#x1F4DA; RAG</a>
+        <a class="nav-item" data-panel="skills">&#x1F527; Skills</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">TOOLS</div>
+        <a class="nav-item" data-panel="browser">&#x1F310; Browser</a>
+        <a class="nav-item" data-panel="sandbox">&#x1F4E6; Sandbox</a>
+        <a class="nav-item" data-panel="search">&#x1F50D; Search</a>
+        <a class="nav-item" data-panel="toolgen">&#x1F6E0; Tool Gen</a>
+        <a class="nav-item" data-panel="agentfactory">&#x1F3ED; Agent Factory</a>
+        <a class="nav-item" data-panel="free-keys">&#x1F511; Free Keys</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">AI</div>
+        <a class="nav-item" data-panel="gateway">&#x26A1; Gateway</a>
+        <a class="nav-item" data-panel="evolve">&#x1F9EC; Evolve</a>
+        <a class="nav-item" data-panel="sentinel">&#x1F6E1; Sentinel</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">SWARM</div>
+        <a class="nav-item" data-panel="swarm-mgr">&#x1F4E1; Providers</a>
+        <a class="nav-item" data-panel="usb-swarm">&#x1F50C; USB Swarm</a>
+        <a class="nav-item" data-panel="network">&#x1F310; Network</a>
+        <a class="nav-item" data-panel="packet-send">&#x1F4E1; Packet Send</a>
+        <a class="nav-item" data-panel="wifi-deploy">&#x1F4F6; WiFi Deploy</a>
+        <a class="nav-item" data-panel="btc-miner">&#x20BF; BTC Miner</a>
+        <a class="nav-item" data-panel="proxy-earnings">&#x1F4B0; Proxy</a>
+        <a class="nav-item" data-panel="tor-service">&#x1F9C5; Tor</a>
+        <a class="nav-item" data-panel="content-farm">&#x1F4DD; Content Farm</a>
+        <a class="nav-item" data-panel="oracle-cloud">&#x2601; Oracle Cloud</a>
+        <a class="nav-item" data-panel="members">&#x1F465; Members</a>
+        <a class="nav-item" data-panel="revenue">&#x1F4B0; Revenue</a>
+        <a class="nav-item" data-panel="worker-health">&#x1F4CA; Worker Health</a>
+        <a class="nav-item" data-panel="task-marketplace">&#x1F6D2; Marketplace</a>
+        <a class="nav-item" data-panel="docker-deploy">&#x1F433; Docker</a>
+        <a class="nav-item" data-panel="cloud-auto">&#x2601; Free VMs</a>
+        <a class="nav-item" data-panel="vbox">&#x1F5A5; VirtualBox</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">SYSTEM</div>
+        <a class="nav-item" data-panel="monitor">&#x1F4CA; Monitor</a>
+        <a class="nav-item" data-panel="models">&#x1F9E0; Models</a>
+        <a class="nav-item" data-panel="terminal">&#x1F4BB; Terminal</a>
+        <a class="nav-item" data-panel="logs">&#x1F4CB; Logs</a>
+        <a class="nav-item" data-panel="backup">&#x1F4BE; Backup</a>
+        <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">MANAGEMENT</div>
+        <a class="nav-item" data-panel="sysmon">&#x1F4CA; System Monitor</a>
+        <a class="nav-item" data-panel="filemgr">&#x1F4C1; File Manager</a>
+        <a class="nav-item" data-panel="netscan">&#x1F310; Network</a>
+        <a class="nav-item" data-panel="playground">&#x1F3AE; Playground</a>
+        <a class="nav-item" data-panel="scheduler">&#x23F0; Scheduler</a>
+        <a class="nav-item" data-panel="webhooks">&#x1F517; Webhooks</a>
+      </div>
+      <div class="sidebar-footer">
+        ARIES <span class="version-footer">v5.0</span> &bull; Built by JDW &#x26A1;<br>
+        <span id="sidebarUptime" class="uptime-counter"></span>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="content">
+
+      <!-- Home/Dashboard Panel -->
+      <section id="panel-home" class="panel">
+        <div class="panel-header"><h2>&#x1F3E0; Command Center</h2></div>
+        <div id="dashboardContent"></div>
+      </section>
+
+      <!-- Chat Panel -->
+      <section id="panel-chat" class="panel active">
+        <div class="chat-header-bar">
+          <div class="persona-switcher" id="personaSwitcher"></div>
+          <div class="chat-actions">
+            <button class="btn-sm" onclick="window.aries.exportChat()" data-tooltip="Export chat as .md">&#x1F4E5; Export</button>
+            <button class="btn-sm" onclick="window.aries.clearChat()" data-tooltip="Clear chat">&#x1F5D1; Clear</button>
+          </div>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div id="chatTyping" class="chat-typing" style="display:none">
+          <div class="typing-dots"><span></span><span></span><span></span></div>
+          <span>Aries is thinking...</span>
+        </div>
+        <div id="chatDropZone" class="chat-drop-zone">&#x1F4C1; Drop files here to attach</div>
+        <div id="chatAttachments" class="chat-attachments"></div>
+        <div id="slashDropdown" class="slash-dropdown"></div>
+        <div class="chat-input-bar">
+          <textarea id="chatInput" placeholder="Ask Aries anything... (/ for commands)" rows="1" aria-label="Chat message input"></textarea>
+          <button id="chatSend" class="btn-send" title="Send (Enter)" data-tooltip="Send message" aria-label="Send message">&#x27A4;</button>
+        </div>
+      </section>
+
+      <!-- Agents Panel -->
+      <section id="panel-agents" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F916; Agent Roster</h2>
+          <button class="btn-sm" onclick="window.aries.refreshAgents()">&#x21BB; Refresh</button>
+        </div>
+        <div id="agentGrid" class="agent-grid"></div>
+      </section>
+
+      <!-- Swarm Panel -->
+      <section id="panel-swarm" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F310; Swarm Network</h2>
+          <div>
+            <button class="export-btn" onclick="window.aries.exportSwarmCSV()">&#x1F4E5; CSV</button>
+            <button class="btn-sm" onclick="window.aries.refreshSwarm()">&#x21BB; Refresh</button>
+          </div>
+        </div>
+        <div id="swarmGlobe" style="height:400px;background:#0a0a1a;border-radius:8px;margin-bottom:16px;position:relative;overflow:hidden"></div>
+        <div id="swarmViz" class="swarm-viz" style="height:220px"></div>
+        <div id="swarmNodes" class="swarm-nodes"></div>
+        <div class="swarm-task-form">
+          <h3>Submit Swarm Task</h3>
+          <textarea id="swarmTaskInput" placeholder="Describe the task for the swarm..." rows="3"></textarea>
+          <button id="swarmSubmit" class="btn-primary" onclick="window.aries.submitSwarmTask()">&#x1F680; Execute</button>
+        </div>
+        <div id="swarmProgress" class="swarm-progress" style="display:none">
+          <div class="progress-bar"><div id="swarmBar" class="progress-fill"></div></div>
+          <div id="swarmStatus" class="progress-text">Processing...</div>
+        </div>
+        <div id="swarmResult" class="swarm-result" style="display:none"></div>
+
+        <!-- Distributed AI Section -->
+        <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+          <h3>&#x1F9E0; Distributed AI</h3>
+          <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+            <select id="distAiStrategy" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px">
+              <option value="split">Split (parallel chunks)</option>
+              <option value="ensemble">Ensemble (multi-model)</option>
+              <option value="chain">Chain (draft→refine→polish)</option>
+            </select>
+            <button class="btn-primary" onclick="window.aries.runDistributedAi()">&#x1F680; Run Distributed</button>
+          </div>
+          <textarea id="distAiPrompt" placeholder="Enter a prompt for distributed processing..." rows="3" style="width:100%;background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:8px;border-radius:4px;resize:vertical"></textarea>
+          <div id="distAiProgress" style="display:none;margin-top:8px">
+            <div class="progress-bar"><div id="distAiBar" class="progress-fill" style="width:0%"></div></div>
+            <div id="distAiStatus" class="progress-text" style="font-size:12px;color:var(--text-dim);margin-top:4px"></div>
+          </div>
+          <div id="distAiResult" style="display:none;margin-top:8px;background:var(--bg-card);padding:12px;border-radius:6px;border:1px solid var(--border);white-space:pre-wrap;font-size:13px;max-height:400px;overflow-y:auto"></div>
+        </div>
+
+        <!-- Model Sharing Section -->
+        <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+          <h3>&#x1F4E6; Model Sharing</h3>
+          <button class="btn-sm" onclick="window.aries.refreshModelMatrix()">&#x21BB; Refresh</button>
+          <div id="modelMatrix" style="margin-top:8px">Click refresh to load model matrix...</div>
+        </div>
+
+        <!-- Worker Chat Section -->
+        <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+          <h3 style="color:#0ff;">💬 Worker Chat</h3>
+          <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+            <select id="chatFilterWorker" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:4px;font-size:12px;" onchange="window.aries.loadWorkerChat()">
+              <option value="">All Workers</option>
+            </select>
+            <button class="btn-sm" onclick="window.aries.loadWorkerChat()">&#x21BB;</button>
+          </div>
+          <div id="workerChatMessages" style="height:280px;overflow-y:auto;background:#05050a;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:12px;font-family:monospace;"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <input id="workerChatInput" type="text" placeholder="Send message to workers..." class="input-field" style="flex:1;font-size:12px;" onkeydown="if(event.key==='Enter')window.aries.sendWorkerChat()" />
+            <select id="chatTargetWorker" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:4px;font-size:12px;">
+              <option value="all">All</option>
+            </select>
+            <button class="btn-primary" onclick="window.aries.sendWorkerChat()" style="padding:4px 12px;font-size:12px;">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Memory Panel -->
+      <section id="panel-memory" class="panel">
+        <div class="panel-header"><h2>&#x1F9E0; Memory</h2><button class="btn-sm" onclick="window.aries._loadedPanels.memory=false;window.aries.loadMemory()" title="Refresh memory">&#x1F504; Refresh</button></div>
+        <div id="memoryContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- RAG Panel -->
+      <section id="panel-rag" class="panel">
+        <div class="panel-header"><h2>&#x1F4DA; RAG Knowledge Base</h2><button class="btn-sm" onclick="window.aries._loadedPanels.rag=false;window.aries.loadRag()" title="Refresh RAG">&#x1F504; Refresh</button></div>
+        <div id="ragContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Skills Panel -->
+      <section id="panel-skills" class="panel">
+        <div class="panel-header"><h2>&#x1F527; Skills</h2><button class="btn-sm" onclick="window.aries._loadedPanels.skills=false;window.aries.loadSkills()" title="Refresh skills">&#x1F504; Refresh</button></div>
+        <div id="skillsContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Browser Panel -->
+      <section id="panel-browser" class="panel">
+        <div class="panel-header"><h2>&#x1F310; Browser Control</h2><button class="btn-sm" onclick="window.aries._loadedPanels.browser=false;window.aries.loadBrowser()" title="Refresh browser status">&#x1F504; Refresh</button></div>
+        <div id="browserContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Sandbox Panel -->
+      <section id="panel-sandbox" class="panel">
+        <div class="panel-header"><h2>&#x1F4E6; Code Sandbox</h2></div>
+        <div class="sandbox-area">
+          <textarea id="sandboxCode" placeholder="// Write code here..." rows="10" class="code-input"></textarea>
+          <div class="sandbox-controls">
+            <select id="sandboxLang"><option value="javascript">JavaScript</option><option value="python">Python</option></select>
+            <button class="btn-primary" onclick="window.aries.runSandbox()">&#x25B6; Run</button>
+          </div>
+          <pre id="sandboxOutput" class="code-output"></pre>
+        </div>
+      </section>
+
+      <!-- Search Panel -->
+      <section id="panel-search" class="panel">
+        <div class="panel-header"><h2>&#x1F50D; Web Search</h2></div>
+        <div class="search-bar">
+          <input id="searchQuery" type="text" placeholder="Search the web..." />
+          <button class="btn-primary" onclick="window.aries.webSearch()">Search</button>
+        </div>
+        <div id="searchResults" class="info-content"></div>
+      </section>
+
+      <!-- Tool Generator Panel -->
+      <section id="panel-toolgen" class="panel">
+        <div class="panel-header"><h2>&#x1F6E0; Tool Generator</h2></div>
+        <div class="tool-gen-area" style="padding:16px;">
+          <p style="color:#888;font-size:13px;margin:0 0 12px;">Describe a tool in natural language and Aries will generate it.</p>
+          <textarea id="toolGenDesc" placeholder="Describe the tool you want..." rows="4" style="width:100%;padding:10px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;resize:vertical;font-size:14px;"></textarea>
+          <button class="btn-primary" onclick="window.aries.generateTool()" style="margin-top:10px;padding:8px 20px;">&#x2728; Generate Tool</button>
+          <div id="toolGenResult" style="margin-top:16px;"></div>
+          <h3 style="color:var(--accent);margin:24px 0 8px;font-size:14px;">Custom Tools</h3>
+          <div id="customToolsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+        </div>
+      </section>
+
+      <!-- Agent Factory Panel -->
+      <section id="panel-agentfactory" class="panel">
+        <div class="panel-header"><h2>&#x1F3ED; Agent Factory</h2></div>
+        <div class="agent-factory-area" style="padding:16px;">
+          <p style="color:#888;font-size:13px;margin:0 0 12px;">Describe an agent and Aries will create it with a role, tools, and system prompt.</p>
+          <textarea id="agentFactoryDesc" placeholder="Describe the agent..." rows="4" style="width:100%;padding:10px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;resize:vertical;font-size:14px;"></textarea>
+          <button class="btn-primary" onclick="window.aries.createAgent()" style="margin-top:10px;padding:8px 20px;">&#x1F916; Create Agent</button>
+          <div id="agentFactoryResult" style="margin-top:16px;"></div>
+          <h3 style="color:var(--accent2);margin:24px 0 8px;font-size:14px;">Custom Agents</h3>
+          <div id="customAgentsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+        </div>
+      </section>
+
+      <!-- Free Keys Panel -->
+      <section id="panel-free-keys" class="panel"></section>
+
+      <!-- Gateway Panel -->
+      <section id="panel-gateway" class="panel">
+        <div class="panel-header"><h2>&#x26A1; AI Gateway</h2><button class="btn-sm" onclick="window.aries._loadedPanels.gateway=false;window.aries.loadGateway()" title="Refresh gateway">&#x1F504; Refresh</button></div>
+        <div id="gatewayContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Evolve Panel -->
+      <section id="panel-evolve" class="panel">
+        <div class="panel-header"><h2>&#x1F9EC; Self-Evolution</h2></div>
+        <div id="evolveContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Sentinel Panel -->
+      <section id="panel-sentinel" class="panel">
+        <div class="panel-header"><h2>&#x1F6E1; Web Sentinel</h2><button class="btn-sm" onclick="window.aries._loadedPanels.sentinel=false;window.aries.loadSentinel()" title="Refresh sentinel">&#x1F504; Refresh</button></div>
+        <div id="sentinelContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Logs Panel -->
+      <section id="panel-logs" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4CB; System Logs</h2>
+          <div>
+            <select id="logLevel" onchange="window.aries.refreshLogs()">
+              <option value="">All</option><option value="error">Error</option>
+              <option value="warn">Warn</option><option value="info">Info</option>
+              <option value="debug">Debug</option>
+            </select>
+            <button class="btn-sm" onclick="window.aries.refreshLogs()">&#x21BB;</button>
+          </div>
+        </div>
+        <div id="logsContent" class="log-list"></div>
+      </section>
+
+      <!-- Backup Panel -->
+      <section id="panel-backup" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4BE; Backup</h2>
+          <button class="btn-primary" onclick="window.aries.createBackup()">&#x2795; Create Backup</button>
+        </div>
+        <div id="backupContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Swarm Manager Panel -->
+      <section id="panel-swarm-mgr" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4E1; Swarm Manager</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshProviders()" data-tooltip="Refresh">&#x21BB;</button>
+            <button class="btn-sm" onclick="window.aries.testAllProviders()" data-tooltip="Test All">&#x1F50C; Test All</button>
+            <button class="btn-sm" onclick="window.aries.showAddProvider()" data-tooltip="Add Provider">&#x2795; Provider</button>
+            <button class="btn-sm" onclick="window.aries.showAddSwarmAgent()" data-tooltip="Add Agent">&#x2795; Agent</button>
+            <button class="btn-sm" onclick="window.aries.showFreeKeys()" data-tooltip="Get Free Keys" style="color:#0f0;">&#x1F511; Get Free Keys</button>
+          </div>
+        </div>
+        <div id="swarmCapacity" class="swarm-capacity-bar" style="margin:12px 0;padding:10px;background:#111;border:1px solid #1a1a2e;border-radius:8px;font-size:13px;color:var(--accent);"></div>
+        <h3 style="color:var(--accent2);margin:16px 0 8px;font-size:14px;">&#x26A1; Providers</h3>
+        <div id="providerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+        <h3 style="color:var(--accent2);margin:20px 0 8px;font-size:14px;">&#x1F916; Swarm Agents</h3>
+        <div style="margin-bottom:10px;">
+          <button class="btn-sm" onclick="window.aries.batchAgents('researcher',5)">+5 Researchers</button>
+          <button class="btn-sm" onclick="window.aries.batchAgents('coder',3)">+3 Coders</button>
+          <button class="btn-sm" onclick="window.aries.batchAgents('analyst',2)">+2 Analysts</button>
+        </div>
+        <div id="swarmAgentGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"></div>
+        <h3 style="color:var(--accent2);margin:20px 0 8px;font-size:14px;">&#x1F511; Key Vault</h3>
+        <div style="margin-bottom:10px;">
+          <button class="btn-sm" onclick="window.aries.refreshKeyVault()">&#x21BB; Refresh</button>
+          <button class="btn-sm" onclick="window.aries.exportKeys()">&#x1F4E4; Export Keys</button>
+          <button class="btn-sm" onclick="window.aries.promptImportKeys()">&#x1F4E5; Import Keys</button>
+        </div>
+        <div id="keyVaultGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"></div>
+
+        <!-- Free Keys Modal -->
+        <div id="freeKeysModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:1000;overflow-y:auto;">
+          <div style="background:#0a0a1a;border:1px solid #0f0;border-radius:12px;padding:24px;max-width:620px;width:92%;margin:40px auto;box-shadow:0 0 40px rgba(0,255,0,0.15);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h3 style="color:#0f0;margin:0;">&#x1F511; Get Free API Keys</h3>
+              <button class="btn-sm" onclick="document.getElementById('freeKeysModal').style.display='none'">&#x2716; Close</button>
+            </div>
+            <p style="color:#888;font-size:12px;margin:0 0 16px;">Click "Open Signup" to get a free key, paste it below, then "Test &amp; Save".</p>
+            <div id="freeKeysContent"></div>
+          </div>
+        </div>
+
+        <!-- Add Provider Modal -->
+        <div id="addProviderModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:#0a0a1a;border:1px solid var(--accent);border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 0 30px var(--accent-glow);">
+            <h3 style="color:var(--accent);margin:0 0 16px;">&#x2795; Add Provider</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <select id="providerPreset" style="padding:8px;background:#111;color:var(--accent);border:1px solid #333;border-radius:6px;" onchange="window.aries.fillProviderPreset()">
+                <option value="">Custom</option>
+                <option value="gemini">Google Gemini</option><option value="groq">Groq</option>
+                <option value="mistral">Mistral</option><option value="cohere">Cohere</option>
+                <option value="openrouter">OpenRouter</option><option value="huggingface">HuggingFace</option>
+                <option value="together">Together AI</option><option value="cerebras">Cerebras</option>
+                <option value="sambanova">SambaNova</option>
+              </select>
+              <input id="provName" placeholder="Provider name" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;" />
+              <input id="provKey" placeholder="API Key" type="password" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;" />
+              <input id="provEndpoint" placeholder="Endpoint URL" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;" />
+              <input id="provModel" placeholder="Model name" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;" />
+              <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn-sm" onclick="document.getElementById('addProviderModal').style.display='none'">Cancel</button>
+                <button class="btn-primary" onclick="window.aries.addProvider()" style="padding:6px 16px;">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Add Agent Modal -->
+        <div id="addAgentModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:#0a0a1a;border:1px solid var(--accent2);border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 0 30px var(--accent2-glow);">
+            <h3 style="color:var(--accent2);margin:0 0 16px;">&#x2795; Add Swarm Agent</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <input id="agentName" placeholder="Agent name" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;" />
+              <select id="agentRole" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;">
+                <option value="researcher">Researcher</option><option value="coder">Coder</option>
+                <option value="analyst">Analyst</option><option value="scout">Scout</option>
+                <option value="writer">Writer</option><option value="planner">Planner</option>
+                <option value="critic">Critic</option><option value="ops">Ops</option>
+              </select>
+              <select id="agentProvider" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;">
+                <option value="">Auto-assign</option>
+              </select>
+              <textarea id="agentPrompt" placeholder="System prompt (optional)" rows="3" style="padding:8px;background:#111;color:#eee;border:1px solid #333;border-radius:6px;resize:vertical;"></textarea>
+              <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn-sm" onclick="document.getElementById('addAgentModal').style.display='none'">Cancel</button>
+                <button class="btn-primary" onclick="window.aries.addSwarmAgent()" style="padding:6px 16px;">Create</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USB Swarm Panel -->
+      <section id="panel-usb-swarm" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F50C; USB Swarm Deployer</h2>
+          <button class="btn-sm" onclick="window.aries.refreshUsbSwarm()">&#x21BB; Refresh</button>
+        </div>
+        <div id="usbSwarmContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Packet Send Panel -->
+      <section id="panel-packet-send" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4E1; Packet Send</h2>
+          <button class="btn-sm" onclick="window.aries.refreshPacketSend()">&#x21BB; Refresh</button>
+        </div>
+        <div id="packetSendContent" class="info-content">
+          <div style="background:#1a0a0a;border:1px solid var(--yellow);border-radius:8px;padding:12px;margin-bottom:16px;color:var(--yellow);font-size:13px">
+            &#x26A0; Network stress testing tool &mdash; target your own machines
+          </div>
+          <div class="card" style="margin:0 0 16px">
+            <h3 style="margin:0 0 12px;color:var(--accent)">&#x1F3AF; Target Configuration</h3>
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label class="setting-label">Target IP</label><input id="pktTarget" type="text" class="input-field" placeholder="192.168.1.100" style="width:100%" /></div>
+              <div><label class="setting-label">Port</label><input id="pktPort" type="number" class="input-field" value="80" style="width:100%" /></div>
+              <div><label class="setting-label">Protocol</label><select id="pktProtocol" class="input-field" style="width:100%;padding:8px"><option value="UDP">UDP</option><option value="TCP">TCP</option></select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label class="setting-label">Packet Size (bytes)</label><input id="pktSize" type="number" class="input-field" value="512" min="1" style="width:100%" /></div>
+              <div><label class="setting-label">Duration (sec)</label><input id="pktDuration" type="number" class="input-field" value="30" min="1" max="1200" style="width:100%" /></div>
+            </div>
+            <div style="margin-bottom:12px">
+              <label class="setting-label">Select Nodes</label>
+              <div id="pktNodeSelector" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+                <label style="color:var(--text-dim);font-size:13px"><input type="checkbox" checked value="local" /> Local Machine</label>
+              </div>
+              <button class="btn-sm" onclick="document.querySelectorAll('#pktNodeSelector input').forEach(function(c){c.checked=true})" style="margin-top:6px">Select All</button>
+            </div>
+            <div id="pktValidation" style="margin-bottom:12px;font-size:12px"></div>
+            <div style="display:flex;gap:12px">
+              <button id="pktStartBtn" class="btn-primary" onclick="window.aries.startPacketSend()" style="padding:10px 32px;font-size:15px;font-weight:bold">&#x25B6; START</button>
+              <button id="pktStopBtn" class="btn-primary" onclick="window.aries.stopPacketSend()" style="padding:10px 32px;font-size:15px;background:var(--red);color:#fff;font-weight:bold;display:none">&#x25A0; STOP</button>
+            </div>
+          </div>
+          <div id="pktStatsArea" style="display:none">
+            <div class="card" style="margin:0 0 12px">
+              <h3 style="margin:0 0 8px;color:var(--accent2)">&#x1F4CA; Live Stats</h3>
+              <div style="background:#1a1a2e;border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px"><div id="pktProgressFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.3s"></div></div>
+              <div id="pktTimeRemaining" style="font-size:12px;color:var(--text-dim);margin-bottom:8px"></div>
+              <div class="stat-row" id="pktAggregateStats"></div>
+            </div>
+            <div class="card" style="margin:0 0 12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <h3 style="margin:0;color:var(--accent)">🖥️ Swarm Nodes</h3>
+                <div id="pktSwarmCount" style="font-size:22px;font-weight:bold;color:var(--accent2)"></div>
+              </div>
+              <div id="pktSwarmGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;max-height:320px;overflow-y:auto"></div>
+            </div>
+            <div class="card">
+              <h3 style="margin:0 0 8px;color:var(--accent)">📈 Per-Node Stats</h3>
+              <table class="data-table"><thead><tr><th>Node</th><th>Packets</th><th>Bandwidth</th><th>Errors</th><th>Status</th></tr></thead><tbody id="pktNodeTable"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Proxy Earnings Panel -->
+      <section id="panel-proxy-earnings" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4B0; Proxy Network Earnings</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshProxyEarnings()">&#x21BB; Refresh</button>
+            <button class="btn-primary" onclick="window.aries.deployProxyToSwarm()">&#x1F680; Deploy to Swarm</button>
+          </div>
+        </div>
+        <div id="proxyEarningsContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- BTC Miner Panel -->
+      <section id="panel-btc-miner" class="panel">
+        <div class="panel-header">
+          <h2>&#x20BF; BTC Mining Dashboard</h2>
+          <div>
+            <button class="export-btn" onclick="window.aries.exportPnlCSV()">&#x1F4E5; PnL CSV</button>
+            <button class="btn-sm" onclick="window.aries.refreshMiner()">&#x21BB; Refresh</button>
+          </div>
+        </div>
+        <div id="btcMinerContent" class="info-content">Loading...</div>
+
+        <!-- Worker Optimization Grid -->
+        <div style="margin-top:20px;">
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">⚡ Worker Optimization</h3>
+          <div id="workerOptGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;"></div>
+        </div>
+
+        <!-- Profit Dashboard -->
+        <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+          <h3 style="color:#0f0;margin:0 0 16px;font-size:16px;">💰 SOL Profit Dashboard</h3>
+          <div id="profitDashboard" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+            <div style="background:linear-gradient(135deg,#0a1a0a,#0a2a0a);border:1px solid #0f03;border-radius:10px;padding:16px;">
+              <div style="color:#0f08;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Actual Balance</div>
+              <div id="profitBalance" style="font-size:28px;font-weight:bold;color:#0f0;margin:8px 0;">— SOL</div>
+              <div id="profitBalanceUsd" style="font-size:16px;color:#0f08;">$—</div>
+              <div id="profitWallet" style="font-size:11px;color:#666;margin-top:8px;word-break:break-all;"></div>
+            </div>
+            <div style="background:linear-gradient(135deg,#0a0a1a,#0a0a2a);border:1px solid #0af3;border-radius:10px;padding:16px;">
+              <div style="color:#0af8;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Today Earned</div>
+              <div id="profitToday" style="font-size:28px;font-weight:bold;color:#0af;margin:8px 0;">— SOL</div>
+              <div id="profitTodayUsd" style="font-size:16px;color:#0af8;">$—</div>
+            </div>
+            <div style="background:linear-gradient(135deg,#1a0a1a,#2a0a2a);border:1px solid #f0f3;border-radius:10px;padding:16px;">
+              <div style="color:#f0f8;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Total Earned</div>
+              <div id="profitTotal" style="font-size:28px;font-weight:bold;color:#f0f;margin:8px 0;">— SOL</div>
+              <div id="profitTotalUsd" style="font-size:16px;color:#f0f8;">$—</div>
+              <div id="profitSolPrice" style="font-size:11px;color:#666;margin-top:8px;">SOL: $—</div>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <h4 style="color:var(--accent2);margin:0 0 8px;font-size:13px;">📊 Profit History</h4>
+            <div id="profitHistory" style="max-height:250px;overflow-y:auto;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Network Scanner Panel -->
+      <section id="panel-network" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F310; Network Scanner</h2>
+          <div>
+            <button class="export-btn" onclick="window.aries.exportNetworkCSV()">&#x1F4E5; CSV</button>
+            <button class="btn-sm" onclick="window.aries.scanNetwork()">&#x1F50D; Scan Network</button>
+          </div>
+        </div>
+        <div id="networkContent" class="info-content">Click "Scan Network" to discover devices on your local network.</div>
+      </section>
+
+      <!-- WiFi Deploy Panel -->
+      <section id="panel-wifi-deploy" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4F6; WiFi Deploy (Captive Portal)</h2>
+          <button class="btn-sm" onclick="window.aries.refreshWifiDeploy()">&#x21BB; Refresh</button>
+        </div>
+        <div id="wifiDeployContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- System Monitor Panel -->
+      <section id="panel-monitor" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4CA; System Monitor</h2>
+          <button class="btn-sm" onclick="window.aries.refreshMonitor()">&#x21BB; Refresh</button>
+        </div>
+        <div id="monitorContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- AI Models Panel -->
+      <section id="panel-models" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F9E0; AI Models</h2>
+          <button class="btn-sm" onclick="window.aries.refreshModels()">&#x21BB; Refresh</button>
+        </div>
+        <div id="modelsContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Terminal Panel -->
+      <section id="panel-terminal" class="panel">
+        <div class="panel-header"><h2>&#x1F4BB; Terminal</h2></div>
+        <div class="terminal-area" style="padding:16px;">
+          <div id="terminalOutput" style="background:#0a0a0f;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:13px;color:var(--green);height:400px;overflow-y:auto;white-space:pre-wrap;margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px">
+            <select id="terminalShell" style="padding:8px;background:#111;color:var(--accent);border:1px solid var(--border);border-radius:6px;width:120px">
+              <option value="powershell">PowerShell</option><option value="cmd">CMD</option>
+            </select>
+            <input id="terminalInput" type="text" placeholder="Enter command..." class="input-field" style="flex:1;font-family:monospace" />
+            <button class="btn-primary" onclick="window.aries.execTerminal()">&#x25B6; Run</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Panel -->
+      <section id="panel-settings" class="panel">
+        <div class="panel-header"><h2>&#x2699; Settings</h2></div>
+        <div id="settingsContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Tor Hidden Service Panel -->
+      <section id="panel-tor-service" class="panel">
+        <div class="panel-header"><h2>&#x1F9C5; Tor Hidden Service</h2></div>
+        <div class="panel-body">
+          <div id="tor-status" style="margin-bottom:15px;">
+            <div><strong>Status:</strong> <span id="tor-running">Checking...</span></div>
+            <div style="margin-top:8px;"><strong>.onion Address:</strong></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+              <code id="tor-address" style="background:#1a1a2e;padding:6px 12px;border-radius:6px;font-size:13px;word-break:break-all;">—</code>
+              <button class="btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('tor-address').textContent)" title="Copy">&#x1F4CB;</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:15px;">
+            <button class="btn" onclick="window.aries.torStart()">&#x25B6; Start Tor</button>
+            <button class="btn btn-danger" onclick="window.aries.torStop()">&#x23F9; Stop Tor</button>
+            <button class="btn-sm" onclick="window.aries.torRefresh()">&#x21BB; Refresh</button>
+          </div>
+          <div style="background:#1a1a2e;padding:12px;border-radius:8px;font-size:13px;line-height:1.6;">
+            <strong>&#x1F4F1; Access from phone:</strong><br>
+            1. Install <a href="https://www.torproject.org/download/#android" target="_blank" style="color:#7c4dff;">Tor Browser</a> on your phone<br>
+            2. Open Tor Browser and navigate to the .onion address above<br>
+            3. You'll have full access to the Aries dashboard over Tor<br>
+            <em style="color:#888;">Note: First connection may take 30-60 seconds while Tor establishes circuits.</em>
+          </div>
+        </div>
+      </section>
+
+      <!-- Content Farm Panel -->
+      <section id="panel-content-farm" class="panel">
+        <div class="panel-header"><h2>&#x1F4DD; Content Generation Farm</h2><button class="btn-sm" onclick="window.aries.refreshContentFarm()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div class="card" style="margin:0 0 16px;">
+            <h3 style="color:var(--accent);margin:0 0 12px;">Generate Content</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div><label class="setting-label">Type</label><select id="cfType" class="input-field" style="width:100%;padding:8px;"><option value="blog">SEO Blog Post</option><option value="social">Social Media</option><option value="product">Product Description</option><option value="email">Email Newsletter</option></select></div>
+              <div><label class="setting-label">Tone</label><select id="cfTone" class="input-field" style="width:100%;padding:8px;"><option value="professional">Professional</option><option value="casual">Casual</option><option value="funny">Funny</option></select></div>
+            </div>
+            <div style="margin-bottom:12px;"><label class="setting-label">Topic</label><input id="cfTopic" type="text" class="input-field" placeholder="e.g., AI in healthcare" style="width:100%;" /></div>
+            <div style="margin-bottom:12px;"><label class="setting-label">Keywords (comma-separated)</label><input id="cfKeywords" type="text" class="input-field" placeholder="e.g., AI, machine learning, healthcare" style="width:100%;" /></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div><label class="setting-label">Length</label><select id="cfLength" class="input-field" style="width:100%;padding:8px;"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="long">Long</option></select></div>
+              <div><label class="setting-label">Count</label><input id="cfCount" type="number" class="input-field" value="1" min="1" max="20" style="width:100%;" /></div>
+            </div>
+            <button class="btn-primary" onclick="window.aries.generateContent()" style="padding:10px 24px;">&#x1F680; Generate</button>
+            <div id="cfProgress" style="display:none;margin-top:12px;"><div class="progress-bar"><div id="cfProgressBar" class="progress-fill" style="width:0%"></div></div><div id="cfProgressText" style="font-size:12px;color:var(--text-dim);margin-top:4px;">Generating...</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px;" id="cfStatsCards"></div>
+          <h3 style="color:var(--accent2);margin:0 0 8px;font-size:14px;">&#x1F4DA; Content Library</h3>
+          <table class="data-table"><thead><tr><th>Title</th><th>Type</th><th>Words</th><th>Date</th><th>Actions</th></tr></thead><tbody id="cfLibraryTable"></tbody></table>
+        </div>
+      </section>
+
+      <!-- Oracle Cloud Panel -->
+      <section id="panel-oracle-cloud" class="panel">
+        <div class="panel-header"><h2>&#x2601; Oracle Cloud</h2><button class="btn-sm" onclick="window.aries.refreshOracleCloud()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div class="card" style="margin:0 0 16px;">
+            <h3 style="color:var(--accent);margin:0 0 12px;">&#x1F510; Credentials</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div><label class="setting-label">Tenancy OCID</label><input id="ocTenancy" type="text" class="input-field" placeholder="ocid1.tenancy.oc1.." style="width:100%;" /></div>
+              <div><label class="setting-label">User OCID</label><input id="ocUser" type="text" class="input-field" placeholder="ocid1.user.oc1.." style="width:100%;" /></div>
+              <div><label class="setting-label">Fingerprint</label><input id="ocFingerprint" type="text" class="input-field" placeholder="aa:bb:cc:..." style="width:100%;" /></div>
+              <div><label class="setting-label">Key File Path</label><input id="ocKeyFile" type="text" class="input-field" placeholder="/path/to/key.pem" style="width:100%;" /></div>
+              <div><label class="setting-label">Region</label><input id="ocRegion" type="text" class="input-field" value="us-ashburn-1" style="width:100%;" /></div>
+              <div><label class="setting-label">Compartment OCID</label><input id="ocCompartment" type="text" class="input-field" placeholder="ocid1.compartment.oc1.." style="width:100%;" /></div>
+            </div>
+            <button class="btn-primary" onclick="window.aries.saveOracleCredentials()" style="padding:8px 20px;">&#x1F4BE; Save Credentials</button>
+          </div>
+          <div class="card" style="margin:0 0 16px;">
+            <h3 style="color:#0f0;margin:0 0 12px;">&#x1F680; Provision Free-Tier VM</h3>
+            <p style="color:#888;font-size:12px;margin:0 0 12px;">VM.Standard.A1.Flex &mdash; 4 OCPUs, 24GB RAM (Oracle Always Free)</p>
+            <button class="btn-primary" onclick="window.aries.provisionOracle()" style="padding:10px 24px;background:#0a4;color:#fff;">&#x2795; Provision ARM VM</button>
+            <div id="ocProvisionStatus" style="margin-top:8px;font-size:12px;color:var(--text-dim);"></div>
+          </div>
+          <h3 style="color:var(--accent2);margin:0 0 8px;font-size:14px;">&#x1F5A5; Instances</h3>
+          <table class="data-table"><thead><tr><th>Name</th><th>IP</th><th>Shape</th><th>Region</th><th>Worker</th><th>Created</th><th>Actions</th></tr></thead><tbody id="ocInstanceTable"></tbody></table>
+        </div>
+      </section>
+
+      <!-- Worker Health Panel -->
+      <!-- Members Panel -->
+      <section id="panel-members" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F465; Network Members</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshMembers()">&#x21BB; Refresh</button>
+            <button class="btn-sm" onclick="window.aries.exportMembersCSV()">&#x1F4E5; CSV</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <!-- Summary Stats -->
+          <div id="memberSummary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <!-- Notification Feed -->
+          <div id="memberNotifFeed" style="max-height:120px;overflow-y:auto;background:#05050a;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px;font-family:monospace;margin-bottom:16px;display:none;"></div>
+          <!-- Controls Bar -->
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+            <input id="memberSearch" type="text" placeholder="Search workers..." class="input-field" style="flex:1;min-width:200px;font-size:12px;" oninput="window.aries.filterMembers()" />
+            <select id="memberStatusFilter" class="input-field" style="width:120px;font-size:12px;" onchange="window.aries.filterMembers()">
+              <option value="">All Status</option>
+              <option value="online">Online</option>
+              <option value="offline">Offline</option>
+              <option value="mining">Mining</option>
+              <option value="idle">Idle</option>
+              <option value="processing">Processing</option>
+            </select>
+            <select id="memberTierFilter" class="input-field" style="width:100px;font-size:12px;" onchange="window.aries.filterMembers()">
+              <option value="">All Tiers</option>
+              <option value="free">Free</option>
+              <option value="contributor">Contributor</option>
+              <option value="pro">Pro</option>
+            </select>
+            <button class="btn-sm" onclick="window.aries.broadcastToWorkers()" title="Send message to all">&#x1F4E2; Broadcast</button>
+          </div>
+          <!-- Hashrate Sparkline -->
+          <div style="margin-bottom:16px;">
+            <h4 style="color:var(--accent);margin:0 0 8px;font-size:12px;">&#x1F4C8; Network Hashrate (24h)</h4>
+            <canvas id="hashSparkline" width="800" height="80" style="width:100%;height:80px;background:#0a0a1a;border-radius:6px;border:1px solid var(--border);"></canvas>
+          </div>
+          <!-- Member Growth Chart -->
+          <div style="margin-bottom:16px;">
+            <h4 style="color:var(--accent2);margin:0 0 8px;font-size:12px;">&#x1F4C8; Member Growth</h4>
+            <canvas id="memberGrowthChart" width="800" height="60" style="width:100%;height:60px;background:#0a0a1a;border-radius:6px;border:1px solid var(--border);"></canvas>
+          </div>
+          <!-- Worker Table -->
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="memberTable">
+              <thead>
+                <tr>
+                  <th onclick="window.aries.sortMembers('workerId')" style="cursor:pointer">Worker ID &#x25B2;</th>
+                  <th onclick="window.aries.sortMembers('ip')" style="cursor:pointer">IP</th>
+                  <th onclick="window.aries.sortMembers('status')" style="cursor:pointer">Status</th>
+                  <th onclick="window.aries.sortMembers('hashrate')" style="cursor:pointer">H/s</th>
+                  <th onclick="window.aries.sortMembers('tasksCompleted')" style="cursor:pointer">Tasks</th>
+                  <th onclick="window.aries.sortMembers('cpuHours')" style="cursor:pointer">CPU Hours</th>
+                  <th onclick="window.aries.sortMembers('os')" style="cursor:pointer">OS</th>
+                  <th onclick="window.aries.sortMembers('ram')" style="cursor:pointer">RAM</th>
+                  <th onclick="window.aries.sortMembers('tier')" style="cursor:pointer">Tier</th>
+                  <th onclick="window.aries.sortMembers('country')" style="cursor:pointer">Country</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="memberTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Geo Distribution -->
+          <div style="margin-top:16px;">
+            <h4 style="color:var(--accent);margin:0 0 8px;font-size:12px;">&#x1F30D; Geographic Distribution</h4>
+            <div id="memberGeoDistribution" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Revenue Panel -->
+      <section id="panel-revenue" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F4B0; Revenue Dashboard</h2>
+          <button class="btn-sm" onclick="window.aries.refreshRevenue()">&#x21BB; Refresh</button>
+        </div>
+        <div style="padding:16px;">
+          <div id="revenueSummary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h4 style="color:var(--accent);margin:0 0 8px;font-size:13px;">&#x1F4CA; Revenue Per Worker</h4>
+          <div id="revenuePerWorker" style="overflow-x:auto;"></div>
+          <h4 style="color:var(--accent2);margin:16px 0 8px;font-size:13px;">&#x1F4CA; Revenue Chart (ASCII)</h4>
+          <pre id="revenueChart" style="background:#0a0a1a;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:#0f0;overflow-x:auto;"></pre>
+        </div>
+      </section>
+
+      <section id="panel-worker-health" class="panel">
+        <div class="panel-header"><h2>&#x1F4CA; Worker Health</h2><button class="btn-sm" onclick="window.aries.refreshWorkerHealth()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div id="whOverviewCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x1F4CA; Worker Metrics (24h)</h3>
+          <div id="whWorkerGrid" style="display:grid;gap:8px;"></div>
+        </div>
+      </section>
+
+      <!-- Task Marketplace Panel -->
+      <section id="panel-task-marketplace" class="panel">
+        <div class="panel-header"><h2>&#x1F6D2; Task Marketplace</h2><button class="btn-sm" onclick="window.aries.refreshMarketplace()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div id="mpEarningsCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x1F4CB; Active Tasks</h3>
+          <div id="mpActiveTasks" style="margin-bottom:16px;"></div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x2705; Completed Tasks</h3>
+          <div id="mpCompletedTasks"></div>
+          <h3 style="color:var(--accent2);margin:16px 0 12px;font-size:14px;">&#x1F4C8; Daily Revenue</h3>
+          <div id="mpRevenueChart" style="height:200px;background:var(--bg-card);border-radius:8px;padding:12px;overflow-x:auto;"></div>
+          <h3 style="color:var(--accent2);margin:16px 0 12px;font-size:14px;">&#x1F4B0; Pricing</h3>
+          <div id="mpPricing"></div>
+        </div>
+      </section>
+
+      <!-- Docker Deploy Panel -->
+      <section id="panel-docker-deploy" class="panel">
+        <div class="panel-header"><h2>&#x1F433; Docker Deploy</h2><button class="btn-sm" onclick="window.aries.refreshDocker()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x1F4C4; Dockerfile</h3>
+          <div style="position:relative;margin-bottom:16px;">
+            <pre id="dockerFileContent" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;white-space:pre;max-height:300px;overflow-y:auto;"></pre>
+            <button class="btn-sm" style="position:absolute;top:8px;right:8px;" onclick="window.aries.copyDockerfile()">&#x1F4CB; Copy</button>
+          </div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x1F680; Docker Run Command</h3>
+          <div style="position:relative;margin-bottom:16px;">
+            <pre id="dockerRunCmd" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;"></pre>
+            <button class="btn-sm" style="position:absolute;top:8px;right:8px;" onclick="window.aries.copyDockerRun()">&#x1F4CB; Copy</button>
+          </div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x1F4E6; docker-compose.yml</h3>
+          <div style="position:relative;margin-bottom:16px;">
+            <pre id="dockerComposeContent" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;white-space:pre;max-height:300px;overflow-y:auto;"></pre>
+            <button class="btn-sm" style="position:absolute;top:8px;right:8px;" onclick="window.aries.copyDockerCompose()">&#x1F4CB; Copy</button>
+          </div>
+          <button class="btn-primary" onclick="window.aries.buildDockerImage()">&#x1F3D7; Build Image</button>
+          <div id="dockerBuildResult" style="margin-top:12px;"></div>
+          <div style="margin-top:16px;padding:12px;background:var(--bg-card);border-radius:8px;font-size:13px;color:var(--text-dim);">
+            <strong>Deploy to Docker Hub:</strong><br>
+            1. <code>docker tag aries-worker:latest yourusername/aries-worker:latest</code><br>
+            2. <code>docker push yourusername/aries-worker:latest</code><br>
+            3. On target machines: <code>docker pull yourusername/aries-worker:latest</code>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cloud Auto Panel -->
+      <section id="panel-cloud-auto" class="panel">
+        <div class="panel-header">
+          <h2>&#x2601; Cloud Auto-Provisioner</h2>
+          <button class="btn-sm" onclick="window.aries.loadCloudAuto()">&#x21BB; Refresh</button>
+        </div>
+        <div id="cloudAutoContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- VirtualBox Panel -->
+      <section id="panel-vbox" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F5A5; VirtualBox Provisioner</h2>
+          <button class="btn-sm" onclick="window.aries.loadVbox()">&#x21BB; Refresh</button>
+        </div>
+        <div id="vboxContent">
+          <div class="info-grid" style="margin-bottom:16px">
+            <div class="info-card" id="vboxAvailCard">
+              <div class="info-label">VirtualBox</div>
+              <div class="info-value" id="vboxAvail">Checking...</div>
+            </div>
+            <div class="info-card" id="vboxTemplateCard">
+              <div class="info-label">Template</div>
+              <div class="info-value" id="vboxTemplate">--</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Running VMs</div>
+              <div class="info-value" id="vboxRunning">0</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Max New VMs</div>
+              <div class="info-value" id="vboxMaxNew">0</div>
+            </div>
+          </div>
+
+          <!-- Resource Meter -->
+          <div style="margin-bottom:16px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px">
+            <h3 style="margin:0 0 8px 0;font-size:14px">&#x1F4CA; Resources</h3>
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div style="flex:1;min-width:200px">
+                <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">RAM: <span id="vboxRamText">--</span></div>
+                <div style="background:#1a1a2e;border-radius:4px;height:16px;overflow:hidden">
+                  <div id="vboxRamBar" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s"></div>
+                </div>
+              </div>
+              <div style="flex:1;min-width:200px">
+                <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">CPUs: <span id="vboxCpuText">--</span></div>
+                <div style="background:#1a1a2e;border-radius:4px;height:16px;overflow:hidden">
+                  <div id="vboxCpuBar" style="height:100%;background:#f0f;width:0%;transition:width 0.3s"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <button class="btn-primary" onclick="window.aries.vboxCreateWorkers()">&#x1F680; Create Workers</button>
+            <input type="number" id="vboxCount" min="1" max="20" value="3" style="width:60px;background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;text-align:center">
+            <button class="btn-sm" onclick="window.aries.vboxCreateTemplate()" id="vboxBuildTplBtn">&#x1F4E6; Build Template</button>
+            <button class="btn-sm" onclick="window.aries.vboxTakeSnapshot()">&#x1F4F8; Take Snapshot</button>
+          </div>
+
+          <!-- VM List -->
+          <div id="vboxVmList" style="display:grid;gap:8px"></div>
+
+          <!-- Build Log -->
+          <div id="vboxBuildLog" style="display:none;margin-top:16px;padding:12px;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:12px;color:#0f0"></div>
+        </div>
+      </section>
+
+      <!-- Notification Panel (overlay) -->
+      <div id="notifPanel" style="display:none;position:fixed;top:50px;right:16px;width:380px;max-height:500px;background:#0a0a1a;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:999;overflow-y:auto;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0;color:var(--accent)">&#x1F514; Notifications</h3>
+          <button class="btn-sm" onclick="document.getElementById('notifPanel').style.display='none'">&#x2716;</button>
+        </div>
+        <div id="notifList" style="font-size:13px"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0">&#x2328; Keyboard Shortcuts</h3>
+        <button class="btn-sm" onclick="document.getElementById('shortcutsModal').classList.add('hidden')">&#x2716;</button>
+      </div>
+      <div class="shortcut-row"><span class="shortcut-desc">Global search</span><span class="shortcut-key">Ctrl+K</span></div>
+      <div class="shortcut-row"><span class="shortcut-desc">Show shortcuts</span><span class="shortcut-key">Ctrl+/</span></div>
+      <div class="shortcut-row"><span class="shortcut-desc">Switch tabs (1-9)</span><span class="shortcut-key">Ctrl+1-9</span></div>
+      <div class="shortcut-row"><span class="shortcut-desc">Send message</span><span class="shortcut-key">Ctrl+Enter</span></div>
+      <div class="shortcut-row"><span class="shortcut-desc">Clear chat</span><span class="shortcut-key">Ctrl+L</span></div>
+      <div class="shortcut-row"><span class="shortcut-desc">Close modals</span><span class="shortcut-key">Escape</span></div>
+    </div>
+  </div>
+
+  <!-- Connection Lost Banner -->
+  <div id="connLostBanner" class="conn-lost-banner">&#x1F534; Connection lost — reconnecting...</div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+  <script>
+  // Mobile hamburger menu toggle
+  (function(){
+    var topLeft = document.querySelector('.topbar-left');
+    if (topLeft) topLeft.addEventListener('click', function(e) {
+      if (window.innerWidth <= 768) {
+        var sb = document.getElementById('sidebar');
+        if (sb) sb.classList.toggle('open');
+      }
+    });
+    // Close sidebar on nav click (mobile)
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+          var sb = document.getElementById('sidebar');
+          if (sb) sb.classList.remove('open');
+        }
+      });
+    });
+  })();
+  </script>
+</body>
+</html>

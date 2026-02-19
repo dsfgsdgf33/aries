@@ -1,0 +1,117 @@
+#cloud-config
+# Aries Swarm Worker — Ollama AI + Mining Worker
+# Works on: Oracle Cloud, AWS, Azure, GCP, any Ubuntu/Debian VM
+package_update: true
+package_upgrade: false
+
+packages:
+  - curl
+  - wget
+
+runcmd:
+  # Install Node.js 20
+  - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  - apt-get install -y nodejs
+
+  # Install Ollama
+  - curl -fsSL https://ollama.com/install.sh | sh
+
+  # Wait for Ollama to be ready
+  - sleep 5
+  - systemctl enable ollama
+  - systemctl start ollama
+
+  # Pull a small model (choose based on RAM)
+  - |
+    TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
+    if [ "$TOTAL_RAM_MB" -ge 16000 ]; then
+      ollama pull llama3.2:3b
+      MODEL="llama3.2:3b"
+    elif [ "$TOTAL_RAM_MB" -ge 4000 ]; then
+      ollama pull llama3.2:1b
+      MODEL="llama3.2:1b"
+    else
+      ollama pull tinyllama
+      MODEL="tinyllama"
+    fi
+
+  # Create working directory
+  - mkdir -p /opt/aries-worker
+  - cd /opt/aries-worker
+
+  # Download worker script from relay
+  - curl -skL https://gateway.doomtrader.com:9700/api/usb-swarm/worker-linux.js -o /opt/aries-worker/worker-linux.js || curl -skL https://gateway.doomtrader.com:9700/api/deploy/worker.js -o /opt/aries-worker/worker-linux.js
+
+  # Generate env.json
+  - |
+    INSTANCE_ID=$(curl -s http://169.254.169.254/opc/v1/instance/id 2>/dev/null || curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || hostname)
+    PROVIDER="unknown"
+    # Detect provider
+    curl -s http://169.254.169.254/opc/v1/instance/ >/dev/null 2>&1 && PROVIDER="oracle"
+    curl -s http://169.254.169.254/latest/meta-data/ >/dev/null 2>&1 && PROVIDER="aws"
+    curl -s -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/ >/dev/null 2>&1 && PROVIDER="gcp"
+    curl -s -H "Metadata: true" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" >/dev/null 2>&1 && PROVIDER="azure"
+    
+    TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
+    if [ "$TOTAL_RAM_MB" -ge 16000 ]; then MODEL="llama3.2:3b"
+    elif [ "$TOTAL_RAM_MB" -ge 4000 ]; then MODEL="llama3.2:1b"
+    else MODEL="tinyllama"; fi
+
+    cat > /opt/aries-worker/env.json << EOF
+    {
+      "relayUrl": "wss://gateway.doomtrader.com:9700",
+      "secret": "aries-swarm-jdw-2026",
+      "workerId": "${PROVIDER}-${INSTANCE_ID}",
+      "wallet": "5PoVdFPRPkSNM9PoGjqbMbFKWqP1YuezgVERdD3bsKhF",
+      "referral": "jdw-aries",
+      "ollamaUrl": "http://localhost:11434",
+      "model": "$MODEL",
+      "provider": "$PROVIDER"
+    }
+    EOF
+
+  # Install xmrig
+  - |
+    ARCH=$(uname -m)
+    XMRIG_VER="6.21.1"
+    if [ "$ARCH" = "x86_64" ]; then
+      wget -q "https://github.com/xmrig/xmrig/releases/download/v${XMRIG_VER}/xmrig-${XMRIG_VER}-linux-static-x64.tar.gz" -O /tmp/xmrig.tar.gz
+    elif [ "$ARCH" = "aarch64" ]; then
+      wget -q "https://github.com/xmrig/xmrig/releases/download/v${XMRIG_VER}/xmrig-${XMRIG_VER}-linux-arm64.tar.gz" -O /tmp/xmrig.tar.gz
+    fi
+    if [ -f /tmp/xmrig.tar.gz ]; then
+      tar xzf /tmp/xmrig.tar.gz -C /opt/aries-worker --strip-components=1
+      chmod +x /opt/aries-worker/xmrig 2>/dev/null
+      rm /tmp/xmrig.tar.gz
+    fi
+
+  # Create systemd service
+  - |
+    cat > /etc/systemd/system/aries-worker.service << EOF
+    [Unit]
+    Description=Aries Swarm Worker (Ollama + Mining)
+    After=network-online.target ollama.service
+    Wants=network-online.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/bin/node /opt/aries-worker/worker-linux.js
+    WorkingDirectory=/opt/aries-worker
+    Restart=always
+    RestartSec=10
+    Environment=NODE_ENV=production
+    Environment=NODE_TLS_REJECT_UNAUTHORIZED=0
+    Environment=OLLAMA_HOST=http://localhost:11434
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+  - systemctl daemon-reload
+  - systemctl enable aries-worker
+  - systemctl start aries-worker
+
+  # Huge pages for mining perf
+  - sysctl -w vm.nr_hugepages=128 || true
+
+final_message: "Aries Ollama worker deployed and running"

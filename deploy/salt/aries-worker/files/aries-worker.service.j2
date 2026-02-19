@@ -1,0 +1,17 @@
+[Unit]
+Description=Aries Swarm Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ install_dir }}/worker
+ExecStart=/usr/bin/node {{ install_dir }}/worker/worker-linux.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

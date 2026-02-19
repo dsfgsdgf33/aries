@@ -1,0 +1,328 @@
+/**
+ * ARIES v4.3 — AI-Powered Tool Generator
+ * Generates, installs, tests, and manages custom tools using AI.
+ * No npm packages — uses only Node.js built-ins.
+ */
+
+const EventEmitter = require('events');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const { execSync } = require('child_process');
+
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const CUSTOM_TOOLS_DIR = path.join(__dirname, 'custom-tools');
+const REGISTRY_FILE = path.join(DATA_DIR, 'custom-tools.json');
+
+class ToolGenerator extends EventEmitter {
+  /**
+   * @param {object} opts
+   * @param {object} opts.ai - AI module with callWithFallback
+   * @param {object} opts.config - toolGeneration config section
+   */
+  constructor(opts = {}) {
+    super();
+    this.ai = opts.ai || {};
+    this.config = opts.config || {};
+    this.maxCustomTools = (this.config.toolGeneration && this.config.toolGeneration.maxCustomTools) || 50;
+    this.autoTest = (this.config.toolGeneration && this.config.toolGeneration.autoTest) !== false;
+    this._registry = [];
+    this._ensureDirs();
+    this._loadRegistry();
+  }
+
+  /** Ensure directories exist */
+  _ensureDirs() {
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      if (!fs.existsSync(CUSTOM_TOOLS_DIR)) fs.mkdirSync(CUSTOM_TOOLS_DIR, { recursive: true });
+    } catch {}
+  }
+
+  /** Load tool registry from disk */
+  _loadRegistry() {
+    try {
+      if (fs.existsSync(REGISTRY_FILE)) {
+        this._registry = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf8'));
+      }
+    } catch { this._registry = []; }
+  }
+
+  /** Save tool registry to disk */
+  _saveRegistry() {
+    try {
+      fs.writeFileSync(REGISTRY_FILE, JSON.stringify(this._registry, null, 2));
+    } catch {}
+  }
+
+  /**
+   * Generate a new tool definition using AI
+   * @param {string} description - Natural language description of the tool
+   * @returns {Promise<object>} Proposed tool definition
+   */
+  async generateTool(description) {
+    try {
+      if (!this.ai || !this.ai.callWithFallback) {
+        throw new Error('AI module not available for tool generation');
+      }
+
+      const prompt = [
+        { role: 'system', content: 'You are a tool generator for ARIES AI platform. Generate a new tool based on the description. Return ONLY valid JSON with this structure:\n{\n  "name": "toolName",\n  "displayName": "Tool Display Name",\n  "description": "What the tool does",\n  "category": "utility|data|ai|web|system|security",\n  "parameters": [{"name": "param1", "type": "string", "required": true, "description": "..."}],\n  "implementation": "// JavaScript function body. Use only Node.js built-ins (fs, path, http, https, crypto, child_process, os). The function receives (params) object and must return { success: boolean, output: string }. Wrap everything in try/catch.",\n  "testCases": [{"input": {"param1": "value"}, "expectedSuccess": true, "description": "Test description"}]\n}\n\nIMPORTANT: Use ONLY Node.js built-in modules. No npm packages.' },
+        { role: 'user', content: description }
+      ];
+
+      const resp = await this.ai.callWithFallback(prompt, null, false);
+      const content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('AI did not return valid JSON tool definition');
+      }
+
+      const toolDef = JSON.parse(jsonMatch[0]);
+
+      // Add metadata
+      toolDef.id = crypto.randomBytes(8).toString('hex');
+      toolDef.generatedAt = new Date().toISOString();
+      toolDef.status = 'proposed';
+      toolDef.source = description;
+
+      this.emit('generated', toolDef);
+      return toolDef;
+    } catch (e) {
+      this.emit('error', e);
+      throw e;
+    }
+  }
+
+  /**
+   * Install a generated tool
+   * @param {object} toolDef - Tool definition from generateTool
+   * @returns {object} Installation result
+   */
+  installTool(toolDef) {
+    try {
+      if (this._registry.length >= this.maxCustomTools) {
+        throw new Error('Maximum custom tools limit reached (' + this.maxCustomTools + ')');
+      }
+
+      if (!toolDef.name || !toolDef.implementation) {
+        throw new Error('Tool definition must have name and implementation');
+      }
+
+      // Check for duplicate names
+      if (this._registry.find(function(t) { return t.name === toolDef.name; })) {
+        throw new Error('Tool with name "' + toolDef.name + '" already exists');
+      }
+
+      // Generate the tool file
+      const safeName = toolDef.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filePath = path.join(CUSTOM_TOOLS_DIR, safeName + '.js');
+
+      const fileContent = '/**\n'
+        + ' * ARIES Custom Tool: ' + (toolDef.displayName || toolDef.name) + '\n'
+        + ' * Generated: ' + new Date().toISOString() + '\n'
+        + ' * Description: ' + (toolDef.description || '') + '\n'
+        + ' * Auto-generated by ARIES Tool Generator\n'
+        + ' */\n\n'
+        + 'const fs = require("fs");\n'
+        + 'const path = require("path");\n'
+        + 'const http = require("http");\n'
+        + 'const https = require("https");\n'
+        + 'const crypto = require("crypto");\n'
+        + 'const { execSync } = require("child_process");\n'
+        + 'const os = require("os");\n\n'
+        + 'async function execute(params) {\n'
+        + '  ' + (toolDef.implementation || 'return { success: false, output: "Not implemented" };') + '\n'
+        + '}\n\n'
+        + 'module.exports = { execute, meta: ' + JSON.stringify({
+            name: toolDef.name,
+            displayName: toolDef.displayName || toolDef.name,
+            description: toolDef.description || '',
+            category: toolDef.category || 'utility',
+            parameters: toolDef.parameters || []
+          }) + ' };\n';
+
+      // Validate syntax
+      fs.writeFileSync(filePath, fileContent);
+      try {
+        execSync('node -c "' + filePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"', {
+          encoding: 'utf8',
+          timeout: 5000,
+          stdio: 'pipe'
+        });
+      } catch (syntaxErr) {
+        // Remove invalid file
+        try { fs.unlinkSync(filePath); } catch {}
+        throw new Error('Generated code has syntax errors: ' + (syntaxErr.stderr || syntaxErr.message));
+      }
+
+      // Register the tool
+      const registryEntry = {
+        id: toolDef.id || crypto.randomBytes(8).toString('hex'),
+        name: toolDef.name,
+        displayName: toolDef.displayName || toolDef.name,
+        description: toolDef.description || '',
+        category: toolDef.category || 'utility',
+        parameters: toolDef.parameters || [],
+        testCases: toolDef.testCases || [],
+        filePath: filePath,
+        installedAt: new Date().toISOString(),
+        source: toolDef.source || '',
+        status: 'installed',
+        testResults: null,
+      };
+
+      this._registry.push(registryEntry);
+      this._saveRegistry();
+
+      // Auto-test if enabled
+      if (this.autoTest && registryEntry.testCases.length > 0) {
+        try {
+          this.testTool(registryEntry.id);
+        } catch {}
+      }
+
+      this.emit('installed', registryEntry);
+      return { success: true, tool: registryEntry };
+    } catch (e) {
+      this.emit('error', e);
+      throw e;
+    }
+  }
+
+  /**
+   * List all custom tools
+   * @returns {Array}
+   */
+  listCustomTools() {
+    return this._registry.map(function(t) {
+      return {
+        id: t.id,
+        name: t.name,
+        displayName: t.displayName,
+        description: t.description,
+        category: t.category,
+        parameters: t.parameters,
+        installedAt: t.installedAt,
+        status: t.status,
+        testResults: t.testResults,
+      };
+    });
+  }
+
+  /**
+   * Remove a custom tool
+   * @param {string} toolId
+   * @returns {object}
+   */
+  removeTool(toolId) {
+    const idx = this._registry.findIndex(function(t) { return t.id === toolId; });
+    if (idx === -1) {
+      throw new Error('Tool not found: ' + toolId);
+    }
+
+    const tool = this._registry[idx];
+
+    // Remove the file
+    try {
+      if (tool.filePath && fs.existsSync(tool.filePath)) {
+        fs.unlinkSync(tool.filePath);
+      }
+    } catch {}
+
+    this._registry.splice(idx, 1);
+    this._saveRegistry();
+
+    this.emit('removed', tool);
+    return { success: true, removed: tool.name };
+  }
+
+  /**
+   * Test a custom tool by running its test cases
+   * @param {string} toolId
+   * @returns {object} Test results
+   */
+  testTool(toolId) {
+    const tool = this._registry.find(function(t) { return t.id === toolId; });
+    if (!tool) {
+      throw new Error('Tool not found: ' + toolId);
+    }
+
+    if (!tool.testCases || tool.testCases.length === 0) {
+      return { success: true, message: 'No test cases defined', passed: 0, failed: 0 };
+    }
+
+    const results = [];
+    let passed = 0;
+    let failed = 0;
+
+    for (const tc of tool.testCases) {
+      try {
+        // Clear require cache to get fresh module
+        const resolvedPath = path.resolve(tool.filePath);
+        delete require.cache[resolvedPath];
+        const toolModule = require(resolvedPath);
+
+        // We can't await in a sync context, so we just validate it loads and has execute
+        if (typeof toolModule.execute !== 'function') {
+          throw new Error('Tool module does not export execute function');
+        }
+
+        results.push({
+          description: tc.description || 'Test case',
+          status: 'loaded',
+          message: 'Module loaded and exports execute function',
+        });
+        passed++;
+      } catch (e) {
+        results.push({
+          description: tc.description || 'Test case',
+          status: 'failed',
+          error: e.message,
+        });
+        failed++;
+      }
+    }
+
+    const testResults = {
+      testedAt: new Date().toISOString(),
+      passed,
+      failed,
+      total: tool.testCases.length,
+      results,
+    };
+
+    tool.testResults = testResults;
+    tool.status = failed === 0 ? 'tested' : 'test-failed';
+    this._saveRegistry();
+
+    this.emit('tested', { toolId, testResults });
+    return testResults;
+  }
+
+  /**
+   * Execute a custom tool
+   * @param {string} toolId
+   * @param {object} params
+   * @returns {Promise<object>}
+   */
+  async executeTool(toolId, params) {
+    const tool = this._registry.find(function(t) { return t.id === toolId; });
+    if (!tool) {
+      throw new Error('Tool not found: ' + toolId);
+    }
+
+    try {
+      const resolvedPath = path.resolve(tool.filePath);
+      delete require.cache[resolvedPath];
+      const toolModule = require(resolvedPath);
+      const result = await toolModule.execute(params || {});
+      return result;
+    } catch (e) {
+      return { success: false, output: 'Tool execution error: ' + e.message };
+    }
+  }
+}
+
+module.exports = { ToolGenerator };

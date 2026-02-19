@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aries Proxy Network — Residential Proxies</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #333; line-height: 1.6; }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 60px 20px; text-align: center; }
+  .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+  .header p { font-size: 1.2em; opacity: 0.85; max-width: 600px; margin: 0 auto; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 30px; margin-bottom: 24px; }
+  .card h2 { margin-bottom: 16px; color: #1a1a2e; }
+  .btn { display: inline-block; padding: 12px 28px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+  .btn-primary { background: #0f3460; color: #fff; }
+  .btn-primary:hover { background: #16213e; }
+  .btn-sm { padding: 8px 16px; font-size: 13px; }
+  input, select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 100%; margin-bottom: 12px; }
+  input:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 3px rgba(15,52,96,0.1); }
+  label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #555; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 30px 0; }
+  .price-card { background: #fff; border: 2px solid #e8e8e8; border-radius: 16px; padding: 30px; text-align: center; transition: all 0.3s; }
+  .price-card:hover { border-color: #0f3460; transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .price-card.featured { border-color: #0f3460; background: linear-gradient(to bottom, #f0f4ff, #fff); }
+  .price-card h3 { font-size: 1.4em; margin-bottom: 8px; }
+  .price-card .price { font-size: 2.2em; font-weight: 800; color: #0f3460; margin: 16px 0; }
+  .price-card .price span { font-size: 0.5em; color: #888; }
+  .price-card ul { list-style: none; text-align: left; margin: 20px 0; }
+  .price-card ul li { padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+  .price-card ul li:before { content: "✓ "; color: #0f3460; font-weight: bold; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #fff; border-radius: 12px; padding: 20px; text-align: center; }
+  .stat-card .num { font-size: 2em; font-weight: 800; }
+  .stat-card .label { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+  .code-block { background: #1a1a2e; color: #a8d8a8; padding: 16px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 13px; overflow-x: auto; margin: 12px 0; position: relative; }
+  .code-block .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .code-block .copy-btn:hover { background: rgba(255,255,255,0.2); }
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #e8e8e8; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 600; color: #888; transition: all 0.2s; }
+  .tab.active { color: #0f3460; border-bottom-color: #0f3460; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .usage-bar { background: #e8e8e8; border-radius: 8px; height: 12px; overflow: hidden; margin: 8px 0; }
+  .usage-bar .fill { height: 100%; background: linear-gradient(90deg, #0f3460, #3a86ff); border-radius: 8px; transition: width 0.5s; }
+  .login-form { max-width: 400px; margin: 0 auto; }
+  .hidden { display: none; }
+  .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
+  .alert-error { background: #fff0f0; color: #c00; border: 1px solid #fdd; }
+  .alert-success { background: #f0fff0; color: #080; border: 1px solid #dfd; }
+  footer { text-align: center; padding: 30px; color: #888; font-size: 13px; }
+  @media (max-width: 768px) { .header h1 { font-size: 1.8em; } .pricing-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🌐 Aries Proxy Network</h1>
+  <p>Premium residential proxies powered by a global network of 50,000+ IPs. Fast, anonymous, reliable.</p>
+</div>
+
+<div class="container">
+
+  <!-- Public Landing (shown when logged out) -->
+  <div id="landingSection">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="num" id="pubIPs">50,000+</div><div class="label">Residential IPs</div></div>
+      <div class="stat-card"><div class="num">99.9%</div><div class="label">Uptime</div></div>
+      <div class="stat-card"><div class="num">&lt;50ms</div><div class="label">Avg Latency</div></div>
+      <div class="stat-card"><div class="num">195+</div><div class="label">Countries</div></div>
+    </div>
+
+    <!-- Pricing -->
+    <h2 style="text-align:center;margin:40px 0 10px;font-size:1.8em;">Pricing</h2>
+    <p style="text-align:center;color:#888;margin-bottom:20px;">Pay only for what you use. No subscriptions, no hidden fees.</p>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>Basic</h3>
+        <p style="color:#888;">Random IP rotation</p>
+        <div class="price">$2<span>/GB</span></div>
+        <ul>
+          <li>Random IP per request</li>
+          <li>HTTP + SOCKS5 support</li>
+          <li>Unlimited bandwidth</li>
+          <li>24/7 network access</li>
+        </ul>
+        <button class="btn btn-primary" onclick="showLogin()">Get Started</button>
+      </div>
+      <div class="price-card featured">
+        <h3>Premium</h3>
+        <p style="color:#888;">Geo-targeting</p>
+        <div class="price">$5<span>/GB</span></div>
+        <ul>
+          <li>Pick country or state</li>
+          <li>HTTP + SOCKS5 support</li>
+          <li>Priority routing</li>
+          <li>Faster connections</li>
+        </ul>
+        <button class="btn btn-primary" onclick="showLogin()">Get Started</button>
+      </div>
+      <div class="price-card">
+        <h3>Dedicated</h3>
+        <p style="color:#888;">Sticky sessions</p>
+        <div class="price">$8<span>/GB</span></div>
+        <ul>
+          <li>Same IP for 30 minutes</li>
+          <li>Dedicated session</li>
+          <li>Lowest latency</li>
+          <li>Best for scraping</li>
+        </ul>
+        <button class="btn btn-primary" onclick="showLogin()">Get Started</button>
+      </div>
+    </div>
+
+    <!-- Login -->
+    <div class="card" id="loginCard">
+      <h2>Customer Login</h2>
+      <div id="loginAlert"></div>
+      <div class="login-form">
+        <label>Username</label>
+        <input type="text" id="loginUser" placeholder="Enter username" />
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="Enter password" />
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="doLogin()">Sign In</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard (shown when logged in) -->
+  <div id="dashSection" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2>Welcome, <span id="dashUser"></span></h2>
+      <button class="btn btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="num" id="dashGB">0</div><div class="label">GB Used</div></div>
+      <div class="stat-card"><div class="num" id="dashRemain">∞</div><div class="label">GB Remaining</div></div>
+      <div class="stat-card"><div class="num" id="dashTier">Basic</div><div class="label">Plan</div></div>
+      <div class="stat-card"><div class="num" id="dashToday">0</div><div class="label">GB Today</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Usage</h2>
+      <div id="usageBarWrap">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;">
+          <span id="usagePct">0%</span><span id="usageLabel">0 / ∞ GB</span>
+        </div>
+        <div class="usage-bar"><div class="fill" id="usageFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Connection Setup</h2>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'curl')">cURL</div>
+        <div class="tab" onclick="switchTab(this,'python')">Python</div>
+        <div class="tab" onclick="switchTab(this,'browser')">Browser</div>
+        <div class="tab" onclick="switchTab(this,'socks5')">SOCKS5</div>
+      </div>
+      <div class="tab-content active" id="tab-curl">
+        <p>Use cURL with HTTP proxy:</p>
+        <div class="code-block" id="curlCode">
+          <button class="copy-btn" onclick="copyCode('curlCode')">Copy</button>
+          curl -x http://<span class="cred-user">USER</span>:<span class="cred-pass">PASS</span>@<span class="gw-host">proxy.example.com</span>:19901 https://httpbin.org/ip
+        </div>
+      </div>
+      <div class="tab-content" id="tab-python">
+        <p>Python requests:</p>
+        <div class="code-block" id="pyCode">
+          <button class="copy-btn" onclick="copyCode('pyCode')">Copy</button>
+import requests
+
+proxies = {
+    "http": "http://<span class="cred-user">USER</span>:<span class="cred-pass">PASS</span>@<span class="gw-host">proxy.example.com</span>:19901",
+    "https": "http://<span class="cred-user">USER</span>:<span class="cred-pass">PASS</span>@<span class="gw-host">proxy.example.com</span>:19901"
+}
+
+r = requests.get("https://httpbin.org/ip", proxies=proxies)
+print(r.json())
+        </div>
+      </div>
+      <div class="tab-content" id="tab-browser">
+        <p>Browser proxy settings:</p>
+        <div class="code-block" id="browserCode">
+          <button class="copy-btn" onclick="copyCode('browserCode')">Copy</button>
+Proxy Type: HTTP
+Host: <span class="gw-host">proxy.example.com</span>
+Port: 19901
+Username: <span class="cred-user">USER</span>
+Password: <span class="cred-pass">PASS</span>
+
+Or use a browser extension like FoxyProxy / SwitchyOmega
+        </div>
+      </div>
+      <div class="tab-content" id="tab-socks5">
+        <p>SOCKS5 proxy:</p>
+        <div class="code-block" id="socks5Code">
+          <button class="copy-btn" onclick="copyCode('socks5Code')">Copy</button>
+# cURL with SOCKS5
+curl --socks5 <span class="cred-user">USER</span>:<span class="cred-pass">PASS</span>@<span class="gw-host">proxy.example.com</span>:19901 https://httpbin.org/ip
+
+# Python with PySocks
+import socks, socket
+socks.set_default_proxy(socks.SOCKS5, "<span class="gw-host">proxy.example.com</span>", 19901, username="<span class="cred-user">USER</span>", password="<span class="cred-pass">PASS</span>")
+socket.socket = socks.socksocket
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Aries Proxy Network &copy; 2026 — Powered by distributed residential infrastructure</footer>
+
+<script>
+var _session = null;
+
+function showLogin() {
+  document.getElementById('loginCard').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('loginUser').focus();
+}
+
+function switchTab(el, id) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+function copyCode(id) {
+  var el = document.getElementById(id);
+  var text = el.innerText.replace('Copy', '').trim();
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = el.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
+function doLogin() {
+  var user = document.getElementById('loginUser').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  if (!user || !pass) { showAlert('loginAlert', 'Please enter username and password', 'error'); return; }
+
+  fetch('/api/proxy/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user, password: pass })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) { showAlert('loginAlert', d.error, 'error'); return; }
+    _session = d;
+    showDashboard(d);
+  })
+  .catch(function() { showAlert('loginAlert', 'Connection failed', 'error'); });
+}
+
+function doLogout() {
+  _session = null;
+  document.getElementById('landingSection').classList.remove('hidden');
+  document.getElementById('dashSection').classList.add('hidden');
+}
+
+function showDashboard(data) {
+  document.getElementById('landingSection').classList.add('hidden');
+  document.getElementById('dashSection').classList.remove('hidden');
+  document.getElementById('dashUser').textContent = data.username;
+  document.getElementById('dashGB').textContent = (data.gbUsed || 0).toFixed(2);
+  document.getElementById('dashToday').textContent = (data.todayGB || 0).toFixed(2);
+  document.getElementById('dashTier').textContent = (data.tier || 'basic').charAt(0).toUpperCase() + (data.tier || 'basic').slice(1);
+
+  var limit = data.gbLimit;
+  if (limit) {
+    var pct = Math.min(100, (data.gbUsed / limit) * 100);
+    document.getElementById('dashRemain').textContent = (limit - data.gbUsed).toFixed(2);
+    document.getElementById('usagePct').textContent = pct.toFixed(1) + '%';
+    document.getElementById('usageLabel').textContent = data.gbUsed.toFixed(2) + ' / ' + limit + ' GB';
+    document.getElementById('usageFill').style.width = pct + '%';
+  } else {
+    document.getElementById('dashRemain').textContent = '∞';
+    document.getElementById('usagePct').textContent = '0%';
+    document.getElementById('usageLabel').textContent = (data.gbUsed || 0).toFixed(2) + ' / Unlimited GB';
+    document.getElementById('usageFill').style.width = '0%';
+  }
+
+  // Fill in credentials
+  var host = location.hostname;
+  document.querySelectorAll('.gw-host').forEach(function(el) { el.textContent = host; });
+  document.querySelectorAll('.cred-user').forEach(function(el) { el.textContent = data.username; });
+  document.querySelectorAll('.cred-pass').forEach(function(el) { el.textContent = '••••••'; });
+}
+
+function showAlert(id, msg, type) {
+  var el = document.getElementById(id);
+  el.innerHTML = '<div class="alert alert-' + type + '">' + msg + '</div>';
+  setTimeout(function() { el.innerHTML = ''; }, 5000);
+}
+</script>
+</body>
+</html>

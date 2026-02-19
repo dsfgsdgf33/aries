@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Aries Browser Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 360px;
+      min-height: 480px;
+      background: #0a0a1a;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 100%);
+      border-bottom: 1px solid #00e5ff33;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #00e5ff22, #00e5ff44);
+      border: 1px solid #00e5ff66;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .header .title-block h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #00e5ff;
+      letter-spacing: 1px;
+    }
+    .header .title-block .version {
+      font-size: 11px;
+      color: #00e5ff88;
+      margin-top: 2px;
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #0d0d22;
+      border-bottom: 1px solid #ffffff0a;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff4444;
+      box-shadow: 0 0 6px #ff444466;
+      transition: all 0.3s;
+    }
+    .status-dot.connected {
+      background: #00e5ff;
+      box-shadow: 0 0 8px #00e5ff88;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 8px #00e5ff88; }
+      50% { box-shadow: 0 0 16px #00e5ffcc; }
+    }
+    .status-text {
+      flex: 1;
+      font-size: 12px;
+    }
+    .status-text .label { color: #888; }
+    .status-text .value { color: #00e5ff; font-weight: 600; }
+    .reconnect-btn {
+      background: none;
+      border: 1px solid #00e5ff44;
+      color: #00e5ff;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+    .reconnect-btn:hover {
+      background: #00e5ff22;
+      border-color: #00e5ff;
+    }
+
+    /* Tab Info */
+    .tab-info {
+      padding: 12px 16px;
+      background: #0f0f24;
+      border-bottom: 1px solid #ffffff0a;
+    }
+    .tab-info .tab-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .tab-info .tab-url {
+      font-size: 11px;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Capabilities grid */
+    .section-title {
+      padding: 12px 16px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #00e5ff88;
+    }
+
+    .capabilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px 16px 12px;
+    }
+    .cap-tag {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      background: #00e5ff11;
+      border: 1px solid #00e5ff22;
+      color: #00e5ffcc;
+    }
+
+    /* Action buttons */
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 8px 16px 16px;
+    }
+    .action-btn {
+      background: linear-gradient(135deg, #0d1b2a, #111133);
+      border: 1px solid #00e5ff33;
+      color: #e0e0e0;
+      padding: 10px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .action-btn:hover {
+      border-color: #00e5ff;
+      background: linear-gradient(135deg, #0d1b2a, #001a33);
+      box-shadow: 0 0 12px #00e5ff22;
+      transform: translateY(-1px);
+    }
+    .action-btn:active {
+      transform: translateY(0);
+    }
+    .action-btn .icon {
+      font-size: 16px;
+    }
+    .action-btn.full-width {
+      grid-column: 1 / -1;
+    }
+
+    /* Result area */
+    .result-area {
+      padding: 0 16px 16px;
+      display: none;
+    }
+    .result-area.visible { display: block; }
+    .result-box {
+      background: #060612;
+      border: 1px solid #00e5ff22;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 11px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      color: #00e5ffcc;
+      max-height: 200px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a1a; }
+    ::-webkit-scrollbar-thumb { background: #00e5ff44; border-radius: 2px; }
+
+    /* Footer */
+    .footer {
+      padding: 8px 16px;
+      border-top: 1px solid #ffffff0a;
+      font-size: 10px;
+      color: #444;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">⚡</div>
+    <div class="title-block">
+      <h1>ARIES</h1>
+      <div class="version" id="version">v2.0.0 • Browser Control</div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <div class="status-text">
+      <span class="label">Gateway: </span>
+      <span class="value" id="statusText">Checking...</span>
+    </div>
+    <button class="reconnect-btn" id="reconnectBtn">Reconnect</button>
+  </div>
+
+  <div class="tab-info" id="tabInfo">
+    <div class="tab-title" id="tabTitle">Loading...</div>
+    <div class="tab-url" id="tabUrl">—</div>
+  </div>
+
+  <div class="section-title">Capabilities</div>
+  <div class="capabilities" id="capabilities"></div>
+
+  <div class="section-title">Quick Actions</div>
+  <div class="actions">
+    <button class="action-btn" id="btnSnapshot"><span class="icon">🌳</span> Aria Tree</button>
+    <button class="action-btn" id="btnScreenshot"><span class="icon">📸</span> Screenshot</button>
+    <button class="action-btn" id="btnConsole"><span class="icon">📋</span> Console Logs</button>
+    <button class="action-btn" id="btnCookies"><span class="icon">🍪</span> Cookies</button>
+    <button class="action-btn" id="btnPdf"><span class="icon">📄</span> Save PDF</button>
+    <button class="action-btn" id="btnNetwork"><span class="icon">🌐</span> Network Log</button>
+    <button class="action-btn full-width" id="btnHighlight"><span class="icon">🔦</span> Highlight Interactive Elements</button>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <div class="result-box" id="resultBox"></div>
+  </div>
+
+  <div class="footer">Aries AI • Autonomous Browser Control • ws://localhost:3333/ext</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

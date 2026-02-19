@@ -1,0 +1,22 @@
+---
+# Aries Swarm Worker — Update Only
+- name: Update Aries Swarm Worker
+  hosts: all
+  become: true
+  vars:
+    relay_url: "{{ relay_url | default('https://gateway.doomtrader.com:9700') }}"
+    install_dir: /opt/aries-swarm
+
+  tasks:
+    - name: Download latest worker-linux.js
+      get_url:
+        url: "{{ relay_url }}/api/deploy/worker.js"
+        dest: "{{ install_dir }}/worker/worker-linux.js"
+        mode: '0644'
+        force: yes
+        validate_certs: no
+
+    - name: Restart aries-worker service
+      systemd:
+        name: aries-worker
+        state: restarted
