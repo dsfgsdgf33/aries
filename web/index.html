@@ -87,8 +87,6 @@
         <a class="nav-item" data-panel="tor-service">&#x1F9C5; Tor</a>
         <a class="nav-item" data-panel="content-farm">&#x1F4DD; Content Farm</a>
         <a class="nav-item" data-panel="oracle-cloud">&#x2601; Oracle Cloud</a>
-        <a class="nav-item" data-panel="members">&#x1F465; Members</a>
-        <a class="nav-item" data-panel="revenue">&#x1F4B0; Revenue</a>
         <a class="nav-item" data-panel="worker-health">&#x1F4CA; Worker Health</a>
         <a class="nav-item" data-panel="task-marketplace">&#x1F6D2; Marketplace</a>
         <a class="nav-item" data-panel="docker-deploy">&#x1F433; Docker</a>
@@ -103,15 +101,6 @@
         <a class="nav-item" data-panel="logs">&#x1F4CB; Logs</a>
         <a class="nav-item" data-panel="backup">&#x1F4BE; Backup</a>
         <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
-      </div>
-      <div class="nav-group">
-        <div class="nav-group-label">MANAGEMENT</div>
-        <a class="nav-item" data-panel="sysmon">&#x1F4CA; System Monitor</a>
-        <a class="nav-item" data-panel="filemgr">&#x1F4C1; File Manager</a>
-        <a class="nav-item" data-panel="netscan">&#x1F310; Network</a>
-        <a class="nav-item" data-panel="playground">&#x1F3AE; Playground</a>
-        <a class="nav-item" data-panel="scheduler">&#x23F0; Scheduler</a>
-        <a class="nav-item" data-panel="webhooks">&#x1F517; Webhooks</a>
       </div>
       <div class="sidebar-footer">
         ARIES <span class="version-footer">v5.0</span> &bull; Built by JDW &#x26A1;<br>
@@ -702,93 +691,6 @@
       </section>
 
       <!-- Worker Health Panel -->
-      <!-- Members Panel -->
-      <section id="panel-members" class="panel">
-        <div class="panel-header">
-          <h2>&#x1F465; Network Members</h2>
-          <div>
-            <button class="btn-sm" onclick="window.aries.refreshMembers()">&#x21BB; Refresh</button>
-            <button class="btn-sm" onclick="window.aries.exportMembersCSV()">&#x1F4E5; CSV</button>
-          </div>
-        </div>
-        <div style="padding:16px;">
-          <!-- Summary Stats -->
-          <div id="memberSummary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;"></div>
-          <!-- Notification Feed -->
-          <div id="memberNotifFeed" style="max-height:120px;overflow-y:auto;background:#05050a;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px;font-family:monospace;margin-bottom:16px;display:none;"></div>
-          <!-- Controls Bar -->
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
-            <input id="memberSearch" type="text" placeholder="Search workers..." class="input-field" style="flex:1;min-width:200px;font-size:12px;" oninput="window.aries.filterMembers()" />
-            <select id="memberStatusFilter" class="input-field" style="width:120px;font-size:12px;" onchange="window.aries.filterMembers()">
-              <option value="">All Status</option>
-              <option value="online">Online</option>
-              <option value="offline">Offline</option>
-              <option value="mining">Mining</option>
-              <option value="idle">Idle</option>
-              <option value="processing">Processing</option>
-            </select>
-            <select id="memberTierFilter" class="input-field" style="width:100px;font-size:12px;" onchange="window.aries.filterMembers()">
-              <option value="">All Tiers</option>
-              <option value="free">Free</option>
-              <option value="contributor">Contributor</option>
-              <option value="pro">Pro</option>
-            </select>
-            <button class="btn-sm" onclick="window.aries.broadcastToWorkers()" title="Send message to all">&#x1F4E2; Broadcast</button>
-          </div>
-          <!-- Hashrate Sparkline -->
-          <div style="margin-bottom:16px;">
-            <h4 style="color:var(--accent);margin:0 0 8px;font-size:12px;">&#x1F4C8; Network Hashrate (24h)</h4>
-            <canvas id="hashSparkline" width="800" height="80" style="width:100%;height:80px;background:#0a0a1a;border-radius:6px;border:1px solid var(--border);"></canvas>
-          </div>
-          <!-- Member Growth Chart -->
-          <div style="margin-bottom:16px;">
-            <h4 style="color:var(--accent2);margin:0 0 8px;font-size:12px;">&#x1F4C8; Member Growth</h4>
-            <canvas id="memberGrowthChart" width="800" height="60" style="width:100%;height:60px;background:#0a0a1a;border-radius:6px;border:1px solid var(--border);"></canvas>
-          </div>
-          <!-- Worker Table -->
-          <div style="overflow-x:auto;">
-            <table class="data-table" id="memberTable">
-              <thead>
-                <tr>
-                  <th onclick="window.aries.sortMembers('workerId')" style="cursor:pointer">Worker ID &#x25B2;</th>
-                  <th onclick="window.aries.sortMembers('ip')" style="cursor:pointer">IP</th>
-                  <th onclick="window.aries.sortMembers('status')" style="cursor:pointer">Status</th>
-                  <th onclick="window.aries.sortMembers('hashrate')" style="cursor:pointer">H/s</th>
-                  <th onclick="window.aries.sortMembers('tasksCompleted')" style="cursor:pointer">Tasks</th>
-                  <th onclick="window.aries.sortMembers('cpuHours')" style="cursor:pointer">CPU Hours</th>
-                  <th onclick="window.aries.sortMembers('os')" style="cursor:pointer">OS</th>
-                  <th onclick="window.aries.sortMembers('ram')" style="cursor:pointer">RAM</th>
-                  <th onclick="window.aries.sortMembers('tier')" style="cursor:pointer">Tier</th>
-                  <th onclick="window.aries.sortMembers('country')" style="cursor:pointer">Country</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="memberTableBody"></tbody>
-            </table>
-          </div>
-          <!-- Geo Distribution -->
-          <div style="margin-top:16px;">
-            <h4 style="color:var(--accent);margin:0 0 8px;font-size:12px;">&#x1F30D; Geographic Distribution</h4>
-            <div id="memberGeoDistribution" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Revenue Panel -->
-      <section id="panel-revenue" class="panel">
-        <div class="panel-header">
-          <h2>&#x1F4B0; Revenue Dashboard</h2>
-          <button class="btn-sm" onclick="window.aries.refreshRevenue()">&#x21BB; Refresh</button>
-        </div>
-        <div style="padding:16px;">
-          <div id="revenueSummary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px;"></div>
-          <h4 style="color:var(--accent);margin:0 0 8px;font-size:13px;">&#x1F4CA; Revenue Per Worker</h4>
-          <div id="revenuePerWorker" style="overflow-x:auto;"></div>
-          <h4 style="color:var(--accent2);margin:16px 0 8px;font-size:13px;">&#x1F4CA; Revenue Chart (ASCII)</h4>
-          <pre id="revenueChart" style="background:#0a0a1a;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:#0f0;overflow-x:auto;"></pre>
-        </div>
-      </section>
-
       <section id="panel-worker-health" class="panel">
         <div class="panel-header"><h2>&#x1F4CA; Worker Health</h2><button class="btn-sm" onclick="window.aries.refreshWorkerHealth()">&#x21BB; Refresh</button></div>
         <div style="padding:16px;">

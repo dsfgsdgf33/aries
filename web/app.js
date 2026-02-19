@@ -37,8 +37,7 @@
     { cmd: '/memory', desc: 'Search memory' },
     { cmd: '/status', desc: 'Show system status' },
     { cmd: '/swarm', desc: 'Execute a swarm task' },
-    { cmd: '/party', desc: '\u{1F389}' },
-    { cmd: '/local', desc: 'Send to local AI (unrestricted, uses swarm Ollama workers)' }
+    { cmd: '/party', desc: '\u{1F389}' }
   ];
 
   // ── Debounce ──
@@ -134,23 +133,6 @@
     else if (event === 'distributed-ai' || data.type === 'distributed-ai') handleDistributedAiEvent(data);
     else if (event === 'packet-send') { if (data.event === 'stats') refreshPacketStats(); }
     else if (event === 'log') { if (currentPanel === 'logs') appendLogEntry(data); }
-    else if (event === 'manage') {
-      // Real-time member notifications
-      var feed = document.getElementById('memberNotifFeed');
-      if (feed) {
-        feed.style.display = 'block';
-        var line = document.createElement('div');
-        var ts = new Date().toLocaleTimeString();
-        line.style.color = data.event === 'worker-registered' ? '#0f0' : data.event === 'worker-banned' ? '#f44' : '#0af';
-        line.textContent = '[' + ts + '] ' + (data.event || '') + ': ' + (data.workerId || '');
-        feed.insertBefore(line, feed.firstChild);
-        if (feed.children.length > 50) feed.removeChild(feed.lastChild);
-      }
-      // Auto-refresh members panel if visible
-      if (currentPanel === 'members') refreshMembers();
-      // Toast notification
-      if (data.event === 'worker-registered') toast('New worker: ' + (data.workerId || ''), 'success');
-    }
     else if (event === 'worker-chat') { if (currentPanel === 'swarm') loadWorkerChat(); }
     else if (event === 'usb-flash') {
       var pct = data.total ? Math.round((data.step / data.total) * 100) : 0;
@@ -225,8 +207,6 @@
       case 'oracle-cloud': refreshOracleCloud(); break;
       case 'cloud-scale': loadCloudScale(); break;
       case 'worker-health': refreshWorkerHealth(); break;
-      case 'members': refreshMembers(); break;
-      case 'revenue': refreshRevenue(); break;
       case 'task-marketplace': refreshMarketplace(); break;
       case 'docker-deploy': refreshDocker(); break;
       case 'pxe-boot': loadPxeBoot(); break;
@@ -437,64 +417,6 @@
     if (msg === '/export') { exportChat(); input.value = ''; input.style.height = 'auto'; return; }
     if (msg === '/party') { triggerParty(); input.value = ''; input.style.height = 'auto'; return; }
     if (msg.startsWith('/persona ')) { switchPersona(msg.split(' ')[1]); input.value = ''; input.style.height = 'auto'; return; }
-
-    if (msg.startsWith('/local ')) {
-      var localMsg = msg.substring(7);
-      appendChatMessage('user', msg);
-      input.value = ''; input.style.height = 'auto';
-      showChatTyping();
-      fetch('/api/chat/local/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-aries-key': API_KEY },
-        body: JSON.stringify({ message: localMsg })
-      }).then(function(response) {
-        hideChatTyping();
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        var reader = response.body.getReader();
-        var decoder = new TextDecoder();
-        var buffer = '';
-        var fullText = '';
-        var msgDiv = null;
-        function processChunk(result) {
-          if (result.done) return;
-          buffer += decoder.decode(result.value, { stream: true });
-          var lines = buffer.split('\n');
-          buffer = lines.pop();
-          for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
-            if (!line.startsWith('data: ')) continue;
-            var data = line.substring(6);
-            if (data === '[DONE]') return;
-            try {
-              var parsed = JSON.parse(data);
-              if (parsed.type === 'chunk' && parsed.text) {
-                fullText += parsed.text;
-                if (!msgDiv) {
-                  msgDiv = document.createElement('div');
-                  msgDiv.className = 'chat-msg assistant';
-                  var roleLabel = document.createElement('div');
-                  roleLabel.className = 'msg-role';
-                  roleLabel.textContent = 'Aries [LOCAL]';
-                  msgDiv.appendChild(roleLabel);
-                  var body = document.createElement('div');
-                  body.className = 'msg-body';
-                  msgDiv.appendChild(body);
-                  document.getElementById('chatMessages').appendChild(msgDiv);
-                }
-                msgDiv.querySelector('.msg-body').innerHTML = formatMessage(fullText);
-                scrollChatToBottom();
-              }
-            } catch (e) {}
-          }
-          return reader.read().then(processChunk);
-        }
-        return reader.read().then(processChunk);
-      }).catch(function(e) {
-        hideChatTyping();
-        toast('Local AI error: ' + e.message, 'error');
-      });
-      return;
-    }
 
     var fullMsg = msg;
     if (_chatAttachments.length > 0) {
@@ -743,61 +665,21 @@
   // ═══════════════════════════════
   //  SWARM
   // ═══════════════════════════════
-  // Provider display config: icon and label overrides
-  var PROVIDER_META = {
-    local:   { icon: '&#x1F4BB;', label: 'Local' },
-    gcp:     { icon: '&#x2601;', label: 'GCP' },
-    vultr:   { icon: '&#x2601;', label: 'Vultr' },
-    oracle:  { icon: '&#x2601;', label: 'Oracle Cloud' },
-    aws:     { icon: '&#x2601;', label: 'AWS' },
-    azure:   { icon: '&#x2601;', label: 'Azure' },
-    fly:     { icon: '&#x2601;', label: 'Fly.io' }
-  };
-
-  function getProviderMeta(key) {
-    var m = PROVIDER_META[key] || {};
-    return {
-      icon: m.icon || '&#x2601;',
-      label: m.label || key.charAt(0).toUpperCase() + key.slice(1)
-    };
-  }
-
-  function buildProviderLines(node) {
-    var lines = [];
-    if (node.workers !== undefined) lines.push('Workers: ' + node.workers);
-    if (node.concurrency !== undefined) lines.push('Concurrency: ' + node.concurrency);
-    if (node.ip) lines.push('IP: ' + node.ip);
-    if (node.region) lines.push('Region: ' + node.region);
-    if (node.shape) lines.push('Shape: ' + node.shape);
-    if (node.models && node.models.length) lines.push('Models: ' + node.models.join(', '));
-    if (node.freeForever) lines.push('&#x2705; Free Tier');
-    return lines;
-  }
-
   function refreshSwarm() {
     api('GET', 'status').then(function(data) {
       var nodesDiv = document.getElementById('swarmNodes');
       var swarm = data.swarm || {};
       var nodes = swarm.nodes || {};
-      var nodeKeys = Object.keys(nodes);
       var html = '';
-
-      // Render a card for each provider dynamically
-      for (var i = 0; i < nodeKeys.length; i++) {
-        var key = nodeKeys[i];
-        var node = nodes[key];
-        var meta = getProviderMeta(key);
-        var label = meta.icon + ' ' + meta.label;
-        if (node.region) label += ' (' + escapeHtml(node.region) + ')';
-        var lines = buildProviderLines(node);
-        html += buildNodeCard(label, node.status || 'unknown', lines);
-      }
-
-      // Summary card
+      var local = nodes.local || {};
+      html += buildNodeCard('&#x1F4BB; Local', local.status || 'active', ['Workers: ' + (local.workers || 0), 'Concurrency: ' + (local.concurrency || 0)]);
+      var vultr = nodes.vultr || {};
+      html += buildNodeCard('&#x2601; Vultr Dallas', vultr.status || 'unknown', ['IP: ' + (vultr.ip || 'N/A'), 'Workers: ' + (vultr.workers || 0)]);
+      var gcp = nodes.gcp || {};
+      html += buildNodeCard('&#x2601; GCP', gcp.status || 'unknown', ['IP: ' + (gcp.ip || 'N/A'), 'Workers: ' + (gcp.workers || 0)]);
       html += '<div class="swarm-node"><div class="node-header"><span class="node-name">&#x1F4CA; Summary</span></div><div class="node-stats">';
       html += '<div>Total Agents: ' + (swarm.totalAgents || 0) + '</div>';
-      html += '<div>Total Workers: ' + (swarm.totalWorkers || 0) + '</div>';
-      html += '<div>Providers: ' + nodeKeys.length + '</div></div></div>';
+      html += '<div>Total Workers: ' + (swarm.totalWorkers || 0) + '</div></div></div>';
       nodesDiv.innerHTML = html;
       setText('statAgents', String(data.totalAgents || swarm.totalAgents || 0));
       setText('statWorkers', String(data.workers || swarm.totalWorkers || 0));
@@ -2656,10 +2538,6 @@
       window._ariesVersion = d.version || '5.0';
       document.querySelectorAll('.version, .version-footer').forEach(function(el) { el.textContent = 'v' + window._ariesVersion; });
       document.title = 'ARIES v' + window._ariesVersion + ' \u2014 Command Center';
-      // Populate header stats on boot
-      setText('statAgents', String(d.totalAgents || (d.swarm || {}).totalAgents || 0));
-      setText('statWorkers', String(d.workers || (d.swarm || {}).totalWorkers || 0));
-      setText('statUptime', formatUptime(d.uptime || 0));
     }).catch(function() {});
 
     initNav();
@@ -2682,13 +2560,6 @@
     }
     smartInterval(pollNotifications, 30000);
     smartInterval(refreshBadges, 30000);
-    smartInterval(function() {
-      api('GET', 'status').then(function(d) {
-        setText('statAgents', String(d.totalAgents || (d.swarm || {}).totalAgents || 0));
-        setText('statWorkers', String(d.workers || (d.swarm || {}).totalWorkers || 0));
-        setText('statUptime', formatUptime(d.uptime || 0));
-      }).catch(function() {});
-    }, 10000);
     setInterval(updateSidebarUptime, 1000);
     updateSidebarUptime();
 
@@ -5361,243 +5232,6 @@
     }
 
 
-    // ════════════════════════════════════════════════════════
-    // ═══ MEMBERS PANEL ═══
-    // ════════════════════════════════════════════════════════
-    var _memberData = [];
-    var _memberSort = { key: 'workerId', asc: true };
-    var _memberNotifs = [];
-
-    function refreshMembers() {
-      api('GET', 'manage/members').then(function(d) {
-        _memberData = d.members || [];
-        renderMemberSummary();
-        renderMemberTable();
-        renderMemberGeo();
-        renderHashSparkline();
-      }).catch(function() { toast('Failed to load members', 'error'); });
-
-      // Also fetch aggregate stats
-      api('GET', 'manage/stats').then(function(stats) {
-        renderMemberSummaryCards(stats);
-      }).catch(function() {});
-    }
-
-    function renderMemberSummaryCards(stats) {
-      var el = document.getElementById('memberSummary');
-      if (!el) return;
-      var cards = [
-        { label: 'Total Members', value: stats.totalMembers || 0, color: '#0ff' },
-        { label: 'Online Now', value: stats.onlineCount || 0, color: '#0f0' },
-        { label: 'Total Hashrate', value: (stats.totalHashrate || 0) + ' H/s', color: '#f0f' },
-        { label: 'Total Tasks', value: stats.totalTasks || 0, color: '#ff0' },
-        { label: 'CPU Hours', value: (stats.totalCpuHours || 0).toFixed(1), color: '#0af' },
-        { label: 'New Today', value: stats.newToday || 0, color: '#0f0' },
-        { label: 'New This Week', value: stats.newWeek || 0, color: '#0af' },
-        { label: 'Banned', value: stats.bannedCount || 0, color: '#f44' },
-      ];
-      el.innerHTML = cards.map(function(c) {
-        return '<div style="background:linear-gradient(135deg,#0a0a1a,#111);border:1px solid ' + c.color + '33;border-radius:10px;padding:14px;text-align:center;">' +
-          '<div style="color:' + c.color + '88;font-size:10px;text-transform:uppercase;letter-spacing:1px;">' + c.label + '</div>' +
-          '<div style="font-size:22px;font-weight:bold;color:' + c.color + ';margin-top:4px;">' + c.value + '</div></div>';
-      }).join('');
-    }
-
-    function renderMemberSummary() {
-      // Stats are rendered via separate API call
-    }
-
-    function renderMemberTable() {
-      var tbody = document.getElementById('memberTableBody');
-      if (!tbody) return;
-      var search = (document.getElementById('memberSearch')?.value || '').toLowerCase();
-      var statusF = document.getElementById('memberStatusFilter')?.value || '';
-      var tierF = document.getElementById('memberTierFilter')?.value || '';
-
-      var filtered = _memberData.filter(function(m) {
-        if (search && m.workerId.toLowerCase().indexOf(search) < 0 && (m.name || '').toLowerCase().indexOf(search) < 0) return false;
-        if (statusF && m.status !== statusF) return false;
-        if (tierF && m.tier !== tierF) return false;
-        return true;
-      });
-
-      // Sort
-      filtered.sort(function(a, b) {
-        var av = a[_memberSort.key] || '', bv = b[_memberSort.key] || '';
-        if (typeof av === 'number' && typeof bv === 'number') return _memberSort.asc ? av - bv : bv - av;
-        return _memberSort.asc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
-      });
-
-      var statusColors = { online: '#0f0', offline: '#666', mining: '#f0f', idle: '#ff0', processing: '#0af', banned: '#f44', dead: '#444', kicked: '#f80' };
-
-      tbody.innerHTML = filtered.map(function(m) {
-        var sc = statusColors[m.status] || '#888';
-        return '<tr>' +
-          '<td title="' + escapeHtml(m.workerId) + '" style="font-size:11px;font-family:monospace;">' + escapeHtml(m.name || m.workerId).substring(0, 20) + '</td>' +
-          '<td title="' + escapeHtml(m.ip || '') + '" style="font-size:11px;">' + escapeHtml(m.ipDisplay || '?') + '</td>' +
-          '<td><span style="color:' + sc + ';font-weight:bold;font-size:11px;">● ' + (m.status || 'unknown') + '</span></td>' +
-          '<td style="font-size:11px;">' + (m.hashrate || 0) + '</td>' +
-          '<td style="font-size:11px;">' + (m.tasksCompleted || 0) + '</td>' +
-          '<td style="font-size:11px;">' + (m.cpuHours || 0).toFixed ? (m.cpuHours || 0).toFixed(1) : (m.cpuHours || 0) + '</td>' +
-          '<td style="font-size:11px;">' + escapeHtml(m.os || '?') + '</td>' +
-          '<td style="font-size:11px;">' + (m.ram ? (m.ram >= 1024 ? (m.ram / 1024).toFixed(0) + 'G' : m.ram + 'M') : '?') + '</td>' +
-          '<td style="font-size:11px;color:' + (m.tier === 'pro' ? '#f0f' : m.tier === 'contributor' ? '#0af' : '#888') + ';">' + (m.tier || 'free') + '</td>' +
-          '<td style="font-size:11px;">' + escapeHtml(m.country || '?') + '</td>' +
-          '<td style="font-size:11px;white-space:nowrap;">' +
-            '<button class="btn-sm" onclick="window.aries.memberAction(\'' + escapeHtml(m.workerId) + '\',\'kick\')" title="Kick" style="padding:2px 6px;font-size:10px;">⚡</button> ' +
-            '<button class="btn-sm" onclick="window.aries.memberAction(\'' + escapeHtml(m.workerId) + '\',\'ban\')" title="Ban" style="padding:2px 6px;font-size:10px;color:#f44;">🚫</button> ' +
-            '<button class="btn-sm" onclick="window.aries.memberAction(\'' + escapeHtml(m.workerId) + '\',\'message\')" title="Message" style="padding:2px 6px;font-size:10px;">💬</button> ' +
-            '<button class="btn-sm" onclick="window.aries.memberAction(\'' + escapeHtml(m.workerId) + '\',\'tier\')" title="Change Tier" style="padding:2px 6px;font-size:10px;">🏷️</button>' +
-          '</td></tr>';
-      }).join('');
-    }
-
-    function renderMemberGeo() {
-      var el = document.getElementById('memberGeoDistribution');
-      if (!el) return;
-      var geo = {};
-      _memberData.forEach(function(m) { var c = m.country || 'Unknown'; geo[c] = (geo[c] || 0) + 1; });
-      var sorted = Object.entries(geo).sort(function(a, b) { return b[1] - a[1]; });
-      el.innerHTML = sorted.map(function(e) {
-        return '<div style="background:#1a1a2e;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;">' +
-          '<span style="color:var(--accent);">' + escapeHtml(e[0]) + '</span> <span style="color:var(--text-dim);">' + e[1] + '</span></div>';
-      }).join('');
-    }
-
-    function renderHashSparkline() {
-      var canvas = document.getElementById('hashSparkline');
-      if (!canvas) return;
-      var ctx = canvas.getContext('2d');
-      var w = canvas.width, h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      // Collect hashrate data points from members
-      var allHistory = [];
-      _memberData.forEach(function(m) {
-        if (m.hashrateHistory) m.hashrateHistory.forEach(function(p) { allHistory.push(p); });
-      });
-      if (allHistory.length < 2) return;
-
-      // Aggregate by time buckets (10 min)
-      allHistory.sort(function(a, b) { return a.t - b.t; });
-      var bucketSize = 600000;
-      var buckets = {};
-      allHistory.forEach(function(p) {
-        var key = Math.floor(p.t / bucketSize) * bucketSize;
-        buckets[key] = (buckets[key] || 0) + p.h;
-      });
-      var keys = Object.keys(buckets).sort();
-      var vals = keys.map(function(k) { return buckets[k]; });
-      var max = Math.max.apply(null, vals) || 1;
-
-      ctx.strokeStyle = '#0ff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (var i = 0; i < vals.length; i++) {
-        var x = (i / (vals.length - 1)) * w;
-        var y = h - (vals[i] / max) * (h - 10) - 5;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
-      // Fill under
-      ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
-      ctx.fillStyle = 'rgba(0,255,255,0.05)'; ctx.fill();
-    }
-
-    function sortMembers(key) {
-      if (_memberSort.key === key) _memberSort.asc = !_memberSort.asc;
-      else { _memberSort.key = key; _memberSort.asc = true; }
-      renderMemberTable();
-    }
-
-    function filterMembers() { renderMemberTable(); }
-
-    function memberAction(workerId, action) {
-      if (action === 'kick') {
-        if (!confirm('Kick worker ' + workerId + '?')) return;
-        api('POST', 'manage/members/' + encodeURIComponent(workerId) + '/kick').then(function() { toast('Worker kicked', 'success'); refreshMembers(); });
-      } else if (action === 'ban') {
-        if (!confirm('BAN worker ' + workerId + '? This is permanent!')) return;
-        api('POST', 'manage/members/' + encodeURIComponent(workerId) + '/ban').then(function() { toast('Worker banned', 'success'); refreshMembers(); });
-      } else if (action === 'message') {
-        var msg = prompt('Message to ' + workerId + ':');
-        if (!msg) return;
-        api('POST', 'manage/members/' + encodeURIComponent(workerId) + '/message', { message: msg }).then(function() { toast('Message sent', 'success'); });
-      } else if (action === 'tier') {
-        var tier = prompt('New tier for ' + workerId + ' (free/contributor/pro):');
-        if (!tier) return;
-        api('POST', 'manage/members/' + encodeURIComponent(workerId) + '/tier', { tier: tier }).then(function() { toast('Tier updated', 'success'); refreshMembers(); });
-      }
-    }
-
-    function broadcastToWorkers() {
-      var msg = prompt('Broadcast message to all online workers:');
-      if (!msg) return;
-      api('POST', 'manage/broadcast', { message: msg }).then(function() { toast('Message broadcasted', 'success'); });
-    }
-
-    function exportMembersCSV() {
-      var csv = 'Worker ID,Name,IP,Status,Hashrate,Tasks,CPU Hours,OS,RAM,Tier,Country\n';
-      _memberData.forEach(function(m) {
-        csv += [m.workerId, m.name, m.ipDisplay, m.status, m.hashrate, m.tasksCompleted, m.cpuHours, m.os, m.ram, m.tier, m.country].join(',') + '\n';
-      });
-      var blob = new Blob([csv], { type: 'text/csv' });
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'aries-members.csv'; a.click();
-    }
-
-    // ════════════════════════════════════════════════════════
-    // ═══ REVENUE PANEL ═══
-    // ════════════════════════════════════════════════════════
-    function refreshRevenue() {
-      api('GET', 'manage/revenue').then(function(rev) {
-        var el = document.getElementById('revenueSummary');
-        if (!el) return;
-        var cards = [
-          { label: 'Total Hashrate', value: (rev.totalHashrate || 0) + ' H/s', color: '#0ff' },
-          { label: 'Daily XMR', value: (rev.dailyXmr || 0).toFixed(8), color: '#f80' },
-          { label: 'Daily SOL', value: (rev.dailySol || 0).toFixed(8), color: '#0f0' },
-          { label: 'Monthly SOL (est)', value: (rev.projectedMonthlySol || 0).toFixed(4), color: '#f0f' },
-          { label: 'XMR Price', value: '$' + (rev.xmrPriceUsd || 0), color: '#f80' },
-          { label: 'SOL Price', value: '$' + (rev.solPriceUsd || 0), color: '#0f0' },
-        ];
-        el.innerHTML = cards.map(function(c) {
-          return '<div style="background:linear-gradient(135deg,#0a0a1a,#111);border:1px solid ' + c.color + '33;border-radius:10px;padding:14px;text-align:center;">' +
-            '<div style="color:' + c.color + '88;font-size:10px;text-transform:uppercase;letter-spacing:1px;">' + c.label + '</div>' +
-            '<div style="font-size:20px;font-weight:bold;color:' + c.color + ';margin-top:4px;">' + c.value + '</div></div>';
-        }).join('');
-
-        // Per-worker revenue table
-        var pwEl = document.getElementById('revenuePerWorker');
-        if (pwEl && rev.perWorker) {
-          var entries = Object.entries(rev.perWorker).sort(function(a, b) { return b[1].hashrate - a[1].hashrate; });
-          if (entries.length === 0) { pwEl.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No mining workers</div>'; return; }
-          var html = '<table class="data-table"><thead><tr><th>Worker</th><th>H/s</th><th>Daily XMR</th><th>Daily SOL</th><th>Monthly SOL</th></tr></thead><tbody>';
-          entries.forEach(function(e) {
-            html += '<tr><td style="font-size:11px;font-family:monospace;">' + escapeHtml(e[0]) + '</td>' +
-              '<td>' + e[1].hashrate + '</td><td>' + e[1].dailyXmr + '</td><td>' + e[1].dailySol + '</td><td>' + e[1].monthlySol + '</td></tr>';
-          });
-          html += '</tbody></table>';
-          pwEl.innerHTML = html;
-        }
-
-        // ASCII bar chart
-        var chartEl = document.getElementById('revenueChart');
-        if (chartEl && rev.perWorker) {
-          var entries2 = Object.entries(rev.perWorker).sort(function(a, b) { return b[1].hashrate - a[1].hashrate; }).slice(0, 20);
-          var maxH = entries2.length ? Math.max.apply(null, entries2.map(function(e) { return e[1].hashrate; })) : 1;
-          var chart = entries2.map(function(e) {
-            var barLen = Math.round((e[1].hashrate / maxH) * 40);
-            var bar = '';
-            for (var i = 0; i < barLen; i++) bar += '█';
-            return (e[0] + '                    ').substr(0, 20) + ' |' + bar + ' ' + e[1].hashrate + ' H/s';
-          }).join('\n');
-          chartEl.textContent = chart || 'No data';
-        }
-      }).catch(function() { toast('Failed to load revenue', 'error'); });
-    }
-
-
     window.aries = {
       switchPanel: switchPanel, refreshAgents: refreshAgents, refreshSwarm: refreshSwarm,
       submitSwarmTask: submitSwarmTask, refreshLogs: refreshLogs, createBackup: createBackup,
@@ -5687,9 +5321,6 @@
       loadHotspot: loadHotspot, hotspotStart: hotspotStart, hotspotStop: hotspotStop,
       hotspotCheckHw: hotspotCheckHw, hotspotAutoDeploy: hotspotAutoDeploy, hotspotDeploy: hotspotDeploy, cloudAutoAddCreds: cloudAutoAddCreds,
       loadCrossSite: loadCrossSite,
-      refreshMembers: refreshMembers, sortMembers: sortMembers, filterMembers: filterMembers,
-      memberAction: memberAction, broadcastToWorkers: broadcastToWorkers, exportMembersCSV: exportMembersCSV,
-      refreshRevenue: refreshRevenue,
       _loadedPanels: _loadedPanels, _toast: toast
     };
   }
