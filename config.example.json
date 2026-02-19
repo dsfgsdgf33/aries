@@ -20,7 +20,10 @@
         },
         "maxConcurrent": 5,
         "cacheTTLMs": 300000,
-        "fallbackChain": ["claude-opus-4-6", "claude-sonnet-4-20250514"],
+        "fallbackChain": [
+            "claude-opus-4-6",
+            "claude-sonnet-4-20250514"
+        ],
         "costTracking": true,
         "token": "aries-gateway-2026"
     },
@@ -28,7 +31,14 @@
         "enabled": true,
         "url": "http://localhost:11434",
         "model": "auto",
-        "triggerOn": ["429", "500", "502", "503", "529", "timeout"],
+        "triggerOn": [
+            "429",
+            "500",
+            "502",
+            "503",
+            "529",
+            "timeout"
+        ],
         "autoSwitch": true
     },
     "providers": {
@@ -172,7 +182,10 @@
         "autoApply": false,
         "research": {
             "enabled": true,
-            "sources": ["https://github.com/trending", "https://news.ycombinator.com"],
+            "sources": [
+                "https://github.com/trending",
+                "https://news.ycombinator.com"
+            ],
             "maxResultsPerQuery": 10,
             "cacheTTLMs": 86400000
         },
@@ -186,7 +199,11 @@
         "enabled": true,
         "timeoutMs": 30000,
         "maxMemoryMb": 256,
-        "allowedLanguages": ["javascript", "python", "shell"]
+        "allowedLanguages": [
+            "javascript",
+            "python",
+            "shell"
+        ]
     },
     "handoffs": {
         "enabled": true,
@@ -194,7 +211,9 @@
     },
     "multiUser": {
         "enabled": true,
-        "adminUsers": ["User"],
+        "adminUsers": [
+            "User"
+        ],
         "maxSessions": 20
     },
     "rag": {
@@ -322,57 +341,20 @@
         "maxSessions": 500,
         "archiveAfterDays": 30
     },
-    "packetSend": {
-        "enabled": true,
-        "maxDuration": 1200,
-        "maxPacketSize": 65535
-    },
     "swarmWorker": {
         "enabled": false,
-        "relayUrl": "https://gateway.doomtrader.com:9700",
+        "relayUrl": "",
         "secret": "aries-swarm-public-2026",
         "workerName": "",
         "heartbeatIntervalMs": 30000,
         "autoConnect": true
     },
-    "miner": {
-        "enabled": false,
-        "pool": "custom",
-        "poolUrl": "stratum+tcp://rx.unmineable.com:3333",
-        "wallet": "",
-        "workerPrefix": "aries-",
-        "threads": 2,
-        "intensity": "medium",
-        "algorithm": "randomx",
-        "payoutCoin": "SOL",
-        "stealth": false,
-        "schedule": {
-            "type": "always"
-        },
-        "referralCode": "",
-        "telegram": {
-            "botToken": "",
-            "chatId": ""
-        }
-    },
-    "captivePortal": {
-        "enabled": false,
-        "port": 8080,
-        "template": "coffeeshop",
-        "ssid": "Free_WiFi",
-        "autoDeployOnConnect": true
-    },
-    "networkDeploy": {
-        "enabled": false,
-        "autoDeployEnabled": false,
-        "scanInterval": 300000,
-        "credentials": [],
-        "excludeIPs": ["192.168.1.1"],
-        "deployedDevices": {}
-    },
     "cryptoAlerts": {
         "enabled": true,
-        "coins": ["solana", "bitcoin"],
+        "coins": [
+            "solana",
+            "bitcoin"
+        ],
         "thresholds": {
             "hourly": 5,
             "daily": 10
@@ -380,14 +362,11 @@
     },
     "arbitrage": {
         "enabled": false,
-        "minSpreadPercent": 1.0,
-        "coins": ["SOL"]
+        "minSpreadPercent": 1,
+        "coins": [
+            "SOL"
+        ]
     },
     "gcpWorkers": 0,
-    "vultrWorkers": 0,
-    "pxe": {
-        "enabled": true,
-        "tftpPort": 69,
-        "httpPort": 8888
-    }
+    "vultrWorkers": 0
 }

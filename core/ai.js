@@ -397,10 +397,10 @@ async function callWithFallback(messages, model, stream = false) {
 // CHAT FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 
-async function chatStream(messages, onToken, onToolExec) {
+async function chatStream(messages, onToken, onToolExec, opts) {
   const cfg = getConfig();
   const systemPrompt = buildSystemPrompt();
-  const chatModel = cfg.models?.chat || cfg.gateway?.model;
+  const chatModel = (opts && opts.model) || cfg.models?.chat || cfg.gateway?.model;
 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
   let memCtx = '';
@@ -481,12 +481,12 @@ async function chatStream(messages, onToken, onToolExec) {
 /**
  * Chunked streaming — calls onChunk with each text fragment
  */
-async function chatStreamChunked(messages, onChunk) {
+async function chatStreamChunked(messages, onChunk, opts) {
   let fullResponse = '';
   const result = await chatStream(messages, chunk => {
     fullResponse += chunk;
     if (onChunk) onChunk(chunk);
-  }, null);
+  }, null, opts);
   return { response: result.response || fullResponse, iterations: result.iterations, usedModel: result.usedModel };
 }
 

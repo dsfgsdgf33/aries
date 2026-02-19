@@ -602,13 +602,14 @@ async function handleRequest(req, res) {
           res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
         };
 
+        const chatOpts = body.model ? { model: body.model } : undefined;
         let usedModel = null;
         if (ai.chatStreamChunked) {
-          const result = await ai.chatStreamChunked(messages, onChunk);
+          const result = await ai.chatStreamChunked(messages, onChunk, chatOpts);
           fullResponse = result.response || fullResponse;
           usedModel = result.usedModel || null;
         } else {
-          const result = await ai.chatStream(messages, null, null);
+          const result = await ai.chatStream(messages, null, null, chatOpts);
           fullResponse = (result.response || '').replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').replace(/<tool:[^/]*\/>/g, '').trim();
           res.write(`data: ${JSON.stringify({ type: 'chunk', text: fullResponse })}\n\n`);
         }
@@ -4422,7 +4423,7 @@ async function handleRequest(req, res) {
 
     // â•â•â• GET /api/gpu/detect â•â•â•
     if (method === 'GET' && reqPath === '/api/gpu/detect') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var gpus = _refs.gpuMiner.detectGPUs();
       return json(res, 200, { gpus: gpus });
@@ -4430,7 +4431,7 @@ async function handleRequest(req, res) {
 
     // â•â•â• GET /api/gpu/status â•â•â•
     if (method === 'GET' && reqPath === '/api/gpu/status') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var status = _refs.gpuMiner.getStatus();
       try {
@@ -4442,7 +4443,7 @@ async function handleRequest(req, res) {
 
     // â•â•â• POST /api/gpu/start â•â•â•
     if (method === 'POST' && reqPath === '/api/gpu/start') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var body = {}; try { body = JSON.parse(await readBody(req)); } catch (e) {}
       var result = _refs.gpuMiner.startGPU(body.algo);
@@ -4451,14 +4452,14 @@ async function handleRequest(req, res) {
 
     // â•â•â• POST /api/gpu/stop â•â•â•
     if (method === 'POST' && reqPath === '/api/gpu/stop') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       return json(res, 200, _refs.gpuMiner.stopGPU());
     }
 
     // â•â•â• GET /api/algo/profitability â•â•â•
     if (method === 'GET' && reqPath === '/api/algo/profitability') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var results = await _refs.gpuMiner.checkProfitability();
       return json(res, 200, { profitability: results });
@@ -4466,14 +4467,14 @@ async function handleRequest(req, res) {
 
     // â•â•â• GET /api/algo/current â•â•â•
     if (method === 'GET' && reqPath === '/api/algo/current') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       return json(res, 200, _refs.gpuMiner.getAlgoStats());
     }
 
     // â•â•â• POST /api/algo/switch â•â•â•
     if (method === 'POST' && reqPath === '/api/algo/switch') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var body = JSON.parse(await readBody(req));
       if (!body.algo) return json(res, 400, { error: 'Missing algo' });
@@ -4482,7 +4483,7 @@ async function handleRequest(req, res) {
 
     // â•â•â• POST /api/algo/auto-switch â•â•â•
     if (method === 'POST' && reqPath === '/api/algo/auto-switch') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var body = JSON.parse(await readBody(req));
       return json(res, 200, _refs.gpuMiner.setAutoSwitch(body.enabled, body.intervalMinutes));
@@ -4490,7 +4491,7 @@ async function handleRequest(req, res) {
 
     // â•â•â• POST /api/algo/broadcast â•â•â•
     if (method === 'POST' && reqPath === '/api/algo/broadcast') {
-      var GpuMiner = require('./gpu-miner');
+      try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       var body = {}; try { body = JSON.parse(await readBody(req)); } catch (e) {}
       var result = await _refs.gpuMiner.broadcastGPUConfig(body);
@@ -5224,13 +5225,19 @@ undefined
           models.push({ name: ollamaModels[oi].name, size: ollamaModels[oi].size, source: 'local-ollama', modified: ollamaModels[oi].modified_at });
         }
       } catch (e) {}
-      // Configured gateway models
+      // Configured gateway models (skip duplicates already found via Ollama)
       var gwCfg = refs.config.ariesGateway || {};
+      var existingNames = {};
+      for (var ei = 0; ei < models.length; ei++) existingNames[models[ei].name] = true;
       if (gwCfg.providers) {
         var provKeys = Object.keys(gwCfg.providers);
         for (var pi = 0; pi < provKeys.length; pi++) {
           var p = gwCfg.providers[provKeys[pi]];
-          models.push({ name: p.defaultModel || provKeys[pi], source: provKeys[pi], configured: true });
+          var mName = p.defaultModel || provKeys[pi];
+          if (!existingNames[mName]) {
+            models.push({ name: mName, source: provKeys[pi], configured: true });
+            existingNames[mName] = true;
+          }
         }
       }
       return json(res, 200, { models: models, count: models.length });

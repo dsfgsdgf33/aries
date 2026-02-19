@@ -2527,7 +2527,7 @@ async function handleSlashCommand(text, ts, c) {
   // ── Enhanced /files with sizes ──
   if (cmd === '/files') {
     logCmd();
-    const dirPath = args || 'D:\\openclaw\\workspace';
+    const dirPath = args || process.cwd();
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
       chatLog.log(`{${c}-fg}━━━ ${escTags(dirPath)} ━━━{/}`);

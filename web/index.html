@@ -127,6 +127,11 @@
       <section id="panel-chat" class="panel active">
         <div class="chat-header-bar">
           <div class="persona-switcher" id="personaSwitcher"></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="chatModelSelect" style="background:var(--bg-card);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer;min-width:140px" title="Select AI model">
+              <option value="">Loading models...</option>
+            </select>
+          </div>
           <div class="chat-actions">
             <button class="btn-sm" onclick="window.aries.exportChat()" data-tooltip="Export chat as .md">&#x1F4E5; Export</button>
             <button class="btn-sm" onclick="window.aries.clearChat()" data-tooltip="Clear chat">&#x1F5D1; Clear</button>

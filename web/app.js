@@ -319,8 +319,41 @@
     });
     initPersonaSwitcher();
     initChatDragDrop();
+    initModelSelector();
     setInterval(autoSaveChat, 30000);
     checkChatRecovery();
+  }
+
+  var _selectedModel = '';
+  function initModelSelector() {
+    var sel = document.getElementById('chatModelSelect');
+    if (!sel) return;
+    api('GET', 'models').then(function(d) {
+      var models = d.models || [];
+      var html = '<option value="">Auto (default)</option>';
+      for (var i = 0; i < models.length; i++) {
+        var m = models[i];
+        var label = m.name || 'unknown';
+        var src = m.source ? ' (' + m.source + ')' : '';
+        var sizeStr = m.size ? ' [' + (m.size / 1e9).toFixed(1) + 'GB]' : '';
+        html += '<option value="' + escapeHtml(m.name) + '">' + escapeHtml(label) + src + sizeStr + '</option>';
+      }
+      sel.innerHTML = html;
+      var saved = localStorage.getItem('aries-chat-model');
+      if (saved) { sel.value = saved; _selectedModel = saved; }
+    }).catch(function() {
+      sel.innerHTML = '<option value="">Auto (default)</option>';
+    });
+    sel.addEventListener('change', function() {
+      _selectedModel = this.value;
+      localStorage.setItem('aries-chat-model', _selectedModel);
+      var badge = document.getElementById('activeModelBadge');
+      if (badge && _selectedModel) {
+        badge.textContent = _selectedModel.split('/').pop().split(':')[0];
+        badge._userSet = true;
+      }
+      toast(_selectedModel ? 'Model: ' + _selectedModel : 'Model: Auto', 'info');
+    });
   }
 
   function initPersonaSwitcher() {
@@ -431,7 +464,7 @@
     fetch('/api/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-aries-key': API_KEY },
-      body: JSON.stringify({ message: fullMsg })
+      body: JSON.stringify({ message: fullMsg, model: _selectedModel || undefined })
     }).then(function(response) {
       hideChatTyping();
       if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -479,6 +512,7 @@
                 badge.style.background = isOllama ? '#f97316' : '#22c55e';
                 badge.style.color = '#000';
                 badge.title = 'Last model: ' + parsed.usedModel;
+                badge._userSet = true;
               }
             }
           } catch (e) {}
@@ -2441,7 +2475,23 @@
       var sw = d.swarm || {};
       var online = Object.values(sw.nodes || {}).filter(function(n) { return n.status === 'active'; }).length;
       updateNavBadge('swarm', online || '');
-      updateNavBadge('agents', sw.totalAgents || '');
+      updateNavBadge('agents', d.totalAgents || sw.totalAgents || '');
+      // Update top bar stat chips
+      setText('statAgents', String(d.totalAgents || d.agentTypes || sw.totalAgents || 0));
+      setText('statWorkers', String(d.totalWorkers || d.workers || sw.totalWorkers || 0));
+      setText('statUptime', formatUptime(d.uptime || 0));
+      // Update model badge on load
+      var badge = document.getElementById('activeModelBadge');
+      if (badge && d.model && !badge._userSet) {
+        var modelName = String(d.model).split('/').pop();
+        badge.textContent = modelName || 'cloud';
+        badge.title = 'Configured model: ' + d.model;
+      }
+      // Update CPU/RAM if available
+      if (d.cpu != null) setText('statCpu', d.cpu + '%');
+      if (d.memUsed != null && d.memTotal != null && d.memTotal > 0) {
+        setText('statRam', Math.round(d.memUsed / d.memTotal * 100) + '%');
+      }
     }).catch(function() {});
   }
 

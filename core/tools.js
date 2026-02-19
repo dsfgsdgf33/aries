@@ -59,7 +59,7 @@ const tools = {
         encoding: 'utf8',
         timeout: timeoutMs,
         shell: 'powershell.exe',
-        cwd: 'D:\\openclaw\\workspace',
+        cwd: process.cwd(),
         maxBuffer: 1024 * 1024
       });
       return { success: true, output: truncate(output.trim()) };
