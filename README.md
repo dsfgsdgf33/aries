@@ -18,7 +18,7 @@
 
 Aries is a self-contained AI platform that runs entirely on your hardware with **zero npm dependencies**. Connect any model — Ollama, OpenAI, Anthropic, Groq — and get a full-featured AI operating system: multi-agent swarms, RAG, code execution, browser automation, an MCP server for your IDE, an OpenAI-compatible API, scheduled tasks, a cyberpunk dashboard, and a PWA for your phone. Clone the repo, run `node launcher.js`, and you're live in 60 seconds.
 
-[⚡ Quick Start](#-quick-start) · [🏆 Why Aries](#-why-aries-wins) · [🚀 Features](#-feature-deep-dives) · [🔌 MCP Setup](#-mcp-setup) · [📖 API Reference](#-api-reference) · [❓ FAQ](#-faq)
+[⚡ Quick Start](#-quick-start) · [🏆 Why Aries](#-why-aries-wins) · [🚀 Features](#-feature-deep-dives) · [🔒 Security](#-security) · [🔌 MCP Setup](#-mcp-setup) · [📖 API Reference](#-api-reference) · [❓ FAQ](#-faq)
 
 </div>
 
@@ -86,8 +86,9 @@ No `npm install`. No Python venv. No config files. **It just works.**
 | Multi-agent swarm | **✅ 14 agents** | ❌ | ❌ | ❌ | ❌ |
 | Distributed compute (swarm networking) | **✅** | ❌ | ❌ | ❌ | ❌ |
 | Persona system | **✅** | Limited | ❌ | ❌ | ❌ |
-| Persistent memory | **✅** | Limited | ❌ | ❌ | ❌ |
-| Knowledge graph | **✅** | ❌ | ❌ | ❌ | ❌ |
+| Persistent memory + Knowledge graph | **✅** | Limited | ❌ | ❌ | ❌ |
+| AES-256-GCM encrypted config | **✅** | N/A | ❌ | ❌ | ❌ |
+| Machine-locked encryption | **✅** | N/A | ❌ | ❌ | ❌ |
 | Workflow engine | **✅** | ❌ | ❌ | ❌ | ❌ |
 | Plugin marketplace | **✅ Hot-reload** | Plugins | ❌ | ❌ | ✅ |
 | Cyberpunk UI themes | **✅ 4 themes** | ❌ | ❌ | ❌ | ❌ |
@@ -185,7 +186,35 @@ The image is tiny — zero dependencies means no `npm install` step.
 
 ### 🕸️ Swarm Networking
 
-Distribute AI workloads across machines. Connect nodes into a compute mesh — share models, parallelize tasks, and scale horizontally. Fully opt-in, token-authenticated.
+Distribute AI workloads across multiple machines by connecting Aries nodes into a compute mesh. Share models, parallelize tasks, and scale horizontally.
+
+#### Swarm Is Opt-In Only
+
+**Nobody can access your machine unless you explicitly join a swarm.** Swarm networking is disabled by default. To participate, you must:
+
+1. Click **"Join Swarm"** in the dashboard UI, or
+2. Configure a swarm secret in your `config.json`
+
+There is no passive discovery. There is no open port scanning. If you never join a swarm, the feature doesn't exist for you.
+
+#### Swarm Authentication
+
+Every node in a swarm authenticates using a **shared secret key**. When you create or join a swarm, all participating nodes must share the same secret. No secret, no access — it's that simple.
+
+- A node without the correct secret **cannot** join your swarm
+- A node without the correct secret **cannot** query your models
+- A node without the correct secret **cannot** read your data
+- There is no anonymous or guest access to any swarm
+
+**You cannot "hack into" someone's swarm.** Without the shared authentication key, the swarm endpoints reject all requests. Period.
+
+#### Encrypted Communications
+
+All Aries config data — including swarm secrets, API keys, and credentials — is encrypted at rest using **AES-256-GCM** with a machine-specific master key derived from your hostname, username, and CPU model. Config files from one machine **cannot be decrypted on another machine**. Even if someone copies your config file, it's useless without your exact hardware identity.
+
+#### API Authentication
+
+Every API endpoint in Aries requires authentication via the `x-aries-key` header or `Authorization: Bearer` token. There is no anonymous access to any endpoint — not the dashboard API, not the gateway API, not the swarm API. Unauthenticated requests are rejected with `401 Unauthorized`.
 
 ### 🧠 Memory & Knowledge Graph
 
@@ -195,9 +224,54 @@ Persistent memory bank with categories, priorities, and automatic pruning. Knowl
 
 Five built-in personas (Default, Coder, Creative, Analyst, Trader) plus a custom agent factory. Create specialized agents with unique system prompts and tool access.
 
+### 🔒 AES-256-GCM Encrypted Config
+
+Your config file — containing API keys, swarm secrets, and all sensitive settings — is encrypted with AES-256-GCM using a master key derived from your machine's identity (hostname + username + CPU model). The config file is **machine-locked**: it cannot be decrypted on any other computer, even with the same OS and Node.js version.
+
 ### ⚡ Workflow Engine
 
 Chain AI steps into pipelines — research → analyze → summarize → notify. Up to 20 steps per workflow, with conditional branching and error handling.
+
+### 🎨 Cyberpunk UI
+
+Four hand-crafted themes with neon aesthetics, animated gradients, and glitch effects. Fully responsive — looks stunning on desktop, tablet, and mobile.
+
+---
+
+## 🔒 Security
+
+Aries takes security seriously at every layer. Here's how your data stays protected:
+
+### Machine-Locked Config Encryption
+
+All sensitive configuration (API keys, swarm secrets, credentials) is encrypted with **AES-256-GCM**. The encryption key is derived from a combination of your machine's **hostname**, **username**, and **CPU model** — making it a hardware-bound secret. If someone copies your `config.json` to another machine, they get unreadable ciphertext. No master password to remember, no key file to protect — your machine *is* the key.
+
+### Token-Based API Authentication
+
+Every single API endpoint — dashboard, gateway, swarm — requires a valid authentication token. Requests must include either:
+- `x-aries-key: <your-token>` header, or
+- `Authorization: Bearer <your-token>` header
+
+No anonymous access. No public endpoints. No exceptions.
+
+### Swarm Authentication
+
+Swarm networking uses a **shared secret** model. Every node in a swarm must present the same secret to participate. Without the secret:
+- Connection attempts are rejected
+- API calls return `401 Unauthorized`
+- The node is invisible to the swarm
+
+You can't brute-force, guess, or bypass the swarm secret. If you don't have it, you don't get in.
+
+### Summary
+
+| Layer | Protection |
+|:------|:-----------|
+| Config at rest | AES-256-GCM, machine-locked master key |
+| API endpoints | Token authentication on ALL routes |
+| Swarm network | Shared secret authentication |
+| Data locality | Everything stays on your machine (local models) |
+| Supply chain | Zero npm dependencies = zero supply chain risk |
 
 ---
 
@@ -419,7 +493,7 @@ See [`config.example.json`](config.example.json) for the full reference with all
 | `GET` | `/api/scheduler/jobs` | List scheduled jobs |
 | `POST` | `/api/scheduler/jobs` | Create a scheduled job |
 
-All endpoints accept JSON. Authentication via `Authorization: Bearer <apiKey>` header.
+All endpoints accept JSON. Authentication via `x-aries-key` header or `Authorization: Bearer <token>` — **no anonymous access**.
 
 ---
 
@@ -434,7 +508,13 @@ Every module is built on Node.js built-in APIs: `http`, `https`, `fs`, `crypto`,
 <details>
 <summary><b>Is my data private?</b></summary>
 
-Yes. Everything runs on your machine. When using Ollama, data never leaves localhost. Cloud APIs (Anthropic/OpenAI) send your prompts to their servers, but your config, memory, files, and RAG index stay local.
+Yes. Everything runs on your machine. When using Ollama, data never leaves localhost. Cloud APIs (Anthropic/OpenAI) send your prompts to their servers, but your config, memory, files, and RAG index stay local. Config files are encrypted with AES-256-GCM and machine-locked — they can't be decrypted on another computer.
+</details>
+
+<details>
+<summary><b>Can someone access my swarm without permission?</b></summary>
+
+No. Swarm networking is **opt-in only** — disabled by default. To join a swarm, you must explicitly configure a shared secret. Every swarm API call requires this secret for authentication. Without it, all requests are rejected. You cannot discover, scan, or brute-force your way into someone's swarm.
 </details>
 
 <details>

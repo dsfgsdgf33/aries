@@ -2017,6 +2017,10 @@
     api('POST', 'swarm/chat', { text: text, to: target }).then(function() {
       if (input) input.value = '';
       loadWorkerChat();
+      // Poll for swarm AI response (arrives async)
+      setTimeout(loadWorkerChat, 2000);
+      setTimeout(loadWorkerChat, 5000);
+      setTimeout(loadWorkerChat, 10000);
     }).catch(function(e) { toast('Chat send failed: ' + e.message, 'error'); });
   }
 

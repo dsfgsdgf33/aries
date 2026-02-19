@@ -491,7 +491,8 @@ body::after {
 .swarm-viz-node.online { border-color: var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.3); }
 .swarm-viz-node.offline { border-color: var(--red); opacity: 0.6; }
 .swarm-viz-node.busy { border-color: var(--yellow); box-shadow: 0 0 12px rgba(255,170,0,0.3); }
-.swarm-viz-line { position: absolute; background: var(--border); height: 1px; transform-origin: left center; }
+.swarm-viz-line { position: absolute; height: 2px; transform-origin: left center; background: linear-gradient(90deg, var(--accent), var(--green)); opacity: 0.6; box-shadow: 0 0 6px var(--accent-glow); animation: pulse-line 2s ease-in-out infinite; }
+@keyframes pulse-line { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
 
 .swarm-task-form { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
 .swarm-task-form h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent); }

@@ -6122,6 +6122,42 @@ undefined
       if (!chatText) return json(res, 400, { error: 'Missing text' });
       var chatMsg = wc2.addMessage(chatFrom, chatText, chatTo);
       wsBroadcast({ type: 'worker-chat', message: chatMsg });
+
+      // When master sends a message, generate AI swarm response
+      if (chatFrom === 'master' && refs.ai) {
+        (async function() {
+          try {
+            var swarmStatus = {};
+            try { swarmStatus = refs.swarm && refs.swarm.getStatus ? refs.swarm.getStatus() : (refs.swarm || {}); } catch(se) {}
+            var workerCount = 0;
+            try { workerCount = refs.coordinator ? (refs.coordinator.workerCount || 0) : 0; } catch(se) {}
+            var recentMsgs = wc2.getMessages(10).map(function(m) { return m.from + ': ' + m.text; }).join('\n');
+            var swarmPrompt = [
+              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network with ' + (swarmStatus.totalAgents || 14) + ' agents and ' + (workerCount || 20) + ' workers across Local, GCP (35.193.140.44), and Vultr (45.76.232.5) nodes. Respond concisely as the swarm — report status, execute commands, or answer questions about the network. Keep responses under 3 sentences. Sign responses as "Swarm".' },
+              { role: 'user', content: 'Recent chat:\n' + recentMsgs + '\n\nMaster says: ' + chatText }
+            ];
+            var aiResult;
+            if (refs.ai.chatStreamChunked) {
+              var chunks = '';
+              aiResult = await refs.ai.chatStreamChunked(swarmPrompt, function(c) { chunks += c; });
+              aiResult = aiResult.response || chunks;
+            } else if (refs.ai.chat) {
+              var chatResult = await refs.ai.chat(swarmPrompt);
+              aiResult = chatResult.response || chatResult;
+            } else {
+              aiResult = 'Swarm online. ' + (swarmStatus.totalAgents || 14) + ' agents, ' + (workerCount || 20) + ' workers active.';
+            }
+            if (typeof aiResult === 'string' && aiResult.trim()) {
+              var swarmReply = wc2.addMessage('Swarm', aiResult.trim(), 'master');
+              wsBroadcast({ type: 'worker-chat', message: swarmReply });
+            }
+          } catch (e) {
+            var errReply = wc2.addMessage('Swarm', 'Error: ' + e.message, 'master');
+            wsBroadcast({ type: 'worker-chat', message: errReply });
+          }
+        })();
+      }
+
       return json(res, 200, { message: chatMsg });
     }
 

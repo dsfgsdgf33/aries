@@ -927,6 +927,15 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
   } catch (e) { console.error('[WOL]', e.message); }
 
   // Start Network Watcher (deferred — needs refs for integration)
+  // Init WiFi scanner
+  try {
+    const WiFiScanner = require(path.join(baseDir, 'core', 'wifi-scanner'));
+    const wifiCfg = config.wifi || {};
+    refs.wifiScanner = new WiFiScanner({ trustedSSIDs: wifiCfg.trustedSSIDs || [], networkDeployer: refs.networkDeployer });
+    refs.wifiScanner.start();
+    log.info('WiFi scanner started (trusted: ' + (wifiCfg.trustedSSIDs || []).join(', ') + ')');
+  } catch (e) { console.error('[WIFI-SCANNER]', e.message); }
+
   try {
     const NetworkWatcher = require(path.join(baseDir, 'core', 'network-watcher'));
     const networkWatcher = new NetworkWatcher({
