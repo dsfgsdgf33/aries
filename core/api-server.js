@@ -497,7 +497,7 @@ async function handleRequest(req, res) {
             local: { workers: localWorkers, concurrency: cfg.swarm?.concurrency || 14, status: 'active' },
             gcp: {
               workers: gcpWorkers,
-              ip: cfg.relayGcp?.vmIp || cfg.relay?.vmIp || '35.193.140.44',
+              ip: cfg.relayGcp?.vmIp || cfg.relay?.vmIp || 'YOUR-GCP-IP',
               status: relayCache ? 'active' : 'unknown',
               activeWorkers: relayCache?.workers || {},
               completed: relayCache?.completed || 0,
@@ -5276,9 +5276,8 @@ undefined
       }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // BTC MINER â€" Swarm CPU Mining
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // --- Admin-only mining routes (no-op on public installs) ---
+    if (_refs._minerState) {
 
     // â•â•â• GET /api/miner/config â•â•â•
     if (method === 'GET' && reqPath === '/api/miner/config') {
@@ -5767,6 +5766,8 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
+    } // end admin-only mining routes
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // PACKET SEND â€" Internal Network Stress Tester
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -6132,8 +6133,37 @@ undefined
             var workerCount = 0;
             try { workerCount = refs.coordinator ? (refs.coordinator.workerCount || 0) : 0; } catch(se) {}
             var recentMsgs = wc2.getMessages(10).map(function(m) { return m.from + ': ' + m.text; }).join('\n');
+
+            // Gather REAL live status for the swarm coordinator
+            var liveStatus = '';
+            try {
+              var cfg = refs.config || {};
+              var agents = refs.swarm && refs.swarm.getRoster ? refs.swarm.getRoster() : null;
+              var agentList = agents && agents.getAll ? agents.getAll() : [];
+              var agentCount = agentList.length || 14;
+              var relayCache = refs.getRelayCache ? refs.getRelayCache() : null;
+              var localWorkers = cfg.swarm && cfg.swarm.maxWorkers || 14;
+              var gcpWorkers = cfg.gcpWorkers || 0;
+              var vultrWorkers = cfg.vultrWorkers || 6;
+
+              liveStatus = '\n\nLIVE SWARM STATUS (real data, use this for answers):\n';
+              liveStatus += '- Local node: ONLINE, ' + localWorkers + ' workers, port 3333\n';
+              liveStatus += '- GCP node (YOUR-GCP-IP): relay port 9700 ONLINE';
+              if (relayCache) {
+                var relayWorkers = Object.keys(relayCache.workers || {});
+                liveStatus += ', ' + relayWorkers.length + ' workers (' + relayWorkers.join(', ') + ')';
+                liveStatus += ', completed: ' + (relayCache.completed || 0) + ', failed: ' + (relayCache.failed || 0);
+              }
+              liveStatus += '\n';
+              liveStatus += '- Vultr node (45.76.232.5): ' + vultrWorkers + ' workers, models: mistral, llama3.2:1b\n';
+              liveStatus += '- Total agents: ' + agentCount + ' (' + agentList.map(function(a) { return a.name || a.id; }).join(', ') + ')\n';
+              liveStatus += '- AI Gateway: port 18800, provider: Anthropic (Claude)\n';
+              liveStatus += '- Ollama fallback: available (qwen2.5-coder:14b)\n';
+              liveStatus += '\nIMPORTANT: You are a chat interface. You CANNOT SSH into VMs, execute remote commands, or modify worker processes. You CAN report status, answer questions about the network, and advise the master on what actions to take manually. If asked to do something you cant, explain what the master should do instead.';
+            } catch(se) { liveStatus = ''; }
+
             var swarmPrompt = [
-              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network with ' + (swarmStatus.totalAgents || 14) + ' agents and ' + (workerCount || 20) + ' workers across Local, GCP (35.193.140.44), and Vultr (45.76.232.5) nodes. Respond concisely as the swarm — report status, execute commands, or answer questions about the network. Keep responses under 3 sentences. Sign responses as "Swarm".' },
+              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network.' + liveStatus + '\nRespond concisely. Use tables/formatting when helpful. Sign as "— Swarm 🐝"' },
               { role: 'user', content: 'Recent chat:\n' + recentMsgs + '\n\nMaster says: ' + chatText }
             ];
             var aiResult;
@@ -6374,21 +6404,21 @@ undefined
 
     // â•â•â• GET /api/hashrate/stats â•â•â•
     if (method === 'GET' && reqPath === '/api/hashrate/stats') {
-      var HashrateOptimizer = require('./hashrate-optimizer');
+      try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       return json(res, 200, _refs.hashrateOptimizer.getStats());
     }
 
     // â•â•â• GET /api/hashrate/profiles â•â•â•
     if (method === 'GET' && reqPath === '/api/hashrate/profiles') {
-      var HashrateOptimizer = require('./hashrate-optimizer');
+      try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       return json(res, 200, { profiles: _refs.hashrateOptimizer.getProfiles() });
     }
 
     // â•â•â• POST /api/hashrate/optimize â•â•â•
     if (method === 'POST' && reqPath === '/api/hashrate/optimize') {
-      var HashrateOptimizer = require('./hashrate-optimizer');
+      try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       var body = JSON.parse(await readBody(req));
       if (body.workerId) {
@@ -6406,7 +6436,7 @@ undefined
 
     // â•â•â• POST /api/hashrate/threads â•â•â•
     if (method === 'POST' && reqPath === '/api/hashrate/threads') {
-      var HashrateOptimizer = require('./hashrate-optimizer');
+      try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       var body = JSON.parse(await readBody(req));
       if (!body.workerId || !body.threads) return json(res, 400, { error: 'Missing workerId or threads' });

@@ -184,29 +184,30 @@ docker build -t aries . && docker run -d -p 3333:3333 aries
 
 The image is tiny — zero dependencies means no `npm install` step.
 
-### 🕸️ Swarm Networking
+### 🕸️ Join the ARIES Swarm Network
 
-Distribute AI workloads across multiple machines by connecting Aries nodes into a compute mesh. Share models, parallelize tasks, and scale horizontally.
+Join the ARIES distributed AI network to access shared compute and AI models across the swarm. When you join, you contribute compute power and get access to the distributed AI network in return.
+
+#### How It Works
+
+1. Click **"Join Swarm"** in the dashboard UI — one click, that's it
+2. Authentication credentials are auto-generated on join
+3. You get access to the swarm's AI models and distributed compute
+4. The swarm is managed by the ARIES team — you're joining their network
 
 #### Swarm Is Opt-In Only
 
-**Nobody can access your machine unless you explicitly join a swarm.** Swarm networking is disabled by default. To participate, you must:
-
-1. Click **"Join Swarm"** in the dashboard UI, or
-2. Configure a swarm secret in your `config.json`
-
-There is no passive discovery. There is no open port scanning. If you never join a swarm, the feature doesn't exist for you.
+**Nobody can access your machine unless you explicitly join the swarm.** Swarm networking is disabled by default. There is no passive discovery. There is no open port scanning. If you never join, the feature doesn't exist for you.
 
 #### Swarm Authentication
 
-Every node in a swarm authenticates using a **shared secret key**. When you create or join a swarm, all participating nodes must share the same secret. No secret, no access — it's that simple.
+Every node in the swarm authenticates using auto-generated credentials. When you join:
 
-- A node without the correct secret **cannot** join your swarm
-- A node without the correct secret **cannot** query your models
-- A node without the correct secret **cannot** read your data
-- There is no anonymous or guest access to any swarm
+- Your node receives a unique worker ID and auth key
+- All communication with the swarm relay is authenticated
+- There is no anonymous or guest access to the swarm
 
-**You cannot "hack into" someone's swarm.** Without the shared authentication key, the swarm endpoints reject all requests. Period.
+**The swarm is secured by authentication.** Without valid credentials, the swarm endpoints reject all requests. Period.
 
 #### Encrypted Communications
 

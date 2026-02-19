@@ -1,7 +1,7 @@
 /**
  * ARIES v5.0 — Swarm Join (One-Click Network Enrollment)
  * 
- * Makes joining the Aries swarm brain-dead simple.
+ * Public users join the ARIES network. Running your own relay requires the admin version.
  * One click. No config editing. No terminal commands.
  */
 
@@ -14,7 +14,7 @@ const https = require('https');
 const EventEmitter = require('events');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
-const DEFAULT_RELAY_URL = 'http://relay.aries-network.io:9800';
+const DEFAULT_RELAY_URL = 'http://45.76.232.5:9700';
 
 class SwarmJoin extends EventEmitter {
   constructor(opts = {}) {
@@ -113,14 +113,14 @@ class SwarmJoin extends EventEmitter {
   /**
    * One-click join. The whole enchilada.
    */
-  async joinNetwork(relayUrl) {
+  async joinNetwork() {
     if (this.isEnrolled()) {
       return { ok: true, already: true, workerId: this._config.swarm.workerId };
     }
 
     const workerId = 'aries-' + crypto.randomBytes(4).toString('hex');
     const authKey = crypto.randomBytes(32).toString('hex');
-    const relay = relayUrl || this._config.swarm?.relayUrl || DEFAULT_RELAY_URL;
+    const relay = DEFAULT_RELAY_URL; // Public users always join the ARIES network
     const specs = this._getSystemSpecs();
 
     this.emit('progress', { step: 'connecting', message: 'Connecting to relay...' });
@@ -304,8 +304,7 @@ class SwarmJoin extends EventEmitter {
 
     addRoute('POST', '/api/swarm/join', async (req, res, json, bodyStr) => {
       try {
-        const body = bodyStr ? JSON.parse(bodyStr) : {};
-        const result = await self.joinNetwork(body.relayUrl);
+        const result = await self.joinNetwork();
         json(res, result.ok ? 200 : 400, result);
       } catch (e) {
         json(res, 500, { ok: false, error: e.message });

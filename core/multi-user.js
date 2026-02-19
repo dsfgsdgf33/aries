@@ -21,7 +21,7 @@ class MultiUser extends EventEmitter {
    */
   constructor(opts = {}) {
     super();
-    this.operators = (opts.config && opts.config.operators) || ['Jay'];
+    this.operators = (opts.config && opts.config.operators) || ['Admin'];
     this.maxSessions = (opts.config && opts.config.maxSessions) || 20;
     this._sessions = new Map(); // token -> session
 

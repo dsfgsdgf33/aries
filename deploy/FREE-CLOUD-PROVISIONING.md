@@ -13,7 +13,7 @@ This installs Node.js, Ollama, pulls the right model for your RAM, and connects 
 **FREE FOREVER: 4 ARM cores, 24GB RAM** — can run llama3.2:3b or even 7b!
 
 ### Setup Steps:
-1. Go to https://cloud.oracle.com and sign up with `danewarren88@gmail.com`
+1. Go to https://cloud.oracle.com and sign up with `your-email@example.com`
 2. Choose **Home Region**: `us-ashburn-1` (best availability)
 3. After account creation, go to **Compute → Instances → Create Instance**
 4. Settings:
@@ -51,7 +51,7 @@ oci compute instance launch \
 ## 2. Google Cloud (GCP) — Already Active
 **FREE**: 1x e2-micro in us-central1/us-east1/us-west1
 
-Current: `aries-swarm-1` at 35.193.140.44 (e2-micro, us-central1-a)
+Current: `aries-swarm-1` at YOUR-GCP-IP (e2-micro, us-central1-a)
 - Already running relay + ollama workers
 - Free tier only allows 1 e2-micro — already used
 
@@ -73,7 +73,7 @@ gcloud compute ssh aries-swarm-1 --zone=us-central1-a --project=project-74060e11
 **FREE 12 months**: 1x t2.micro (1 vCPU, 1GB RAM)
 
 ### Setup Steps:
-1. Go to https://aws.amazon.com and sign up with `danewarren88@gmail.com`
+1. Go to https://aws.amazon.com and sign up with `your-email@example.com`
 2. Launch EC2 instance:
    - **Region**: us-east-1
    - **AMI**: Ubuntu 22.04
@@ -139,7 +139,7 @@ flyctl auth login
 flyctl launch --name aries-ollama-fly-1 --region iad --vm-size shared-cpu-1x
 ```
 
-Note: 256MB is very tight. May only run tinyllama or mining-only worker.
+Note: 256MB is very tight. May only run tinyllama or AI worker worker.
 
 ---
 
@@ -167,7 +167,7 @@ Note: 256MB is very tight. May only run tinyllama or mining-only worker.
 ## Current Swarm Status
 | Provider | Workers | Model | Status |
 |----------|---------|-------|--------|
-| Local | 14 | N/A (CPU mining) | ✅ Active |
+| Local | 14 | N/A | ✅ Active |
 | GCP | 4+2 | ollama (relay) | ✅ Active |
 | Vultr | 6 | mistral + llama3.2:1b | ✅ Active |
 | Oracle | 0 | — | ⏳ Needs signup |
@@ -181,6 +181,6 @@ Note: 256MB is very tight. May only run tinyllama or mining-only worker.
 | Oracle (micro) | 2 | tinyllama | 1GB each |
 | AWS | 1 | tinyllama/llama3.2:1b | 1GB |
 | Azure | 1 | tinyllama/llama3.2:1b | 1GB |
-| Fly.io | 3 | mining-only | 256MB |
+| Fly.io | 3 | AI worker | 256MB |
 | **Total New** | **8-11** | | |
 | **Grand Total** | **28-31** | | |

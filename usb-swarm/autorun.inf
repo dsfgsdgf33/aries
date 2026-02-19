@@ -1,5 +1,0 @@
-[AutoRun]
-open=deploy.bat
-action=Deploy Aries Swarm Worker
-label=Aries Swarm
-icon=deploy.bat

@@ -47,7 +47,7 @@ class SwarmHealth extends EventEmitter {
       // GCP relay
       var gcpCfg = this.config.relayGcp || {};
       if (gcpCfg.vmIp || gcpCfg.url) {
-        var gcpIp = gcpCfg.vmIp || '35.193.140.44';
+        var gcpIp = gcpCfg.vmIp || 'YOUR-GCP-IP';
         this._nodes['gcp'] = {
           id: 'gcp', name: 'GCP ' + (gcpCfg.gcpZone || 'us-central1'), type: 'gcp',
           ip: gcpIp, port: gcpCfg.port || 9700,
