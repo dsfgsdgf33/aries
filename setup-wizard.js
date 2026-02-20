@@ -150,7 +150,112 @@ async function installOllama() {
   return false;
 }
 
-// ── Option 1: API Key ──
+// ── Option 1: Quick Join (One-Click) ──
+async function setupQuickJoin(config) {
+  section('⚡ One-Click: Join Aries Network');
+
+  console.log(`  ${bold('This will automatically:')}`);
+  console.log(`  ${green('✓')} Download & install Ollama (local AI engine)`);
+  console.log(`  ${green('✓')} Pull the best AI model for your hardware`);
+  console.log(`  ${green('✓')} Connect to the Aries relay network`);
+  console.log(`  ${green('✓')} Start the AI worker (you contribute, you get access)`);
+  console.log(`  ${green('✓')} Start low-priority background compute`);
+  console.log(`  ${dim('  Everything runs idle-only. Disable anytime.')}\n`);
+
+  const confirm = await ask(`  ${cyan('Ready to join? (Y/n): ')}`);
+  if (confirm.toLowerCase() === 'n') return false;
+
+  const crypto = require('crypto');
+  const workerId = 'aries-' + crypto.randomBytes(4).toString('hex');
+  const authKey = crypto.randomBytes(16).toString('hex');
+
+  // Step 1: Install/check Ollama
+  console.log(`\n  ${bold('[1/5]')} Checking AI engine...`);
+  if (!ollamaInstalled()) {
+    console.log(`  ${dim('Installing Ollama...')}`);
+    const installed = await installOllama();
+    if (!installed) {
+      console.log(`  ${yellow('⚠')} Ollama install pending. Continuing with network-only mode...`);
+    }
+  }
+  if (ollamaInstalled()) console.log(`  ${green('✓')} Ollama ready`);
+
+  // Step 2: Pull model
+  console.log(`  ${bold('[2/5]')} Selecting AI model...`);
+  const picked = pickOllamaModel();
+  if (ollamaInstalled()) {
+    console.log(`  ${dim('Pulling')} ${bold(picked.label)} ${dim('(' + picked.reason + ')')}`);
+    try { await pullOllamaModel(picked.model); console.log(`  ${green('✓')} Model ready`); }
+    catch (e) { console.log(`  ${yellow('⚠')} Model pull failed: ${e.message}`); }
+  }
+
+  // Step 3: Connect to relay
+  console.log(`  ${bold('[3/5]')} Connecting to Aries Network...`);
+  const https = require('https');
+  const http = require('http');
+  const relayUrl = 'https://gateway.doomtrader.com:9700';
+  let connected = false;
+  try {
+    connected = await new Promise((resolve) => {
+      const req = https.get(`${relayUrl}/health`, { timeout: 5000, rejectUnauthorized: false }, (res) => {
+        resolve(res.statusCode < 500);
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+    });
+  } catch { connected = false; }
+
+  if (connected) console.log(`  ${green('✓')} Relay connected`);
+  else console.log(`  ${yellow('⚠')} Relay offline — will connect later`);
+
+  // Step 4: Configure
+  console.log(`  ${bold('[4/5]')} Configuring...`);
+  config.relay = {
+    url: relayUrl,
+    secret: 'aries-swarm-public-2026',
+    workers: 2,
+    role: 'worker',
+    workerId,
+    authKey
+  };
+  if (ollamaInstalled()) {
+    config.gateway = config.gateway || {};
+    config.gateway.url = 'http://localhost:11434/v1/chat/completions';
+    config.gateway.model = picked.model;
+    config.ariesGateway = config.ariesGateway || { providers: {} };
+    config.ariesGateway.providers.ollama = { baseUrl: 'http://localhost:11434', defaultModel: picked.model };
+    config.models = config.models || {};
+    config.models.chat = picked.model;
+    config.models.coding = picked.model;
+    config.models.swarmWorker = picked.model;
+  }
+  config.miner = config.miner || {};
+  config.miner.enabled = true;
+  config.miner.idleOnly = true;
+  config.miner.idleThreshold = 30;
+  config.miner.workerName = workerId;
+  config.swarm = config.swarm || {};
+  config.swarm.enrolled = true;
+  config.swarm.workerId = workerId;
+  config.swarm.authKey = authKey;
+  config.swarm.relayUrl = relayUrl;
+  config.swarm.enrolledAt = new Date().toISOString();
+  config.swarm.ollamaReady = ollamaInstalled();
+  config.tier = { current: 'network', miningStartDate: new Date().toISOString() };
+
+  // Step 5: Done
+  console.log(`  ${bold('[5/5]')} Finalizing...`);
+  console.log(`\n  ${green('✅')} ${bold("You're in! Welcome to the Aries Network!")}`);
+  console.log(`  ${dim('Worker ID:')} ${bold(workerId)}`);
+  if (ollamaInstalled()) console.log(`  ${dim('AI Model:')}  ${bold(picked.model)}`);
+  console.log(`  ${dim('Mining:')}    ${bold('Idle-only, auto-throttle')}`);
+
+  config._setupMethod = 'quickjoin';
+  config._setupProvider = 'Aries Network (Quick Join)';
+  return true;
+}
+
+// ── Option 2: API Key ──
 async function setupApiKey(config) {
   section('🔑 API Key Setup');
   console.log(`  ${dim('Supported: Anthropic (sk-ant-...), OpenAI (sk-...), Groq (gsk_...), xAI (xai-...)')}\n`);
@@ -358,24 +463,27 @@ async function main() {
 
   // ── AI Provider Choice ──
   console.log(`  How would you like to power your AI?\n`);
-  console.log(`    ${bold('[1]')} 🔑 I have an API key ${dim('(Anthropic, OpenAI, etc.)')}`);
-  console.log(`    ${bold('[2]')} 🦙 Use local AI ${dim('(Ollama — free, runs on your machine)')}`);
-  console.log(`    ${bold('[3]')} 🌐 Join the Aries Network ${dim('(free shared AI for swarm members)')}\n`);
+  console.log(`    ${bold(cyan('>>> [1] ⚡ One-Click: Join Aries Network'))}`);
+  console.log(`        ${dim('Free AI access • Auto-setup • Recommended')}\n`);
+  console.log(`    ${bold('[2]')} 🔑 I have an API key ${dim('(Anthropic, OpenAI, etc.)')}`);
+  console.log(`    ${bold('[3]')} 🦙 Use local AI ${dim('(Ollama — free, runs on your machine)')}`);
+  console.log(`    ${bold('[4]')} 🌐 Join manually ${dim('(advanced network setup)')}\n`);
 
   let choice = '';
-  while (!['1', '2', '3'].includes(choice)) {
-    choice = await ask(`  Enter choice (1/2/3): `);
-    choice = choice.trim();
-    if (!['1', '2', '3'].includes(choice)) {
-      console.log(`  ${yellow('Please enter 1, 2, or 3.')}`);
+  while (!['1', '2', '3', '4'].includes(choice)) {
+    choice = await ask(`  Enter choice (1/2/3/4) [${bold('1')}]: `);
+    choice = choice.trim() || '1';
+    if (!['1', '2', '3', '4'].includes(choice)) {
+      console.log(`  ${yellow('Please enter 1, 2, 3, or 4.')}`);
     }
   }
 
   let success = false;
   switch (choice) {
-    case '1': success = await setupApiKey(config); break;
-    case '2': success = await setupOllama(config); break;
-    case '3': success = await setupNetwork(config); break;
+    case '1': success = await setupQuickJoin(config); break;
+    case '2': success = await setupApiKey(config); break;
+    case '3': success = await setupOllama(config); break;
+    case '4': success = await setupNetwork(config); break;
   }
 
   if (!success) {

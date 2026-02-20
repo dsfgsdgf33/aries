@@ -7,7 +7,13 @@ const http = require('http');
 const https = require('https');
 const EventEmitter = require('events');
 
-const RELAY_URL = 'http://45.76.232.5:9700';
+// DEFAULT_RELAY_URL: reads from config.json relay.url; fallback is a sensible default
+const DEFAULT_RELAY_URL = (() => {
+  try {
+    const _cfg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'config.json'), 'utf8'));
+    return (_cfg.relay && _cfg.relay.url) || 'http://localhost:9700';
+  } catch { return 'http://localhost:9700'; }
+})();
 const OLLAMA_API = 'http://localhost:11434';
 const POLL_INTERVAL = 10000;
 const MAX_RETRIES = 3;
@@ -19,6 +25,7 @@ class SwarmTaskWorker extends EventEmitter {
     this._workerId = opts.workerId || 'unknown';
     this._authKey = opts.authKey || '';
     this._model = opts.model || 'qwen2.5:1.5b';
+    this._relayUrl = opts.relayUrl || DEFAULT_RELAY_URL;
     this._running = false;
     this._paused = false;
     this._pollTimer = null;
@@ -45,7 +52,19 @@ class SwarmTaskWorker extends EventEmitter {
   stop() {
     this._running = false;
     if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
-    this.emit('stopped');
+    // Wait for active tasks to drain before emitting stopped
+    if (this._activeTasks > 0) {
+      const checkDrain = setInterval(() => {
+        if (this._activeTasks <= 0) {
+          clearInterval(checkDrain);
+          this.emit('stopped');
+        }
+      }, 500);
+      // Force emit after 30s regardless
+      setTimeout(() => { clearInterval(checkDrain); this.emit('stopped'); }, 30000);
+    } else {
+      this.emit('stopped');
+    }
   }
 
   pause() { this._paused = true; this.emit('paused'); }
@@ -55,7 +74,7 @@ class SwarmTaskWorker extends EventEmitter {
     if (!this._running || this._paused || this._activeTasks >= MAX_CONCURRENT) return;
 
     try {
-      const resp = await this._httpRequest(`${RELAY_URL}/api/claim`, 'POST', {
+      const resp = await this._httpRequest(`${this._relayUrl}/api/claim`, 'POST', {
         workerId: this._workerId,
         capabilities: ['chat', 'embed', 'summarize'],
         model: this._model
@@ -95,7 +114,7 @@ class SwarmTaskWorker extends EventEmitter {
 
     // Send result back to relay
     try {
-      await this._httpRequest(`${RELAY_URL}/api/result`, 'POST', {
+      await this._httpRequest(`${this._relayUrl}/api/result`, 'POST', {
         workerId: this._workerId,
         taskId: task.id,
         success,

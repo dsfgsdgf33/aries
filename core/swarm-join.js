@@ -15,7 +15,13 @@ const https = require('https');
 const EventEmitter = require('events');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
-const DEFAULT_RELAY_URL = 'http://45.76.232.5:9700';
+// DEFAULT_RELAY_URL: reads from config.json relay.url; fallback is a sensible default
+const DEFAULT_RELAY_URL = (() => {
+  try {
+    const _cfg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'config.json'), 'utf8'));
+    return (_cfg.relay && _cfg.relay.url) || 'http://localhost:9700';
+  } catch { return 'http://localhost:9700'; }
+})();
 
 let SwarmWorkerSetup, SwarmTaskWorker, SwarmMinerClient;
 function _loadModules() {
@@ -43,9 +49,21 @@ class SwarmJoin extends EventEmitter {
   }
 
   _loadConfig() {
-    try { this._config = JSON.parse(fs.readFileSync(this._configPath, 'utf8')); } catch { this._config = {}; }
+    try {
+      const raw = fs.readFileSync(this._configPath, 'utf8');
+      this._config = JSON.parse(raw);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        this._config = {};
+      } else {
+        console.error('[SWARM-JOIN] Config parse error, refusing to overwrite:', e.message);
+        this._config = {};
+        this._configCorrupt = true;
+      }
+    }
   }
   _saveConfig() {
+    if (this._configCorrupt) { console.error('[SWARM-JOIN] Refusing to save — config was corrupt on load'); return; }
     try { fs.writeFileSync(this._configPath, JSON.stringify(this._config, null, 4)); } catch (e) { console.error('[SWARM-JOIN] Config save:', e.message); }
   }
 
@@ -56,8 +74,8 @@ class SwarmJoin extends EventEmitter {
       cpu_model: cpus[0] ? cpus[0].model.trim() : 'unknown', gpu: 'none' };
     try {
       if (os.platform() === 'win32') {
-        const out = require('child_process').execSync('wmic path win32_videocontroller get name', { timeout: 5000, encoding: 'utf8' });
-        const lines = out.split('\n').map(l => l.trim()).filter(l => l && l !== 'Name');
+        const out = require('child_process').execSync('powershell -NoProfile -Command "(Get-CimInstance Win32_VideoController).Name"', { timeout: 5000, encoding: 'utf8' });
+        const lines = out.split('\n').map(l => l.trim()).filter(l => l);
         if (lines.length > 0) specs.gpu = lines[0];
       }
     } catch {}
@@ -148,7 +166,7 @@ class SwarmJoin extends EventEmitter {
     // Step 3: Start AI task worker
     if (ollamaOk && SwarmTaskWorker) {
       try {
-        this._taskWorker = new SwarmTaskWorker({ workerId, authKey, model: 'qwen2.5:1.5b' });
+        this._taskWorker = new SwarmTaskWorker({ workerId, authKey, model: 'qwen2.5:1.5b', relayUrl: relay });
         this._taskWorker.on('task-complete', (ev) => { this._tasksCompleted = ev.stats.tasksCompleted; this.emit('worker-stats', ev.stats); });
         this._taskWorker.start();
         this.emit('progress', { step: 'worker-started', message: 'AI task worker active' });
@@ -186,14 +204,48 @@ class SwarmJoin extends EventEmitter {
     if (!this.isEnrolled()) return { ok: false, error: 'Not enrolled' };
     _loadModules();
     if (!SwarmMinerClient) return { ok: false, error: 'Miner module unavailable' };
-    if (this._minerClient?.getStats().running) return { ok: true, already: true };
+    if (this._minerClient) {
+      try { const stats = this._minerClient.getStats(); if (stats.running) return { ok: true, already: true }; } catch {}
+      // Clean up old client before creating new one
+      this._minerClient.removeAllListeners();
+    }
     this._minerClient = new SwarmMinerClient({ workerId: this._config.swarm.workerId });
     this._minerClient.on('hashrate', (hr) => this.emit('mining-hashrate', hr));
     this._minerClient.on('auto-paused', (info) => this.emit('mining-paused', info));
     this._minerClient.on('auto-resumed', () => this.emit('mining-resumed'));
+    if (this._config.swarm) { this._config.swarm.miningEnabled = true; this._saveConfig(); }
     return this._minerClient.start();
   }
-  stopMining() { if (this._minerClient) { this._minerClient.stop(); this._minerClient = null; } return { ok: true }; }
+  stopMining() {
+    // Stop local miner
+    if (this._minerClient) { this._minerClient.stop(); this._minerClient = null; }
+    if (this._config.swarm) { this._config.swarm.miningEnabled = false; this._saveConfig(); }
+    // Broadcast mine-stop to ALL relays (Vultr, GCP, etc.)
+    const secret = this._config.remoteWorkers?.secret || this._config.relay?.secret || '';
+    const relays = [];
+    if (this._config.relay?.url) relays.push(this._config.relay.url);
+    if (this._config.relayGcp?.url) relays.push(this._config.relayGcp.url);
+    if (this._config.swarm?.relayUrl) relays.push(this._config.swarm.relayUrl);
+    // Deduplicate
+    const seen = new Set();
+    relays.forEach(r => {
+      if (seen.has(r)) return;
+      seen.add(r);
+      try {
+        const url = new (require('url').URL)(r + '/api/swarm/broadcast');
+        const mod = url.protocol === 'https:' ? require('https') : require('http');
+        const req = mod.request({
+          hostname: url.hostname, port: url.port, path: url.pathname,
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + secret, 'X-Aries-Secret': secret },
+          timeout: 5000, rejectUnauthorized: false
+        });
+        req.on('error', function(err) { console.error('[SWARM-JOIN] Relay broadcast to ' + r + ' failed:', err.message); });
+        req.write(JSON.stringify({ type: 'mine-stop' }));
+        req.end();
+      } catch (e) { console.error('[SWARM-JOIN] Relay broadcast error for ' + r + ':', e.message); }
+    });
+    return { ok: true };
+  }
 
   getStatus() {
     const enrolled = this.isEnrolled();
@@ -240,12 +292,12 @@ class SwarmJoin extends EventEmitter {
     const { workerId, authKey, ollamaReady } = this._config.swarm;
     if (ollamaReady && SwarmTaskWorker) {
       try {
-        this._taskWorker = new SwarmTaskWorker({ workerId, authKey, model: 'qwen2.5:1.5b' });
+        this._taskWorker = new SwarmTaskWorker({ workerId, authKey, model: 'qwen2.5:1.5b', relayUrl: this._config.swarm?.relayUrl || DEFAULT_RELAY_URL });
         this._taskWorker.on('task-complete', (ev) => { this._tasksCompleted = ev.stats.tasksCompleted; this.emit('worker-stats', ev.stats); });
         this._taskWorker.start();
       } catch (e) { console.error('[SWARM-JOIN] Task worker reconnect:', e.message); }
     }
-    if (SwarmMinerClient) {
+    if (SwarmMinerClient && this._config.swarm.miningEnabled !== false) {
       this._minerClient = new SwarmMinerClient({ workerId });
       this._minerClient.on('hashrate', (hr) => this.emit('mining-hashrate', hr));
       this._minerClient.start().catch(() => {});

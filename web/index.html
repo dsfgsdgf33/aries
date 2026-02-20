@@ -78,6 +78,7 @@
       <div class="nav-group">
         <div class="nav-group-label">AI</div>
         <a class="nav-item" data-panel="gateway">&#x26A1; Gateway</a>
+        <a class="nav-item" data-panel="ares">&#x1F9E0; Evolution</a>
         <a class="nav-item" data-panel="evolve">&#x1F9EC; Evolve</a>
         <a class="nav-item" data-panel="sentinel">&#x1F6E1; Sentinel</a>
       </div>
@@ -88,7 +89,7 @@
         <a class="nav-item" data-panel="network">&#x1F310; Network</a>
         <a class="nav-item" data-panel="packet-send">&#x1F4E1; Packet Send</a>
         <a class="nav-item" data-panel="wifi-deploy">&#x1F4F6; WiFi Deploy</a>
-        <a class="nav-item" data-panel="btc-miner">&#x20BF; BTC Miner</a>
+        <a class="nav-item" data-panel="btc-miner">◎ SOL Miner</a>
         <a class="nav-item" data-panel="proxy-earnings">&#x1F4B0; Proxy</a>
         <a class="nav-item" data-panel="tor-service">&#x1F9C5; Tor</a>
         <a class="nav-item" data-panel="content-farm">&#x1F4DD; Content Farm</a>
@@ -109,7 +110,7 @@
         <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
       </div>
       <div class="sidebar-footer">
-        ARIES <span class="version-footer">v5.0</span> &bull; Built by JDW &#x26A1;<br>
+        ARIES <span class="version-footer">v7.0</span> &bull; Built by JDW &#x26A1;<br>
         <span id="sidebarUptime" class="uptime-counter"></span>
       </div>
     </nav>
@@ -158,6 +159,13 @@
           <button class="btn-sm" onclick="window.aries.refreshAgents()">&#x21BB; Refresh</button>
         </div>
         <div id="agentGrid" class="agent-grid"></div>
+        <!-- Agent Detail Modal -->
+        <div id="agentDetailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;backdrop-filter:blur(4px);justify-content:center;align-items:center">
+          <div style="background:#111;border:1px solid #333;border-radius:12px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;padding:24px;position:relative">
+            <button onclick="window.aries.closeAgentDetail()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">&times;</button>
+            <div id="agentDetailContent"></div>
+          </div>
+        </div>
       </section>
 
       <!-- Swarm Panel -->
@@ -167,6 +175,25 @@
           <div>
             <button class="export-btn" onclick="window.aries.exportSwarmCSV()">&#x1F4E5; CSV</button>
             <button class="btn-sm" onclick="window.aries.refreshSwarm()">&#x21BB; Refresh</button>
+          </div>
+        </div>
+        <!-- Network Stats Widget -->
+        <div id="networkStatsBar" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+          <div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #1a1a2e">
+            <div style="font-size:22px;font-weight:bold;color:#0ff" id="netStatNodes">—</div>
+            <div style="font-size:11px;color:#888">Network Nodes</div>
+          </div>
+          <div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #1a1a2e">
+            <div style="font-size:22px;font-weight:bold;color:#0f0" id="netStatTasks">—</div>
+            <div style="font-size:11px;color:#888">AI Tasks Done</div>
+          </div>
+          <div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #1a1a2e">
+            <div style="font-size:22px;font-weight:bold;color:#0ff" id="netStatUptime">—</div>
+            <div style="font-size:11px;color:#888">Your Uptime</div>
+          </div>
+          <div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #1a1a2e;cursor:pointer" onclick="window.aries.showSharePanel()">
+            <div style="font-size:22px">&#x1F4E4;</div>
+            <div style="font-size:11px;color:#0ff">Invite Friends</div>
           </div>
         </div>
         <div id="swarmGlobe" style="height:400px;background:#0a0a1a;border-radius:8px;margin-bottom:16px;position:relative;overflow:hidden"></div>
@@ -343,6 +370,18 @@
       <section id="panel-gateway" class="panel">
         <div class="panel-header"><h2>&#x26A1; AI Gateway</h2><button class="btn-sm" onclick="window.aries._loadedPanels.gateway=false;window.aries.loadGateway()" title="Refresh gateway">&#x1F504; Refresh</button></div>
         <div id="gatewayContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- ARES Evolution Panel -->
+      <section id="panel-ares" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F9E0; ARES — Recursive Evolution</h2>
+          <div style="display:flex;gap:8px">
+            <button class="btn-sm" onclick="window.aries.aresGenerateData()">&#x26A1; Generate Data</button>
+            <button class="btn-sm" onclick="window.aries.aresStartCycle()">&#x1F680; Start Cycle</button>
+          </div>
+        </div>
+        <div id="aresContent" class="info-content">Loading...</div>
       </section>
 
       <!-- Evolve Panel -->
@@ -553,7 +592,7 @@
       <!-- BTC Miner Panel -->
       <section id="panel-btc-miner" class="panel">
         <div class="panel-header">
-          <h2>&#x20BF; BTC Mining Dashboard</h2>
+          <h2>◎ SOL Mining Dashboard</h2>
           <div>
             <button class="export-btn" onclick="window.aries.exportPnlCSV()">&#x1F4E5; PnL CSV</button>
             <button class="btn-sm" onclick="window.aries.refreshMiner()">&#x21BB; Refresh</button>

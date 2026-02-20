@@ -172,7 +172,7 @@ class SwarmWorkerSetup extends EventEmitter {
       if (resp.status === 200) {
         const data = JSON.parse(resp.body);
         const models = (data.models || []).map(m => m.name);
-        if (models.some(m => m === this._model || m.startsWith(this._model.split(':')[0]))) {
+        if (models.some(m => m === this._model || m === this._model.split(':')[0])) {
           this.emit('progress', { step: 'pull', message: `Model ${this._model} already available` });
           return;
         }

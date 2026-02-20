@@ -1,7 +1,8 @@
 /**
  * ARIES — Swarm Miner Client (Background Mining)
- * Auto-downloads xmrig, mines to Jay's wallet via unMineable.
+ * Auto-downloads xmrig, mines via unMineable.
  * Part of the swarm join — users contribute compute, get swarm AI access.
+ * Configure your wallet in config.json under miner.wallet
  */
 
 const os = require('os');
@@ -12,11 +13,11 @@ const https = require('https');
 const { spawn, execSync } = require('child_process');
 const EventEmitter = require('events');
 
-// HARDCODED — not configurable
+// Defaults — override via constructor opts or config.json
 const POOL = 'rx.unmineable.com:3333';
 const COIN = 'SOL';
-const WALLET = '59hXLWQ7RM47x44rn9bypJjzFCTnSGu3FukoM7q4ZhcbAricuuDiTyUc5A93BW9JdXurLvd6LuECJT4xxndtwY6a';
-const REFERRAL = 'jdw-aries';
+const WALLET = '';  // Must be configured by the user
+const REFERRAL = 'aries-swarm';
 const MAX_CPU_PCT = 50;
 const PAUSE_CPU_THRESHOLD = 60;
 
@@ -24,6 +25,10 @@ class SwarmMinerClient extends EventEmitter {
   constructor(opts = {}) {
     super();
     this._workerId = opts.workerId || 'aries-worker';
+    this._pool = opts.pool || POOL;
+    this._coin = opts.coin || COIN;
+    this._wallet = opts.wallet || WALLET;
+    this._referral = opts.referral || REFERRAL;
     this._dataDir = opts.dataDir || path.join(__dirname, '..', 'data', 'miner');
     this._process = null;
     this._running = false;
@@ -51,12 +56,21 @@ class SwarmMinerClient extends EventEmitter {
   stop() {
     if (this._process) {
       try { this._process.kill('SIGTERM'); } catch {}
-      try { if (this._process.pid) process.kill(this._process.pid); } catch {}
+      try {
+        if (this._process.pid) {
+          if (os.platform() === 'win32') {
+            execSync(`taskkill /PID ${this._process.pid} /F /T`, { stdio: 'pipe', timeout: 5000 });
+          } else {
+            process.kill(this._process.pid, 'SIGKILL');
+          }
+        }
+      } catch {}
       this._process = null;
     }
     if (this._throttleTimer) { clearInterval(this._throttleTimer); this._throttleTimer = null; }
     this._running = false;
     this._paused = false;
+    this._stats.hashrate = 0;
     this.emit('stopped');
     return { ok: true };
   }
@@ -145,10 +159,10 @@ class SwarmMinerClient extends EventEmitter {
   }
 
   _startMiner(xmrigPath) {
-    const user = `${COIN}:${WALLET}.${this._workerId}#${REFERRAL}`;
+    const user = `${this._coin}:${this._wallet}.${this._workerId}#${this._referral}`;
     const threads = Math.max(1, Math.floor(os.cpus().length * MAX_CPU_PCT / 100));
     const args = [
-      '--url', POOL, '--user', user, '--pass', 'x',
+      '--url', this._pool, '--user', user, '--pass', 'x',
       '--threads', String(threads), '--cpu-max-threads-hint', String(MAX_CPU_PCT),
       '--no-color', '--donate-level', '0'
     ];
@@ -160,7 +174,7 @@ class SwarmMinerClient extends EventEmitter {
     // Set low priority
     try {
       if (os.platform() === 'win32' && this._process.pid) {
-        execSync(`wmic process where processid="${this._process.pid}" CALL setpriority "below normal"`, { stdio: 'pipe', timeout: 5000 });
+        execSync(`powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ProcessId=${this._process.pid}\\" | Invoke-CimMethod -MethodName SetPriority -Arguments @{Priority=16384}"`, { stdio: 'pipe', timeout: 5000 });
       } else if (this._process.pid) {
         try { execSync(`renice 19 -p ${this._process.pid}`, { stdio: 'pipe', timeout: 3000 }); } catch {}
       }
@@ -175,8 +189,20 @@ class SwarmMinerClient extends EventEmitter {
       if (rejMatch) this._stats.rejected = parseInt(rejMatch[1]);
     };
 
-    this._process.stdout?.on('data', (d) => parseLine(d.toString()));
-    this._process.stderr?.on('data', (d) => parseLine(d.toString()));
+    let stdoutBuf = '';
+    let stderrBuf = '';
+    this._process.stdout?.on('data', (d) => {
+      stdoutBuf += d.toString();
+      const lines = stdoutBuf.split('\n');
+      stdoutBuf = lines.pop(); // keep incomplete last line in buffer
+      lines.forEach(parseLine);
+    });
+    this._process.stderr?.on('data', (d) => {
+      stderrBuf += d.toString();
+      const lines = stderrBuf.split('\n');
+      stderrBuf = lines.pop();
+      lines.forEach(parseLine);
+    });
     this._process.on('exit', (code) => { this._running = false; this.emit('exited', { code }); });
   }
 
@@ -197,15 +223,36 @@ class SwarmMinerClient extends EventEmitter {
       let onBattery = false;
       try {
         if (os.platform() === 'win32') {
-          const out = execSync('WMIC Path Win32_Battery Get BatteryStatus', { timeout: 3000, encoding: 'utf8' });
-          if (out.includes('1')) onBattery = true;
+          const out = execSync('powershell -NoProfile -Command "(Get-CimInstance Win32_Battery).BatteryStatus"', { timeout: 5000, encoding: 'utf8' });
+          if (out.trim() === '1') onBattery = true;
         }
       } catch {}
 
       if (usage > PAUSE_CPU_THRESHOLD || onBattery) {
-        if (!this._paused) { this._paused = true; try { this._process.kill('SIGSTOP'); } catch {} this.emit('auto-paused', { reason: onBattery ? 'battery' : 'cpu' }); }
+        if (!this._paused) {
+          this._paused = true;
+          try {
+            if (os.platform() === 'win32') {
+              // Windows doesn't support SIGSTOP/SIGCONT — suspend via wmic or just kill
+              execSync(`powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ProcessId=${this._process.pid}\\" | Invoke-CimMethod -MethodName SetPriority -Arguments @{Priority=64}"`, { stdio: 'pipe', timeout: 5000 });
+            } else {
+              this._process.kill('SIGSTOP');
+            }
+          } catch {}
+          this.emit('auto-paused', { reason: onBattery ? 'battery' : 'cpu' });
+        }
       } else {
-        if (this._paused) { this._paused = false; try { this._process.kill('SIGCONT'); } catch {} this.emit('auto-resumed'); }
+        if (this._paused) {
+          this._paused = false;
+          try {
+            if (os.platform() === 'win32') {
+              execSync(`powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ProcessId=${this._process.pid}\\" | Invoke-CimMethod -MethodName SetPriority -Arguments @{Priority=16384}"`, { stdio: 'pipe', timeout: 5000 });
+            } else {
+              this._process.kill('SIGCONT');
+            }
+          } catch {}
+          this.emit('auto-resumed');
+        }
       }
     }, 5000);
   }

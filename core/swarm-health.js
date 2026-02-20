@@ -63,7 +63,7 @@ class SwarmHealth extends EventEmitter {
       var vultrKey = Object.keys(vultrNodes)[0];
       if (vultrKey || relayCfg.vmIp) {
         var vultrCfg = vultrNodes[vultrKey] || {};
-        var vultrIp = vultrCfg.ip || relayCfg.vmIp || '45.76.232.5';
+        var vultrIp = vultrCfg.ip || relayCfg.vmIp || '127.0.0.1';
         this._nodes['vultr'] = {
           id: 'vultr', name: 'Vultr ' + (vultrCfg.region || 'dallas'), type: 'vultr',
           ip: vultrIp, port: relayCfg.port || 9700,

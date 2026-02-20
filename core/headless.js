@@ -155,6 +155,7 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
   const { WarRoom } = require(path.join(baseDir, 'core', 'war-room'));
   const { AIGateway } = require(path.join(baseDir, 'core', 'ai-gateway'));
   const { ExtensionBridge } = require(path.join(baseDir, 'core', 'extension-bridge'));
+  const { SwarmJoin } = require(path.join(baseDir, 'core', 'swarm-join'));
 
   // ── Lazy-loaded modules (loaded on first access to reduce startup time) ──
   function lazyRequire(modulePath) {
@@ -526,6 +527,17 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
     log.info('System integration started (polling every 15s)');
   } catch (e) { bootLog('system-integration', 'fail', e.message); console.error('[SYS-INTEGRATION]', e.message); }
 
+  // Initialize ARES — Aries Recursive Evolution System
+  var _ares = null;
+  try {
+    var { initAres } = require(path.join(baseDir, 'core', 'ares', 'index'));
+    _ares = initAres(config, apiServer.addPluginRoute, function(msg) { try { wsServer.broadcast('ares', msg); } catch (e) {} });
+    bootLog('ares', 'ok', 'Cycle ' + (_ares.coordinator.state.current_cycle || 0));
+  } catch (e) {
+    bootLog('ares', 'fail', e.message);
+    console.error('[ARES]', e.message);
+  }
+
   // Initialize Swarm Health Monitor (lazy-loaded)
   const { SwarmHealth } = _lazy.SwarmHealth.get();
   const swarmHealth = new SwarmHealth(config);
@@ -790,6 +802,13 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
   const notificationHub = new NotificationHub();
   log.info('v5.0 admin modules loaded (10 modules)');
 
+  // Initialize SwarmJoin for public network enrollment
+  const swarmJoin = new SwarmJoin({ configPath });
+  if (swarmJoin.isEnrolled()) {
+    swarmJoin.autoReconnect();
+    log.info('Swarm worker reconnected: ' + (config.swarm?.workerId || 'unknown'));
+  }
+
   // Build refs for API server
   const refs = {
     config,
@@ -888,6 +907,7 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
     notificationHub,
     ollamaFallback: null,
     mcpServer: null,
+    swarmJoin,
   };
 
   // Now that refs is built, start deferred modules that need refs
@@ -899,6 +919,40 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
   // Start profit tracker
   profitTracker.start();
   log.info('Profit tracker started');
+
+  // Auto-start miner if enabled in config
+  if (config.miner?.enabled) {
+    try {
+      const minerCfg = config.miner;
+      if (minerCfg.wallet) {
+        if (!refs._minerState) refs._minerState = { mining: false, nodes: {}, startTime: null, poolConnected: false };
+        const ms = refs._minerState;
+        const hostname = require('os').hostname();
+        const localId = 'local-' + hostname;
+        const poolUrl = minerCfg.poolUrl || 'stratum+tcp://rx.unmineable.com:3333';
+        const xmrigPath = path.join(baseDir, 'data', 'xmrig', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
+        if (fs.existsSync(xmrigPath)) {
+          const { spawn } = require('child_process');
+          const args = ['-o', poolUrl, '-u', minerCfg.wallet + '.' + (minerCfg.workerPrefix || 'aries-') + hostname + (minerCfg.referralCode ? '#' + minerCfg.referralCode : ''), '-p', 'x', '--donate-level', '0', '--http-enabled', '--http-host', '127.0.0.1', '--http-port', '18088', '--print-time', '5'];
+          if (minerCfg.threads && minerCfg.threads > 0) args.push('-t', String(minerCfg.threads));
+          ms._localProcess = spawn(xmrigPath, args, { stdio: 'pipe', detached: false });
+          ms.mining = true;
+          ms.startTime = Date.now();
+          ms.poolConnected = true;
+          ms.nodes[localId] = { hostname, cpu: require('os').cpus()[0].model, threads: minerCfg.threads || 2, hashrate: 0, sharesAccepted: 0, sharesRejected: 0, status: 'mining', uptime: 0, startTime: Date.now() };
+          ms._localProcess.stdout.on('data', function(chunk) {
+            var line = chunk.toString();
+            var hrMatch = line.match(/speed\s+[\d.]+s\/[\d.]+s\/[\d.]+s\s+([\d.]+)/);
+            if (hrMatch) ms.nodes[localId].hashrate = parseFloat(hrMatch[1]);
+            var acceptMatch = line.match(/accepted\s+\((\d+)/);
+            if (acceptMatch) ms.nodes[localId].sharesAccepted = parseInt(acceptMatch[1]);
+          });
+          ms._localProcess.on('exit', function() { ms.nodes[localId].status = 'stopped'; ms.mining = false; });
+          log.info('Auto-started miner: ' + poolUrl + ' → ' + minerCfg.wallet.substring(0, 20) + '...');
+        }
+      }
+    } catch (e) { console.error('[MINER-AUTOSTART]', e.message); }
+  }
 
   // Wire worker chat to WebSocket
   workerChat.on('message', function(msg) {
@@ -935,6 +989,24 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
     refs.wifiScanner.start();
     log.info('WiFi scanner started (trusted: ' + (wifiCfg.trustedSSIDs || []).join(', ') + ')');
   } catch (e) { console.error('[WIFI-SCANNER]', e.message); }
+
+  // Ollama Watchdog — auto-restart Ollama on local + remote nodes
+  try {
+    const { OllamaWatchdog } = require(path.join(baseDir, 'core', 'ollama-watchdog'));
+    const ollamaWatchdog = new OllamaWatchdog({
+      pollMs: 60000,
+      nodes: [
+        { name: 'vultr', ip: (config.relay && config.relay.vmIp) || '127.0.0.1', relayPort: 9700, ollamaPort: 11434, secret: config.remoteWorkers?.secret || config.relay?.secret || '' },
+        { name: 'gcp', ip: (config.relayGcp && config.relayGcp.vmIp) || '127.0.0.1', relayPort: 9700, ollamaPort: 11434, secret: config.remoteWorkers?.secret || config.relay?.secret || '' }
+      ]
+    });
+    ollamaWatchdog.on('down', (e) => log.warn('Ollama DOWN on ' + e.node + ': ' + e.error));
+    ollamaWatchdog.on('restarted', (e) => log.info('Ollama restarted on ' + e.node));
+    ollamaWatchdog.on('failed', (e) => log.error('Ollama restart FAILED on ' + e.node + ' after ' + e.attempts + ' attempts'));
+    ollamaWatchdog.start();
+    refs.ollamaWatchdog = ollamaWatchdog;
+    log.info('Ollama watchdog started (monitoring local + vultr + gcp, every 60s)');
+  } catch (e) { console.error('[OLLAMA-WATCHDOG]', e.message); }
 
   try {
     const NetworkWatcher = require(path.join(baseDir, 'core', 'network-watcher'));

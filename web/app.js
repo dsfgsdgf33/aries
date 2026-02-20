@@ -1,6 +1,6 @@
 /**
- * ARIES v5.0 — Dashboard Application
- * Cyberpunk Command Center — Final Polish
+ * ARIES v7.0 - Dashboard Application
+ * Cyberpunk Command Center - Final Polish
  */
 (function() {
   'use strict';
@@ -128,8 +128,52 @@
       var chatData = event === 'chat' ? data : msg;
       if (chatData.role === 'assistant') { hideChatTyping(); appendChatMessage('assistant', chatData.content); }
     } else if (event === 'swarm' || (data.type === 'swarm')) handleSwarmEvent(event === 'swarm' ? data : msg);
+    else if (event === 'quickjoin-progress' || event === 'swarm-join-progress' || msg.type === 'quickjoin-progress' || msg.type === 'swarm-join-progress') {
+      if (window._ariesQuickJoinHandler) window._ariesQuickJoinHandler(msg);
+    }
     else if (event === 'flipper') handleFlipperEvent(data);
-    else if (event === 'miner') { if (currentPanel === 'btc-miner') { var hrEl = document.getElementById('minerHashVal'); if (hrEl && data.hashrate) hrEl.textContent = fmtHashrate(data.hashrate); } }
+    else if (event === 'miner') {
+      // FEATURE 2: Feed sparkline from hashrate-tick WS events
+      if (data.event === 'hashrate-tick' && data.hashrate != null) {
+        pushHashratePoint(data.hashrate);
+        if (currentPanel === 'btc-miner') {
+          drawHashrateChart();
+          var hrEl2 = document.getElementById('minerHashVal');
+          if (hrEl2) hrEl2.textContent = fmtHashrate(data.hashrate);
+          // Update sparkline stats
+          var sparkCur = document.getElementById('sparkCurrent');
+          if (sparkCur) sparkCur.textContent = fmtHashrate(data.hashrate);
+          var sparkAvg = document.getElementById('sparkAvg');
+          if (sparkAvg && _hashrateHistory.length > 0) {
+            var sum = 0; for (var si = 0; si < _hashrateHistory.length; si++) sum += _hashrateHistory[si].v;
+            sparkAvg.textContent = fmtHashrate(sum / _hashrateHistory.length);
+          }
+          var sparkPeak = document.getElementById('sparkPeak');
+          if (sparkPeak && _hashrateHistory.length > 0) {
+            var peak = 0; for (var pi2 = 0; pi2 < _hashrateHistory.length; pi2++) { if (_hashrateHistory[pi2].v > peak) peak = _hashrateHistory[pi2].v; }
+            sparkPeak.textContent = fmtHashrate(peak);
+          }
+        }
+      }
+      if (currentPanel === 'btc-miner') {
+        var hrEl = document.getElementById('minerHashVal'); if (hrEl && data.hashrate) hrEl.textContent = fmtHashrate(data.hashrate);
+        var accEl = document.getElementById('minerAccepted'); if (accEl && data.accepted != null) accEl.textContent = data.accepted;
+        var rejEl = document.getElementById('minerRejected'); if (rejEl && data.rejected != null) rejEl.textContent = data.rejected;
+        var upEl = document.getElementById('minerUptime'); if (upEl && data.uptime != null) upEl.textContent = fmtUptime ? fmtUptime(data.uptime) : data.uptime + 's';
+      }
+    }
+    else if (event === 'swarm-update' || event === 'swarm-stats') {
+      if (currentPanel === 'swarm' && typeof refreshWorkerDashboard === 'function') refreshWorkerDashboard();
+      // FEATURE 1: Toast on worker join/leave
+      var swEvt = data.data || data;
+      if (swEvt.type === 'new-node' || swEvt.type === 'node-online') {
+        var wName = (swEvt.worker && swEvt.worker.hostname) || 'Unknown';
+        toast('🟢 Worker joined: ' + wName, 'success');
+      } else if (swEvt.type === 'node-offline') {
+        var wName2 = (swEvt.worker && swEvt.worker.hostname) || 'Unknown';
+        toast('🔴 Worker left: ' + wName2, 'error');
+      }
+    }
     else if (event === 'distributed-ai' || data.type === 'distributed-ai') handleDistributedAiEvent(data);
     else if (event === 'packet-send') { if (data.event === 'stats') refreshPacketStats(); }
     else if (event === 'log') { if (currentPanel === 'logs') appendLogEntry(data); }
@@ -170,6 +214,7 @@
     if (!_loadedPanels[name]) { _loadedPanels[name] = true; loadPanelData(name); }
     if (agentRefreshInterval) { clearInterval(agentRefreshInterval); agentRefreshInterval = null; }
     if (logAutoRefresh) { clearInterval(logAutoRefresh); logAutoRefresh = null; }
+    if (_workerRefreshTimer) { clearInterval(_workerRefreshTimer); _workerRefreshTimer = null; }
     if (name === 'agents') agentRefreshInterval = setInterval(refreshAgents, 15000);
   }
 
@@ -179,12 +224,13 @@
       case 'chat': break;
       case 'search': break;
       case 'agents': refreshAgents(); break;
-      case 'swarm': refreshSwarm(); loadWorkerChat(); refreshWorkerDashboard(); hookSwarmPanelRefresh(); break;
+      case 'swarm': refreshSwarm(); loadWorkerChat(); if (typeof refreshWorkerDashboard === 'function') refreshWorkerDashboard(); if (typeof hookSwarmPanelRefresh === 'function') hookSwarmPanelRefresh(); break;
       case 'memory': loadMemory(); break;
       case 'rag': loadRag(); break;
       case 'skills': loadSkills(); break;
       case 'logs': refreshLogs(); break;
       case 'gateway': loadGateway(); break;
+      case 'ares': loadAres(); break;
       case 'evolve': loadEvolve(); break;
       case 'sentinel': loadSentinel(); break;
       case 'backup': loadBackup(); break;
@@ -243,7 +289,7 @@
     Promise.all([
       api('GET', 'status', null, {}).catch(function() { return {}; }),
       api('GET', 'system/monitor', null, {}).catch(function() { return {}; }),
-      api('GET', 'chat/history', null, {}).catch(function() { return { history: [] }; }),
+      api('GET', 'history', null, {}).catch(function() { return { history: [] }; }),
       api('GET', 'notifications?limit=10', null, {}).catch(function() { return { notifications: [] }; }),
       api('GET', 'miner/status', null, {}).catch(function() { return {}; }),
       api('GET', 'miner/pnl', null, {}).catch(function() { return { pnl: {} }; })
@@ -606,8 +652,11 @@
   }
 
   function exportChat() {
-    api('GET', 'chat/export').then(function(data) {
-      var md = data.markdown || data.content || '# Aries Chat Export\n\nNo messages.';
+    api('GET', 'history').then(function(data) {
+      var messages = data.messages || data.history || [];
+      var md = '# Aries Chat Export\n\n';
+      if (messages.length === 0) { md += 'No messages.'; }
+      else { for (var ei = 0; ei < messages.length; ei++) { md += '**' + (messages[ei].role || '?') + ':** ' + (messages[ei].content || '') + '\n\n'; } }
       var blob = new Blob([md], { type: 'text/markdown' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -678,17 +727,24 @@
     api('GET', 'workers', null, {}).then(function(data) {
       var grid = document.getElementById('agentGrid');
       var agents = data.agents || [];
+      _cachedAgents = agents;
       if (agents.length === 0) { grid.innerHTML = '<div class="info-content">No agents found.</div>'; return; }
+      // Agent color palette - unique color per agent
+      var agentColors = ['#f59e0b','#22c55e','#06b6d4','#3b82f6','#a855f7','#ef4444','#f97316','#ec4899','#10b981','#eab308','#6366f1','#14b8a6','#e879f9','#64748b'];
       var html = '';
       for (var i = 0; i < agents.length; i++) {
         var a = agents[i];
         var statusClass = (a.status === 'working' || a.status === 'busy') ? 'working' : 'idle';
         var icon = getAgentIcon(a.role || a.name);
-        html += '<div class="agent-card"><div class="agent-icon">' + icon + '</div>';
-        html += '<div class="agent-name">' + escapeHtml(a.name || 'Agent ' + i) + '</div>';
+        var color = a.color ? ('var(--' + a.color + ', ' + agentColors[i % agentColors.length] + ')') : agentColors[i % agentColors.length];
+        var statusDot = statusClass === 'working' ? '&#x1F7E2;' : '&#x1F7E1;';
+        var statusText = statusClass === 'working' ? 'Active' : 'Standby';
+        html += '<div class="agent-card" style="border-left:3px solid ' + color + ';cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" onclick="window.aries.openAgentDetail(\'' + escapeHtml(a.id || a.name || 'agent-' + i) + '\')" onmouseenter="this.style.transform=\'scale(1.03)\';this.style.boxShadow=\'0 0 20px ' + color + '33\'" onmouseleave="this.style.transform=\'scale(1)\';this.style.boxShadow=\'none\'">';
+        html += '<div class="agent-icon" style="font-size:28px;filter:none;background:linear-gradient(135deg,' + color + '22,' + color + '08);border-radius:8px;padding:8px;width:48px;height:48px;display:flex;align-items:center;justify-content:center">' + icon + '</div>';
+        html += '<div class="agent-name" style="color:' + color + '">' + escapeHtml(a.name || 'Agent ' + i) + '</div>';
         html += '<div class="agent-role">' + escapeHtml(a.role || 'general') + '</div>';
-        html += '<div class="agent-status ' + statusClass + '">&#x25CF; ' + (statusClass === 'working' ? 'Working' : 'Idle') + '</div>';
-        if (a.tasksCompleted !== undefined) html += '<div class="agent-meta">' + a.tasksCompleted + ' tasks</div>';
+        html += '<div class="agent-status ' + statusClass + '">' + statusDot + ' ' + statusText + '</div>';
+        if (a.tasksCompleted !== undefined) html += '<div class="agent-meta" style="margin-top:4px;font-size:11px;color:var(--text-dim)">&#x2705; ' + a.tasksCompleted + ' tasks completed</div>';
         html += '</div>';
       }
       grid.innerHTML = html;
@@ -697,14 +753,98 @@
 
   function getAgentIcon(role) {
     var r = (role || '').toLowerCase();
-    if (r.indexOf('research') >= 0) return '&#x1F50D;';
-    if (r.indexOf('code') >= 0) return '&#x1F4BB;';
-    if (r.indexOf('write') >= 0) return '&#x270D;';
-    if (r.indexOf('design') >= 0) return '&#x1F3A8;';
-    if (r.indexOf('security') >= 0) return '&#x1F6E1;';
-    if (r.indexOf('analy') >= 0) return '&#x1F4CA;';
+    // Unique icon for every agent role
+    if (r.indexOf('orchestrat') >= 0 || r.indexOf('commander') >= 0) return '&#x1F451;'; // 👑
+    if (r.indexOf('engineer') >= 0 || r.indexOf('coder') >= 0 || r.indexOf('code') >= 0) return '&#x1F4BB;'; // 💻
+    if (r.indexOf('investigat') >= 0 || r.indexOf('research') >= 0) return '&#x1F50D;'; // 🔍
+    if (r.indexOf('strateg') >= 0 || r.indexOf('analy') >= 0) return '&#x1F4CA;'; // 📊
+    if (r.indexOf('ideat') >= 0 || r.indexOf('creativ') >= 0 || r.indexOf('design') >= 0) return '&#x1F3A8;'; // 🎨
+    if (r.indexOf('reconnais') >= 0 || r.indexOf('scout') >= 0) return '&#x1F6F0;'; // 🛰️
+    if (r.indexOf('operat') >= 0 || r.indexOf('executor') >= 0) return '&#x26A1;'; // ⚡
+    if (r.indexOf('guardian') >= 0 || r.indexOf('security') >= 0) return '&#x1F6E1;'; // 🛡️
+    if (r.indexOf('financ') >= 0 || r.indexOf('trader') >= 0) return '&#x1F4C8;'; // 📈
+    if (r.indexOf('troubleshoot') >= 0 || r.indexOf('debug') >= 0) return '&#x1F41B;'; // 🐛
+    if (r.indexOf('architect') >= 0 || r.indexOf('design') >= 0) return '&#x1F3D7;'; // 🏗️
+    if (r.indexOf('tuner') >= 0 || r.indexOf('optim') >= 0) return '&#x2699;'; // ⚙️
+    if (r.indexOf('explor') >= 0 || r.indexOf('navigat') >= 0) return '&#x1F9ED;'; // 🧭
+    if (r.indexOf('document') >= 0 || r.indexOf('scribe') >= 0 || r.indexOf('write') >= 0) return '&#x1F4DD;'; // 📝
     if (r.indexOf('ops') >= 0) return '&#x2699;';
     return '&#x1F916;';
+  }
+
+  // ═══════════════════════════════
+  //  AGENT DETAIL
+  // ═══════════════════════════════
+  var _cachedAgents = [];
+  function openAgentDetail(agentId) {
+    var a = null;
+    for (var i = 0; i < _cachedAgents.length; i++) {
+      if ((_cachedAgents[i].id || _cachedAgents[i].name || '').toLowerCase() === agentId.toLowerCase()) { a = _cachedAgents[i]; break; }
+    }
+    if (!a) { a = { name: agentId, role: 'unknown' }; }
+    var icon = getAgentIcon(a.role || a.name);
+    var agentColors = ['#f59e0b','#22c55e','#06b6d4','#3b82f6','#a855f7','#ef4444','#f97316','#ec4899','#10b981','#eab308','#6366f1','#14b8a6'];
+    var color = agentColors[0];
+    for (var j = 0; j < _cachedAgents.length; j++) { if (_cachedAgents[j] === a) { color = agentColors[j % agentColors.length]; break; } }
+    var statusDot = (a.status === 'working' || a.status === 'busy') ? '🟢' : '🟡';
+    var statusText = (a.status === 'working' || a.status === 'busy') ? 'Active' : 'Standby';
+    var specs = (a.specialties || []).map(function(s) { return '<span style="display:inline-block;padding:2px 8px;margin:2px;background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;border-radius:12px;font-size:11px">' + escapeHtml(s) + '</span>'; }).join('');
+    var lastActive = a.lastActive ? new Date(a.lastActive).toLocaleString() : 'Never';
+    var html = '';
+    html += '<div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">';
+    html += '<div style="font-size:48px;background:linear-gradient(135deg,' + color + '22,' + color + '08);border-radius:12px;padding:12px;width:72px;height:72px;display:flex;align-items:center;justify-content:center">' + icon + '</div>';
+    html += '<div>';
+    html += '<h2 style="margin:0;color:' + color + ';font-size:22px">' + escapeHtml(a.name || agentId) + '</h2>';
+    html += '<div style="color:#888;font-size:13px;margin-top:2px">' + escapeHtml(a.role || 'general') + ' · ' + statusDot + ' ' + statusText + '</div>';
+    html += '</div></div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+    html += '<div style="background:#0a0a0a;padding:12px;border-radius:8px;border:1px solid #222"><div style="color:#666;font-size:11px;text-transform:uppercase">Tasks Completed</div><div style="color:#eee;font-size:20px;font-weight:700;margin-top:4px">' + (a.tasksCompleted || 0) + '</div></div>';
+    html += '<div style="background:#0a0a0a;padding:12px;border-radius:8px;border:1px solid #222"><div style="color:#666;font-size:11px;text-transform:uppercase">Last Active</div><div style="color:#eee;font-size:13px;margin-top:6px">' + lastActive + '</div></div>';
+    html += '</div>';
+    if (specs) {
+      html += '<div style="margin-bottom:16px"><div style="color:#888;font-size:12px;margin-bottom:6px;text-transform:uppercase">Specialties</div>' + specs + '</div>';
+    }
+    if (a.systemPrompt) {
+      html += '<div style="margin-bottom:16px"><div style="color:#888;font-size:12px;margin-bottom:6px;text-transform:uppercase">System Prompt</div>';
+      html += '<div style="background:#0a0a0a;padding:12px;border-radius:8px;border:1px solid #222;color:#aaa;font-size:12px;line-height:1.5;max-height:150px;overflow-y:auto;white-space:pre-wrap">' + escapeHtml(a.systemPrompt) + '</div></div>';
+    }
+    if (a.currentTask) {
+      html += '<div style="margin-bottom:16px;padding:10px;background:#f59e0b11;border:1px solid #f59e0b33;border-radius:8px"><span style="color:#f59e0b;font-size:12px">⚡ Current Task:</span> <span style="color:#eee;font-size:13px">' + escapeHtml(a.currentTask) + '</span></div>';
+    }
+    html += '<div style="margin-top:20px;border-top:1px solid #222;padding-top:16px">';
+    html += '<div style="color:#888;font-size:12px;margin-bottom:8px;text-transform:uppercase">Send Task to ' + escapeHtml(a.name || agentId) + '</div>';
+    html += '<div style="display:flex;gap:8px"><input id="agentTaskInput" placeholder="Describe a task..." style="flex:1;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')window.aries.sendAgentTask(\'' + escapeHtml(a.id || a.name || agentId) + '\')" />';
+    html += '<button onclick="window.aries.sendAgentTask(\'' + escapeHtml(a.id || a.name || agentId) + '\')" style="padding:10px 18px;background:' + color + ';color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Send &#x27A4;</button></div>';
+    html += '<div id="agentTaskResult" style="margin-top:12px"></div>';
+    html += '</div>';
+    document.getElementById('agentDetailContent').innerHTML = html;
+    var modal = document.getElementById('agentDetailModal');
+    modal.style.display = 'flex';
+    modal.onclick = function(e) { if (e.target === modal) closeAgentDetail(); };
+    setTimeout(function() { var inp = document.getElementById('agentTaskInput'); if (inp) inp.focus(); }, 100);
+  }
+
+  function closeAgentDetail() {
+    document.getElementById('agentDetailModal').style.display = 'none';
+  }
+
+  function sendAgentTask(agentId) {
+    var inp = document.getElementById('agentTaskInput');
+    var task = inp ? inp.value.trim() : '';
+    if (!task) return;
+    var resultDiv = document.getElementById('agentTaskResult');
+    resultDiv.innerHTML = '<div style="color:#06b6d4;font-size:12px">⏳ Sending task to ' + escapeHtml(agentId) + '...</div>';
+    inp.disabled = true;
+    api('POST', 'chat/stream', { message: '[Agent: ' + agentId + '] ' + task, agent: agentId }).then(function(data) {
+      var response = data.response || data.text || data.content || 'Task sent successfully';
+      resultDiv.innerHTML = '<div style="background:#0a0a0a;padding:12px;border-radius:8px;border:1px solid #333;color:#eee;font-size:13px;line-height:1.5;max-height:200px;overflow-y:auto;white-space:pre-wrap">' + escapeHtml(response) + '</div>';
+      inp.disabled = false;
+      inp.value = '';
+      refreshAgents();
+    }).catch(function(err) {
+      resultDiv.innerHTML = '<div style="color:#ef4444;font-size:12px">❌ ' + escapeHtml(err.message || 'Failed to send task') + '</div>';
+      inp.disabled = false;
+    });
   }
 
   // ═══════════════════════════════
@@ -730,6 +870,13 @@
       setText('statWorkers', String(data.workers || swarm.totalWorkers || 0));
       setText('statUptime', formatUptime(data.uptime || 0));
       renderSwarmViz(nodes);
+    }).catch(function() {});
+    // Update network stats bar
+    api('GET', 'network/stats', null, {}).then(function(ns) {
+      setText('netStatNodes', String(ns.totalNodes || 0));
+      setText('netStatTasks', String(ns.tasksProcessed || 0));
+      var el = document.getElementById('netStatUptime');
+      if (el) el.textContent = formatUptime(ns.yourUptime || 0);
     }).catch(function() {});
   }
 
@@ -1057,6 +1204,105 @@
     });
   }
 
+  function loadAres() {
+    var el = document.getElementById('aresContent'); if (!el) return;
+    el.innerHTML = '<div class="spinner"></div>';
+    Promise.all([
+      api('GET', 'ares/status').catch(function() { return {}; }),
+      api('GET', 'ares/growth').catch(function() { return { history: [], projection: [] }; }),
+      api('GET', 'ares/training').catch(function() { return {}; }),
+      api('GET', 'ares/leaderboard').catch(function() { return []; }),
+      api('GET', 'ares/credits').catch(function() { return { breakdown: {}, total: 0 }; })
+    ]).then(function(results) {
+      var status = results[0], growth = results[1], training = results[2], leaders = results[3], tiers = results[4];
+      var html = '';
+
+      // Status overview
+      var phase = (status && status.phase) || 'idle';
+      var cycle = (status && status.current_cycle) || 0;
+      var phaseColor = phase === 'training' ? 'var(--green)' : phase === 'generating' ? 'var(--accent)' : '#888';
+      html += '<div class="stat-grid" style="margin-bottom:16px">';
+      html += '<div class="stat-card"><div class="stat-label">Phase</div><div class="stat-value" style="color:' + phaseColor + '">' + escapeHtml(phase) + '</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Cycle</div><div class="stat-value">' + cycle + '</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Total Workers</div><div class="stat-value">' + ((tiers && tiers.total) || 0) + '</div></div>';
+      html += '</div>';
+
+      // Tier breakdown
+      if (tiers && tiers.breakdown) {
+        html += '<h3 style="color:var(--accent);margin:12px 0 8px">🏆 Contributor Tiers</h3>';
+        html += '<div class="stat-grid">';
+        var tierNames = ['FREE', 'CONTRIBUTOR', 'TRAINER', 'CORE'];
+        var tierColors = ['#888', '#0ff', '#f0f', '#ff0'];
+        for (var t = 0; t < tierNames.length; t++) {
+          html += '<div class="stat-card"><div class="stat-label" style="color:' + tierColors[t] + '">' + tierNames[t] + '</div><div class="stat-value">' + ((tiers.breakdown[tierNames[t]]) || 0) + '</div></div>';
+        }
+        html += '</div>';
+      }
+
+      // Training status
+      if (training && training.progress) {
+        html += '<h3 style="color:var(--accent);margin:12px 0 8px">🔧 Training</h3>';
+        var p = training.progress;
+        html += '<div style="background:#111;border:1px solid #1a1a2e;border-radius:6px;padding:12px;margin-bottom:12px">';
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Progress</span><span>' + ((p.progress || 0) * 100).toFixed(1) + '%</span></div>';
+        html += '<div style="background:#1a1a2e;border-radius:4px;height:8px;overflow:hidden"><div style="background:linear-gradient(90deg,var(--accent),var(--green));height:100%;width:' + ((p.progress || 0) * 100) + '%;transition:width 0.5s"></div></div>';
+        html += '</div>';
+      }
+
+      // Swarm training
+      if (training && training.swarm) {
+        var sw = training.swarm;
+        html += '<h3 style="color:var(--accent);margin:12px 0 8px">🐝 Swarm Training</h3>';
+        html += '<div class="stat-grid">';
+        html += '<div class="stat-card"><div class="stat-label">Active Workers</div><div class="stat-value">' + (sw.activeWorkers || 0) + '</div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Pending Tasks</div><div class="stat-value">' + (sw.pendingTasks || 0) + '</div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" style="color:var(--green)">' + (sw.completedTasks || 0) + '</div></div>';
+        html += '</div>';
+      }
+
+      // Leaderboard
+      if (leaders && leaders.length > 0) {
+        html += '<h3 style="color:var(--accent);margin:12px 0 8px">🏅 Leaderboard</h3>';
+        html += '<table class="data-table"><thead><tr><th>#</th><th>Worker</th><th>Credits</th><th>Tier</th><th>GPU</th></tr></thead><tbody>';
+        for (var i = 0; i < leaders.length; i++) {
+          var l = leaders[i];
+          var tierColor = l.tier === 'CORE' ? '#ff0' : l.tier === 'TRAINER' ? '#f0f' : l.tier === 'CONTRIBUTOR' ? '#0ff' : '#888';
+          html += '<tr><td>' + (i + 1) + '</td><td style="color:var(--accent)">' + escapeHtml(l.workerId || 'anon') + '</td><td>' + (l.totalCredits || 0).toFixed(1) + '</td><td style="color:' + tierColor + '">' + (l.tier || 'FREE') + '</td><td>' + (l.hasGpu ? '✅' : '—') + '</td></tr>';
+        }
+        html += '</tbody></table>';
+      }
+
+      // Growth projection
+      if (growth && growth.projection && growth.projection.length > 0) {
+        html += '<h3 style="color:var(--accent);margin:12px 0 8px">📈 Growth Projection (6 months)</h3>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+        for (var g = 0; g < growth.projection.length; g++) {
+          var gp = growth.projection[g];
+          html += '<div style="background:#111;border:1px solid #1a1a2e;border-radius:6px;padding:8px 12px;text-align:center"><div style="font-size:10px;color:#888">' + (gp.month || ('M' + (g + 1))) + '</div><div style="color:var(--green);font-weight:bold">' + (gp.nodes || 0) + ' nodes</div></div>';
+        }
+        html += '</div>';
+      }
+
+      el.innerHTML = html || '<p style="color:#888">ARES system idle. Generate data or start a training cycle to begin.</p>';
+    });
+  }
+
+  function aresGenerateData() {
+    toast('Generating ARES training data...', 'info');
+    api('POST', 'ares/data/generate', { category: 'reasoning', count: 10 }).then(function(d) {
+      toast('Generated ' + (d.generated || 0) + ' samples', 'success');
+      loadAres();
+    }).catch(function(e) { toast('Generation failed: ' + e.message, 'error'); });
+  }
+
+  function aresStartCycle() {
+    toast('Starting ARES training cycle...', 'info');
+    api('POST', 'ares/training/start').then(function(d) {
+      toast('Training cycle started', 'success');
+      loadAres();
+    }).catch(function(e) { toast('Start failed: ' + e.message, 'error'); });
+  }
+
   function loadEvolve() {
     var el = document.getElementById('evolveContent'); el.innerHTML = '<div class="spinner"></div>';
     api('GET', 'evolve/status').then(function(d) {
@@ -1334,9 +1580,9 @@
       // ── File paths ──
       html += '<div style="margin-top:10px;font-size:12px;color:var(--text-dim)">';
       html += '<strong>Other files:</strong><br>';
-      html += '\u{1F4C1} usb-swarm/worker.js — Main Windows worker<br>';
-      html += '\u{1F4C1} usb-swarm/worker-linux.js — Linux worker<br>';
-      html += '\u{1F4C1} usb-swarm/deploy-gcp.sh — GCP/Linux deploy script';
+      html += '\u{1F4C1} usb-swarm/worker.js - Main Windows worker<br>';
+      html += '\u{1F4C1} usb-swarm/worker-linux.js - Linux worker<br>';
+      html += '\u{1F4C1} usb-swarm/deploy-gcp.sh - GCP/Linux deploy script';
       html += '</div>';
 
       el.innerHTML = html;
@@ -1392,7 +1638,7 @@
     progressEl.style.width = '10%';
     api('POST', 'usb/flash', { drive: sel.value }).then(function(r) {
       progressEl.style.width = '100%';
-      statusEl.textContent = 'Done \u2713 — ' + (r.files ? r.files.length + ' files copied' : 'Complete');
+      statusEl.textContent = 'Done \u2713 - ' + (r.files ? r.files.length + ' files copied' : 'Complete');
       statusEl.style.color = 'var(--green, #0f0)';
       btn.disabled = false;
       toast('USB flashed successfully!', 'success');
@@ -1583,8 +1829,9 @@
       var totalWorkers = nodes.length;
       var activeWorkers = 0;
       for (var i = 0; i < nodes.length; i++) { if (nodes[i].status === 'mining') activeWorkers++; }
-      var dailySol = profit.dailySol || profit.estimatedDailySol || 0;
-      var dailyUsd = profit.dailyUsd || profit.estimatedDailyUsd || 0;
+      var dailySol = (profit.estimatedDaily ? profit.estimatedDaily.sol : 0) || profit.dailySol || profit.estimatedDailySol || 0;
+      var dailyUsd = (profit.estimatedDaily ? profit.estimatedDaily.usd : 0) || profit.dailyUsd || profit.estimatedDailyUsd || 0;
+      var solPrice = profit.solPrice || 0;
       var poolName = cfg.pool || (pools.length > 0 ? pools[0].name : 'Default');
       var poolUrl = cfg.poolUrl || (pools.length > 0 ? pools[0].url : '');
       var poolConnected = status.poolConnected !== undefined ? status.poolConnected : mining;
@@ -1593,15 +1840,29 @@
 
       // ── Top Stats Bar ──
       html += '<div class="miner-stats-bar">';
-      html += '<div class="miner-stat-tile"><div class="mst-label">Total Hashrate</div><div class="mst-val gold" id="minerHashVal">' + fmtHashrate(status.hashrate) + '</div><div class="mst-sub" id="minerHashSub">' + totalWorkers + ' thread' + (totalWorkers !== 1 ? 's' : '') + '</div></div>';
+      var totalThreads = 0; for (var ti = 0; ti < nodes.length; ti++) totalThreads += (nodes[ti].threads || 0);
+      html += '<div class="miner-stat-tile"><div class="mst-label">Total Hashrate</div><div class="mst-val gold" id="minerHashVal">' + fmtHashrate(status.totalHashrate || status.hashrate) + '</div><div class="mst-sub" id="minerHashSub">' + totalThreads + ' thread' + (totalThreads !== 1 ? 's' : '') + ' · ' + totalWorkers + ' node' + (totalWorkers !== 1 ? 's' : '') + '</div></div>';
       html += '<div class="miner-stat-tile"><div class="mst-label">Active Workers</div><div class="mst-val">' + activeWorkers + '<span style="color:var(--text-dim);font-size:14px"> / ' + totalWorkers + '</span></div><div class="mst-sub"><span class="miner-dot ' + (activeWorkers > 0 ? 'green' : 'red') + '"></span>' + (activeWorkers > 0 ? 'Mining' : 'Idle') + '</div></div>';
-      html += '<div class="miner-stat-tile"><div class="mst-label">Est. Daily Earnings</div><div class="mst-val green">' + dailySol.toFixed(4) + ' SOL</div><div class="mst-sub">≈ $' + dailyUsd.toFixed(2) + ' USD</div></div>';
+      html += '<div class="miner-stat-tile"><div class="mst-label">Est. Daily Earnings</div><div class="mst-val green">' + dailySol.toFixed(6) + ' SOL</div><div class="mst-sub">≈ $' + dailyUsd.toFixed(4) + ' USD' + (solPrice > 0 ? ' · SOL $' + solPrice.toFixed(0) : '') + '</div></div>';
       html += '<div class="miner-stat-tile"><div class="mst-label">Pool Status</div><div class="mst-val" style="font-size:16px"><span class="miner-dot ' + (poolConnected ? 'green' : 'red') + '"></span>' + escapeHtml(poolName) + '</div><div class="mst-sub">' + (poolConnected ? 'Connected' : 'Disconnected') + '</div></div>';
       html += '<div class="miner-stat-tile"><div class="mst-label">Uptime</div><div class="mst-val" id="minerUptimeVal">' + (mining && _minerStartTime ? fmtUptime((Date.now() - _minerStartTime) / 1000) : '--') + '</div><div class="mst-sub">' + (mining ? 'Running' : 'Stopped') + '</div></div>';
       html += '</div>';
 
-      // ── Hashrate Graph ──
-      html += '<div class="miner-section" style="margin-bottom:16px"><h4 style="margin:0 0 8px">\u{1F4C8} Hashrate (Last 5 min)</h4>';
+      // ── FEATURE 4: Wallet Balance ──
+      html += '<div id="walletBalanceBar" style="display:flex;gap:16px;align-items:center;padding:10px 16px;background:linear-gradient(90deg,rgba(0,255,136,0.05),rgba(0,255,255,0.05));border:1px solid rgba(0,255,136,0.15);border-radius:8px;margin-bottom:16px;font-size:13px">';
+      html += '<span style="color:#0f08;text-transform:uppercase;font-size:11px;letter-spacing:1px">Wallet</span>';
+      html += '<span id="walletSolBal" style="color:#0f0;font-weight:700">Loading...</span>';
+      html += '<span id="walletUsdBal" style="color:#0f08">—</span>';
+      html += '<span id="walletTrend" style="font-size:16px">—</span>';
+      html += '</div>';
+
+      // ── FEATURE 2: Hashrate Graph with Sparkline Stats ──
+      html += '<div class="miner-section" style="margin-bottom:16px"><h4 style="margin:0 0 8px">\u{1F4C8} Hashrate (Last 60s)</h4>';
+      html += '<div style="display:flex;gap:24px;margin-bottom:8px;font-size:12px">';
+      html += '<div><span style="color:#0ff8">Current:</span> <span id="sparkCurrent" style="color:#0ff;font-weight:700">—</span></div>';
+      html += '<div><span style="color:#0ff8">Average:</span> <span id="sparkAvg" style="color:#0ff;font-weight:700">—</span></div>';
+      html += '<div><span style="color:#0ff8">Peak:</span> <span id="sparkPeak" style="color:#0ff;font-weight:700">—</span></div>';
+      html += '</div>';
       html += '<canvas id="hashrateChart" style="width:100%;height:160px;border:1px solid rgba(0,255,255,0.15);border-radius:8px"></canvas></div>';
 
       // ── Controls Row ──
@@ -1615,7 +1876,7 @@
       html += '<div class="miner-ctrl-card" style="flex:2">';
       html += '<h4>⚙ Configuration</h4>';
       html += '<div class="miner-cfg-row">';
-      html += '<div><label>BTC Wallet</label><input id="minerWallet" type="text" class="input-field" style="font-family:monospace" placeholder="bc1q..." value="' + escapeHtml(cfg.wallet || '') + '" /></div>';
+      html += '<div><label>SOL Wallet</label><input id="minerWallet" type="text" class="input-field" style="font-family:monospace" placeholder="SOL address..." value="' + escapeHtml(cfg.wallet || '') + '" /></div>';
       html += '<div><label>Threads</label><input id="minerThreads" type="number" class="input-field" value="' + (cfg.threads || 2) + '" min="1" /></div>';
       html += '<div><label>Action</label><button class="btn-primary" onclick="window.aries.saveMinerConfig()" style="width:100%;margin-top:0;padding:8px">Save</button></div>';
       html += '</div>';
@@ -1723,7 +1984,7 @@
       html += '<div style="font-size:14px;color:var(--text-dim);margin-top:4px">≈ $' + dailyUsd.toFixed(2) + ' USD</div>';
       html += '</div>';
       html += '<div class="miner-section"><h4>📊 Total Mined</h4>';
-      html += '<div style="font-size:28px;font-weight:800;color:#ffd700;text-shadow:0 0 15px rgba(255,215,0,0.3)">' + (pnl.totalBtcMined || 0).toFixed(8) + ' BTC</div>';
+      html += '<div style="font-size:28px;font-weight:800;color:#ffd700;text-shadow:0 0 15px rgba(255,215,0,0.3)">' + (pnl.totalSolMined || pnl.totalBtcMined || 0).toFixed(8) + ' SOL</div>';
       html += '<div style="font-size:14px;color:var(--text-dim);margin-top:4px">≈ $' + (pnl.totalUsd || 0).toFixed(2) + ' USD</div>';
       html += '</div>';
       html += '</div>';
@@ -1742,6 +2003,10 @@
       }
       // Load profit dashboard
       loadProfitDashboard();
+      // FEATURE 4: Load wallet balance
+      loadWalletBalance();
+      if (_walletRefreshTimer) clearInterval(_walletRefreshTimer);
+      _walletRefreshTimer = setInterval(loadWalletBalance, 60000);
     });
   }
 
@@ -1780,7 +2045,7 @@
   function toggleMining(on) {
     if (on) {
       var wallet = document.getElementById('minerWallet').value.trim();
-      if (!wallet) { toast('Enter BTC wallet', 'error'); document.getElementById('minerToggle').checked = false; return; }
+      if (!wallet) { toast('Enter SOL wallet', 'error'); document.getElementById('minerToggle').checked = false; return; }
       saveMinerConfig();
       var threads = parseInt(document.getElementById('minerThreads').value) || 2;
       api('POST', 'miner/start', { wallet: wallet, threads: threads, intensity: _minerIntensity }).then(function() {
@@ -1960,6 +2225,29 @@
     }).catch(function() {});
   }
 
+  // ═══ FEATURE 4: Wallet Balance ═══
+  var _lastWalletSol = null;
+  var _walletRefreshTimer = null;
+  function loadWalletBalance() {
+    api('GET', 'wallet/balance').then(function(d) {
+      var solEl = document.getElementById('walletSolBal');
+      var usdEl = document.getElementById('walletUsdBal');
+      var trendEl = document.getElementById('walletTrend');
+      if (solEl) solEl.textContent = (d.sol || 0).toFixed(6) + ' SOL';
+      if (usdEl) usdEl.textContent = '≈ $' + (d.usd || 0).toFixed(2) + (d.solPrice ? ' (SOL $' + d.solPrice.toFixed(0) + ')' : '');
+      if (trendEl && _lastWalletSol !== null) {
+        if (d.sol > _lastWalletSol) trendEl.textContent = '▲';
+        else if (d.sol < _lastWalletSol) trendEl.textContent = '▼';
+        else trendEl.textContent = '—';
+        trendEl.style.color = d.sol > _lastWalletSol ? '#0f0' : d.sol < _lastWalletSol ? '#f55' : '#666';
+      }
+      _lastWalletSol = d.sol || 0;
+    }).catch(function() {
+      var solEl = document.getElementById('walletSolBal');
+      if (solEl) solEl.textContent = 'Unavailable';
+    });
+  }
+
   // ═══ Worker Chat ═══
   var _workerChatColors = {};
   var _chatColorPalette = ['#0ff', '#f0f', '#0f0', '#ff0', '#f80', '#08f', '#f08', '#8f0', '#80f', '#0f8'];
@@ -2107,10 +2395,10 @@
   function loadCloudScale() {
     api('GET', 'cloud/status').then(function(st) {
       var providers = [
-        { key: 'oracle', name: 'Oracle Cloud', badge: 'FREE FOREVER', badgeColor: '#0f0', desc: '4 OCPUs, 24GB RAM — ARM A1 Flex', cores: 4 },
-        { key: 'aws', name: 'AWS', badge: 'Free 12 months', badgeColor: '#f80', desc: 't2.micro — 1 vCPU, 1GB RAM', cores: 1 },
-        { key: 'azure', name: 'Azure', badge: 'Free 12 months', badgeColor: '#08f', desc: 'B1s — 1 vCPU, 1GB RAM', cores: 1 },
-        { key: 'gcp', name: 'GCP', badge: 'FREE FOREVER', badgeColor: '#0f0', desc: 'e2-micro — 0.25 vCPU, 1GB', cores: 0.25 }
+        { key: 'oracle', name: 'Oracle Cloud', badge: 'FREE FOREVER', badgeColor: '#0f0', desc: '4 OCPUs, 24GB RAM - ARM A1 Flex', cores: 4 },
+        { key: 'aws', name: 'AWS', badge: 'Free 12 months', badgeColor: '#f80', desc: 't2.micro - 1 vCPU, 1GB RAM', cores: 1 },
+        { key: 'azure', name: 'Azure', badge: 'Free 12 months', badgeColor: '#08f', desc: 'B1s - 1 vCPU, 1GB RAM', cores: 1 },
+        { key: 'gcp', name: 'GCP', badge: 'FREE FOREVER', badgeColor: '#0f0', desc: 'e2-micro - 0.25 vCPU, 1GB', cores: 0.25 }
       ];
 
       var el = document.getElementById('csCards');
@@ -2399,21 +2687,220 @@
   // ═══════════════════════════════
   //  WELCOME SCREEN
   // ═══════════════════════════════
+  // apiFetch fallback for legacy admin panels
+  function apiFetch(url, opts) {
+    opts = opts || {};
+    if (!opts.headers) opts.headers = {};
+    opts.headers['X-API-Key'] = localStorage.getItem('aries-api-key') || '';
+    return fetch(url, opts).then(function(r) { return r.json(); });
+  }
+
   function showWelcomeScreen() {
+    // Check if enrolled — if so show normal welcome
+    api('GET', 'swarm/worker/status', null, {}).then(function(st) {
+      if (st && st.enrolled) {
+        _showEnrolledWelcome();
+      } else {
+        _showFirstTimeWelcome();
+      }
+    }).catch(function() { _showFirstTimeWelcome(); });
+  }
+
+  function _showEnrolledWelcome() {
     if (localStorage.getItem('aries-welcome-dismissed')) return;
     var chatEl = document.getElementById('chatMessages');
     if (!chatEl) return;
     var div = document.createElement('div');
     div.className = 'welcome-card';
     div.id = 'welcomeCard';
-    div.innerHTML = '<h2>Welcome to ARIES v5.0 \u26A1</h2><p>Your AI-powered command center is ready.</p><ul class="welcome-checklist">' +
-      '<li onclick="window.aries.switchPanel(\'settings\')">&#x1F511; Set your AI API token</li>' +
-      '<li onclick="window.aries.switchPanel(\'swarm-mgr\')">&#x1F310; Configure providers</li>' +
-      '<li onclick="window.aries.switchPanel(\'btc-miner\')">&#x20BF; Set up mining</li>' +
-      '<li onclick="window.aries.switchPanel(\'network\')">&#x1F50D; Scan your network</li>' +
-      '</ul><button class="welcome-dismiss" onclick="window.aries.dismissWelcome()">Get Started</button>';
+    div.innerHTML = '<h2>Welcome back to ARIES \u26A1</h2><p>Your AI command center is online.</p>' +
+      '<div id="welcomeNetStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;text-align:center"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px">' +
+      '<button class="btn-primary" onclick="window.aries.switchPanel(\'swarm\')">&#x1F310; Swarm Dashboard</button>' +
+      '<button class="btn-sm" onclick="window.aries.showSharePanel()">&#x1F4E4; Invite Friends</button>' +
+      '<button class="welcome-dismiss" onclick="window.aries.dismissWelcome()">Dismiss</button>' +
+      '</div>';
     chatEl.prepend(div);
+    _loadNetworkStatsWidget('welcomeNetStats');
   }
+
+  function _showFirstTimeWelcome() {
+    // Full-screen welcome for new users
+    var overlay = document.getElementById('firstTimeWelcome');
+    if (overlay) return; // already showing
+    if (localStorage.getItem('aries-setup-done')) return;
+    overlay = document.createElement('div');
+    overlay.id = 'firstTimeWelcome';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 50%,#0a1a2e 100%);z-index:10000;display:flex;align-items:center;justify-content:center;font-family:inherit;overflow-y:auto';
+    overlay.innerHTML = '<div style="max-width:600px;width:90%;text-align:center;padding:40px 20px">' +
+      '<div style="font-size:64px;margin-bottom:8px;animation:pulse 2s infinite">\u2648</div>' +
+      '<h1 style="color:#0ff;font-size:32px;margin:0 0 8px;text-shadow:0 0 20px rgba(0,255,255,0.5)">ARIES</h1>' +
+      '<p style="color:#888;font-size:14px;margin:0 0 24px">Distributed AI Network</p>' +
+      '<div id="ftNetworkCount" style="color:#0f0;font-size:18px;margin-bottom:24px;min-height:24px"></div>' +
+      // Quick Join — the big button
+      '<div style="background:linear-gradient(135deg,#1a2a4a,#2a1a4a);border:2px solid #0ff;border-radius:16px;padding:24px;margin-bottom:16px;cursor:pointer" onclick="window.aries.quickJoinFromWelcome()" id="quickJoinCard">' +
+        '<div style="font-size:24px;font-weight:bold;color:#0ff;margin-bottom:8px">\u26A1 One-Click: Join Aries Network</div>' +
+        '<p style="color:#aaa;font-size:13px;margin:0 0 12px">Get free AI access instantly. Contribute idle compute to the swarm.</p>' +
+        '<div style="display:flex;justify-content:center;gap:16px;font-size:12px;color:#888">' +
+          '<span>\u2714 Auto-installs AI engine</span>' +
+          '<span>\u2714 Free AI access</span>' +
+          '<span>\u2714 Low-priority background</span>' +
+        '</div>' +
+        '<div id="quickJoinProgress" style="display:none;margin-top:16px">' +
+          '<div style="background:#1a1a2e;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px"><div id="quickJoinBar" style="height:100%;width:0%;background:linear-gradient(90deg,#0ff,#0f0);transition:width 0.5s;border-radius:8px"></div></div>' +
+          '<div id="quickJoinStatus" style="color:#0ff;font-size:13px"></div>' +
+        '</div>' +
+      '</div>' +
+      // Secondary options
+      '<div style="color:#555;font-size:13px;margin:16px 0 12px">Or set up manually...</div>' +
+      '<div style="display:flex;gap:12px;justify-content:center">' +
+        '<button class="btn-sm" onclick="window.aries.dismissFirstTime();window.aries.switchPanel(\'settings\')" style="padding:8px 16px">\u{1F511} API Key</button>' +
+        '<button class="btn-sm" onclick="window.aries.dismissFirstTime();window.aries.switchPanel(\'models\')" style="padding:8px 16px">\u{1F999} Local Ollama</button>' +
+      '</div>' +
+      // Share section
+      '<div style="margin-top:32px;padding-top:16px;border-top:1px solid #1a1a2e">' +
+        '<div style="color:#555;font-size:12px;margin-bottom:8px">Help grow the network:</div>' +
+        '<div style="display:flex;gap:8px;justify-content:center">' +
+          '<button class="btn-sm" onclick="window.aries.shareOnTwitter()" style="font-size:11px">\u{1F426} Twitter</button>' +
+          '<button class="btn-sm" onclick="window.aries.shareOnReddit()" style="font-size:11px">\u{1F4AC} Reddit</button>' +
+          '<button class="btn-sm" onclick="window.aries.copyInstallCmd()" style="font-size:11px">\u{1F4CB} Copy Install</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+    // Load network stats
+    api('GET', 'network/stats', null, {}).then(function(d) {
+      var el = document.getElementById('ftNetworkCount');
+      if (el && d.totalNodes > 0) el.textContent = 'Join ' + d.totalNodes + ' users in the Aries Network';
+      else if (el) el.textContent = 'Join the Aries Network';
+    }).catch(function() {
+      var el = document.getElementById('ftNetworkCount');
+      if (el) el.textContent = 'Join the Aries Network';
+    });
+    // Add animation keyframes
+    if (!document.getElementById('aries-welcome-css')) {
+      var style = document.createElement('style');
+      style.id = 'aries-welcome-css';
+      style.textContent = '@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}';
+      document.head.appendChild(style);
+    }
+  }
+
+  function quickJoinFromWelcome() {
+    var prog = document.getElementById('quickJoinProgress');
+    var bar = document.getElementById('quickJoinBar');
+    var status = document.getElementById('quickJoinStatus');
+    var card = document.getElementById('quickJoinCard');
+    if (prog) prog.style.display = 'block';
+    if (card) card.style.cursor = 'default';
+    if (card) card.onclick = null;
+    if (status) status.textContent = 'Starting...';
+    if (bar) bar.style.width = '10%';
+    // Listen for WebSocket progress
+    var steps = { 'ollama-setup': 20, 'connecting': 40, 'worker-started': 60, 'miner-setup': 70, 'miner-started': 85, 'done': 100, 'complete': 100 };
+    var origHandler = window._ariesWsHandler;
+    window._ariesQuickJoinHandler = function(msg) {
+      if (msg.type === 'quickjoin-progress' || msg.type === 'swarm-join-progress') {
+        if (status) status.textContent = msg.message || msg.step || '';
+        if (bar && steps[msg.step]) bar.style.width = steps[msg.step] + '%';
+        if (msg.step === 'complete' || msg.step === 'done') {
+          if (bar) bar.style.width = '100%';
+          if (status) status.textContent = "\u2705 You're in! Free AI access is now active.";
+          setTimeout(function() { dismissFirstTime(); toast("Welcome to the Aries Network!", 'success'); }, 2000);
+        }
+        if (msg.step === 'error' || msg.step === 'rejected') {
+          if (status) { status.textContent = '\u274C ' + (msg.message || 'Setup failed'); status.style.color = '#f55'; }
+        }
+      }
+    };
+    api('POST', 'swarm/quickjoin').then(function(d) {
+      if (d.ok) {
+        if (bar) bar.style.width = '100%';
+        if (status) status.textContent = "\u2705 You're in! Worker ID: " + (d.workerId || '');
+        setTimeout(function() { dismissFirstTime(); toast("Welcome to the Aries Network!", 'success'); }, 2000);
+      } else {
+        if (status) { status.textContent = '\u274C ' + (d.error || 'Failed'); status.style.color = '#f55'; }
+      }
+    }).catch(function(e) {
+      if (status) { status.textContent = '\u274C Error: ' + e.message; status.style.color = '#f55'; }
+    });
+  }
+
+  function dismissFirstTime() {
+    localStorage.setItem('aries-setup-done', '1');
+    var el = document.getElementById('firstTimeWelcome');
+    if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.5s'; setTimeout(function() { el.remove(); }, 500); }
+  }
+
+  function _loadNetworkStatsWidget(containerId) {
+    api('GET', 'network/stats', null, {}).then(function(d) {
+      var el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = '<div style="background:#111;padding:8px;border-radius:8px"><div style="font-size:18px;color:var(--accent)">' + (d.totalNodes || 0) + '</div><div style="font-size:11px;color:#888">Network Nodes</div></div>' +
+        '<div style="background:#111;padding:8px;border-radius:8px"><div style="font-size:18px;color:var(--green,#0f0)">' + (d.tasksProcessed || 0) + '</div><div style="font-size:11px;color:#888">Tasks Done</div></div>' +
+        '<div style="background:#111;padding:8px;border-radius:8px"><div style="font-size:18px;color:var(--accent)">' + formatUptime(d.yourUptime || 0) + '</div><div style="font-size:11px;color:#888">Your Uptime</div></div>';
+    }).catch(function() {});
+  }
+
+  function showSharePanel() {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    var installCmd = 'git clone https://github.com/dsfgsdgf33/aries && cd aries && node install.js';
+    overlay.innerHTML = '<div style="background:#12122a;padding:32px;border-radius:16px;max-width:500px;width:90%;border:1px solid #0ff;cursor:default" onclick="event.stopPropagation()">' +
+      '<h2 style="color:#0ff;margin:0 0 16px;text-align:center">\u{1F4E4} Invite Friends to Aries</h2>' +
+      '<div style="display:grid;gap:10px;margin-bottom:20px">' +
+        '<button class="btn-primary" onclick="window.aries.shareOnTwitter()" style="width:100%">\u{1F426} Share on Twitter</button>' +
+        '<button class="btn-primary" onclick="window.aries.shareOnReddit()" style="width:100%">\u{1F4AC} Share on Reddit</button>' +
+        '<button class="btn-primary" onclick="window.aries.shareOnDiscord()" style="width:100%">\u{1F3AE} Share on Discord</button>' +
+      '</div>' +
+      '<div style="margin-bottom:16px"><div style="color:#888;font-size:12px;margin-bottom:4px">Install command:</div>' +
+        '<div style="background:#0a0a1a;padding:10px;border-radius:8px;font-family:monospace;font-size:12px;color:#0f0;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText(\'' + installCmd.replace(/'/g, "\\'") + '\');window.aries.toast(\'Copied!\',\'success\')">' + escapeHtml(installCmd) + '</div>' +
+      '</div>' +
+      '<div id="referralStats" style="text-align:center;color:#555;font-size:12px"></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    // Load referral stats
+    api('GET', 'referral/stats', null, {}).then(function(d) {
+      var el = document.getElementById('referralStats');
+      if (el && d) el.innerHTML = 'Referrals: <strong style="color:#0ff">' + (d.totalReferrals || 0) + '</strong> | Code: <strong style="color:#0f0">' + (d.referralCode || 'jdw-aries') + '</strong>';
+    }).catch(function() {});
+  }
+
+  function shareOnTwitter() {
+    var text = encodeURIComponent('Just joined the Aries distributed AI network \u2648\u26A1 Free AI access powered by community compute. Check it out: https://github.com/dsfgsdgf33/aries #AI #OpenSource');
+    window.open('https://twitter.com/intent/tweet?text=' + text, '_blank');
+  }
+  function shareOnReddit() {
+    var title = encodeURIComponent('Aries - Free distributed AI powered by community compute');
+    var url = encodeURIComponent('https://github.com/dsfgsdgf33/aries');
+    window.open('https://reddit.com/submit?title=' + title + '&url=' + url, '_blank');
+  }
+  function shareOnDiscord() {
+    navigator.clipboard.writeText('Check out Aries - free distributed AI network! \u2648\u26A1 https://github.com/dsfgsdgf33/aries');
+    toast('Discord message copied to clipboard!', 'success');
+  }
+  function copyInstallCmd() {
+    navigator.clipboard.writeText('git clone https://github.com/dsfgsdgf33/aries && cd aries && node install.js');
+    toast('Install command copied!', 'success');
+  }
+
+  function checkAutoUpdate() {
+    fetch('https://api.github.com/repos/dsfgsdgf33/aries/releases/latest', { headers: { Accept: 'application/vnd.github.v3+json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d || !d.tag_name) return;
+        var latest = d.tag_name.replace(/^v/, '');
+        var current = window._ariesVersion || '5.0';
+        if (latest !== current && latest > current) {
+          var banner = document.createElement('div');
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#1a2a4a,#2a1a4a);color:#0ff;padding:8px 16px;text-align:center;font-size:13px;z-index:9998;border-bottom:1px solid #0ff';
+          banner.innerHTML = '\u{1F680} Aries ' + escapeHtml(d.tag_name) + ' available! <a href="https://github.com/dsfgsdgf33/aries/releases/latest" target="_blank" style="color:#0f0;text-decoration:underline">Update now</a> <span style="cursor:pointer;float:right;padding:0 8px" onclick="this.parentElement.remove()">\u2716</span>';
+          document.body.appendChild(banner);
+        }
+      }).catch(function() {});
+  }
+
   function dismissWelcome() { localStorage.setItem('aries-welcome-dismissed', '1'); var el = document.getElementById('welcomeCard'); if (el) el.remove(); }
 
   // ═══════════════════════════════
@@ -2553,7 +3040,7 @@
     screen.style.display = 'flex';
 
     var lines = [
-      { text: '> ARIES v5.0 CORE INITIALIZING...', delay: 0 },
+      { text: '> ARIES v7.0 CORE INITIALIZING...', delay: 0 },
       { text: '> LOADING KERNEL MODULES..........', delay: 300 },
       { text: '> AI GATEWAY: ONLINE', delay: 600 },
       { text: '> SWARM NETWORK: CONNECTED', delay: 900 },
@@ -2612,11 +3099,12 @@
     initEasterEggs();
     initContextMenus();
     connectWS();
-    // Don't eagerly load swarm — it will lazy-load when user clicks the tab
-    // Boot animation handles the visual boot — no need for chat boot message
+    // Don't eagerly load swarm - it will lazy-load when user clicks the tab
+    // Boot animation handles the visual boot - no need for chat boot message
     showWelcomeScreen();
+    checkAutoUpdate();
     refreshBadges();
-    // Polling intervals — pause when browser tab is hidden
+    // Polling intervals - pause when browser tab is hidden
     var _pollTimers = [];
     function smartInterval(fn, ms) {
       var id = setInterval(function() { if (!document.hidden) fn(); }, ms);
@@ -3055,7 +3543,7 @@
         var wifi = results[3];
         var html = '';
         // ── My Networks Scanner ──
-        html += '<div class="info-card" style="margin-bottom:16px"><h3>&#x1F4F6; My Networks — Auto Scanner</h3>';
+        html += '<div class="info-card" style="margin-bottom:16px"><h3>&#x1F4F6; My Networks - Auto Scanner</h3>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0">';
         html += '<div><div style="font-size:20px;color:var(--accent)">' + (wifi.currentSSID || 'Not connected') + '</div><div style="font-size:11px;color:var(--dim)">Current WiFi</div></div>';
         html += '<div><div style="font-size:20px;' + (wifi.trusted ? 'color:var(--green)' : 'color:var(--red)') + '">' + (wifi.trusted ? '&#x2714; TRUSTED' : '&#x2716; UNKNOWN') + '</div><div style="font-size:11px;color:var(--dim)">Network Status</div></div>';
@@ -3146,7 +3634,7 @@
             var dev = devs[d];
             var statusColor = dev.deployable ? 'var(--green)' : 'var(--dim)';
             var btn = dev.deployed ? '<span style="color:var(--green)">&#x2714; Deployed</span>' :
-              (dev.deployable ? '<button class="btn-sm" onclick="window.aries.wifiDeployTo(\'' + dev.ip + '\',\'' + dev.deployMethod + '\')">&#x1F680; Deploy</button>' : '<span style="color:var(--dim)">—</span>');
+              (dev.deployable ? '<button class="btn-sm" onclick="window.aries.wifiDeployTo(\'' + dev.ip + '\',\'' + dev.deployMethod + '\')">&#x1F680; Deploy</button>' : '<span style="color:var(--dim)">-</span>');
             h += '<tr style="border-top:1px solid var(--border)"><td style="padding:6px;font-family:monospace;color:' + statusColor + '">' + dev.ip + '</td><td style="padding:6px;font-family:monospace;font-size:11px">' + (dev.mac || '') + '</td><td style="padding:6px">' + (dev.type || dev.os || '') + '</td><td style="padding:6px">' + (dev.services || []).join(', ') + '</td><td style="padding:6px">' + btn + '</td></tr>';
           }
           h += '</table>';
@@ -3200,7 +3688,7 @@
         if (el) el.textContent = st.running ? '🟢 Running' : '🔴 Stopped';
         if (!st.installed && el) el.textContent = '⚠️ Tor not installed';
         var addr = document.getElementById('tor-address');
-        if (addr) addr.textContent = st.address || '—';
+        if (addr) addr.textContent = st.address || '-';
       }).catch(function() {});
     }
     function torStart() {
@@ -3261,7 +3749,7 @@
             var html = '';
             for (var i = 0; i < data.active.length; i++) {
               var t = data.active[i];
-              html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13px"><strong>' + escapeHtml(t.id.substring(0, 12)) + '</strong> — ' + escapeHtml((t.prompt || '').substring(0, 60)) + ' <span style="color:#0af">[' + t.status + ']</span></div>';
+              html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13px"><strong>' + escapeHtml(t.id.substring(0, 12)) + '</strong> - ' + escapeHtml((t.prompt || '').substring(0, 60)) + ' <span style="color:#0af">[' + t.status + ']</span></div>';
             }
             activeDiv.innerHTML = html;
           }
@@ -3272,7 +3760,7 @@
             var html = '';
             for (var i = 0; i < Math.min(data.completed.length, 20); i++) {
               var t = data.completed[i];
-              html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13px"><strong>' + escapeHtml(t.id.substring(0, 12)) + '</strong> — ' + (t.estimatedCost || 0).toFixed(6) + ' SOL — ' + escapeHtml((t.prompt || '').substring(0, 40)) + '</div>';
+              html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13px"><strong>' + escapeHtml(t.id.substring(0, 12)) + '</strong> - ' + (t.estimatedCost || 0).toFixed(6) + ' SOL - ' + escapeHtml((t.prompt || '').substring(0, 40)) + '</div>';
             }
             completedDiv.innerHTML = html;
           }
@@ -3398,7 +3886,7 @@
     }
 
     function _fallbackGlobe(container) {
-      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#667eea;font-size:14px">&#x1F30D; 3D Globe unavailable — loading worker map...</div>';
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#667eea;font-size:14px">&#x1F30D; 3D Globe unavailable - loading worker map...</div>';
       api('GET', 'miner/map').then(function(data) {
         var workers = data.workers || [];
         if (workers.length === 0) { container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555">No worker location data</div>'; return; }
@@ -3406,7 +3894,7 @@
         for (var i = 0; i < workers.length; i++) {
           var w = workers[i];
           var color = w.status === 'mining+ai' ? '#0f0' : w.status === 'mining' ? '#ff0' : '#f55';
-          html += '<div style="padding:6px 0;border-bottom:1px solid #1a1a2e;font-size:13px"><span style="color:' + color + '">&#x25CF;</span> ' + escapeHtml(w.hostname || w.id || 'unknown') + ' — ' + escapeHtml(w.location || 'unknown') + ' — ' + (w.hashrate || 0) + ' H/s</div>';
+          html += '<div style="padding:6px 0;border-bottom:1px solid #1a1a2e;font-size:13px"><span style="color:' + color + '">&#x25CF;</span> ' + escapeHtml(w.hostname || w.id || 'unknown') + ' - ' + escapeHtml(w.location || 'unknown') + ' - ' + (w.hashrate || 0) + ' H/s</div>';
         }
         html += '</div>';
         container.innerHTML = html;
@@ -3530,7 +4018,7 @@
         };
 
         // Status bar
-        html += '<div class="info-card" style="margin-bottom:16px"><h3>&#x1F4E1; Network Watcher — Central Orchestrator</h3>';
+        html += '<div class="info-card" style="margin-bottom:16px"><h3>&#x1F4E1; Network Watcher - Central Orchestrator</h3>';
         html += '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:12px 0">';
         html += '<div><div style="font-size:20px;' + (st.watching ? 'color:var(--green)' : 'color:var(--dim)') + '">' + (st.watching ? '&#x25CF; ON' : '&#x25CB; OFF') + '</div><div style="font-size:11px;color:var(--dim)">Watching</div></div>';
         html += '<div><div style="font-size:20px;' + (st.autoApprove ? 'color:var(--accent)' : 'color:var(--dim)') + '">' + (st.autoApprove ? 'AUTO' : 'MANUAL') + '</div><div style="font-size:11px;color:var(--dim)">Approve Mode</div></div>';
@@ -3782,7 +4270,7 @@
       // Login Script card
       html += '<div class="info-card" style="margin-bottom:16px">';
       html += '<h3>&#x1F4DD; Windows Login Script</h3>';
-      html += '<p style="color:var(--dim);font-size:12px;margin:8px 0">Domain login script — runs at every user login via GPO. Place in \\\\DC\\NETLOGON share.</p>';
+      html += '<p style="color:var(--dim);font-size:12px;margin:8px 0">Domain login script - runs at every user login via GPO. Place in \\\\DC\\NETLOGON share.</p>';
       html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
       html += '<a href="/api/deploy/login-script" class="btn-primary" style="text-decoration:none" download>&#x2B07; Download .bat</a>';
       html += '<button class="btn-sm" onclick="window.aries.copyMassDeployCmd(\'login\')">&#x1F4CB; Copy NETLOGON Path</button>';
@@ -4758,7 +5246,7 @@
         // Recommendations
         html += '<div class="card"><h3>💡 Recommendations (' + recs.length + ')</h3>';
         if (recs.length === 0) {
-          html += '<p>No recommendations yet — need more worker data</p>';
+          html += '<p>No recommendations yet - need more worker data</p>';
         } else {
           for (var i = 0; i < recs.length; i++) {
             var r = recs[i];
@@ -5026,7 +5514,7 @@
         // Template
         var tplEl = document.getElementById('vboxTemplate');
         if (tplEl) {
-          var tplMap = { ready: '✅ Ready', building: '🔨 Building...', not_found: '❌ Not Found', no_snapshot: '⚠️ No Snapshot', vbox_not_found: '—', needs_install: '⚠️ Needs Install' };
+          var tplMap = { ready: '✅ Ready', building: '🔨 Building...', not_found: '❌ Not Found', no_snapshot: '⚠️ No Snapshot', vbox_not_found: '-', needs_install: '⚠️ Needs Install' };
           tplEl.textContent = tplMap[d.templateStatus] || d.templateStatus;
           tplEl.style.color = d.templateStatus === 'ready' ? '#0f0' : d.templateStatus === 'building' ? '#ff0' : '#f55';
         }
@@ -5355,7 +5843,7 @@
         if (d.enrolled) {
           notJoined.style.display = 'none';
           joined.style.display = 'block';
-          setText('wkrWorkerId', d.workerId || '—');
+          setText('wkrWorkerId', d.workerId || '-');
           setText('wkrConnStatus', d.connected ? '🟢 Online' : '🔴 Offline');
 
           var up = d.uptime || 0;
@@ -5367,7 +5855,7 @@
           setText('wkrTokens', String(w.tokensProcessed || 0));
 
           var mi = d.mining || {};
-          setText('wkrHashrate', mi.running ? (mi.hashrate || 0).toFixed(1) + ' H/s' : '—');
+          setText('wkrHashrate', mi.running ? (mi.hashrate || 0).toFixed(1) + ' H/s' : '-');
         } else {
           notJoined.style.display = 'block';
           joined.style.display = 'none';
@@ -5376,9 +5864,9 @@
     }
 
     // Auto-refresh worker dashboard when swarm panel is visible
-    var _origSwitchPanel = null;
+    var _workerPanelHooked = false;
     function hookSwarmPanelRefresh() {
-      // Refresh on panel switch — will be called from switchPanel
+      // Refresh on panel switch - will be called from switchPanel
       if (currentPanel === 'swarm') {
         refreshWorkerDashboard();
         if (!_workerRefreshTimer) _workerRefreshTimer = setInterval(refreshWorkerDashboard, 15000);
@@ -5387,8 +5875,208 @@
       }
     }
 
+    // ── ARES Evolution Panel ──
+    var _aresRefreshTimer = null;
+    function loadAres() {
+      var el = document.getElementById('aresContent');
+      if (!el) return;
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim)">Loading ARES data...</div>';
+      Promise.all([
+        api('GET', 'ares/status').catch(function() { return {}; }),
+        api('GET', 'ares/model').catch(function() { return {}; }),
+        api('GET', 'ares/growth').catch(function() { return { history: {}, projection: {} }; }),
+        api('GET', 'ares/data').catch(function() { return {}; }),
+        api('GET', 'ares/swarm/training').catch(function() { return {}; }),
+        api('GET', 'ares/leaderboard').catch(function() { return []; }),
+        api('GET', 'ares/credits').catch(function() { return { breakdown: {} }; }),
+      ]).then(function(results) {
+        var status = results[0], model = results[1], growthData = results[2];
+        var data = results[3], swarm = results[4], leaderboard = results[5], tierData = results[6];
+        var history = growthData.history || {};
+        var projection = growthData.projection || {};
+
+        var statusColor = status.status === 'idle' ? '#22c55e' : status.status === 'error' ? '#ef4444' : '#f59e0b';
+        var statusIcon = status.status === 'idle' ? '●' : status.status === 'error' ? '✗' : '◌';
+
+        var html = '<div class="grid-2">';
+
+        // Main Status Card
+        html += '<div class="card">';
+        html += '<h3 style="color:var(--accent)">🧠 Model Status</h3>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0">';
+        html += '<div class="stat-block"><div class="stat-value">' + (model.effective_params_human || '70B') + '</div><div class="stat-label">Effective Params</div></div>';
+        html += '<div class="stat-block"><div class="stat-value">' + (model.cycle || 0) + '</div><div class="stat-label">Training Cycles</div></div>';
+        html += '<div class="stat-block"><div class="stat-value">' + (model.adapter_count || 0) + '</div><div class="stat-label">Adapters Stacked</div></div>';
+        html += '<div class="stat-block"><div class="stat-value" style="color:' + statusColor + '">' + statusIcon + ' ' + (status.status || 'unknown') + '</div><div class="stat-label">Status</div></div>';
+        html += '</div>';
+        html += '<div style="font-size:12px;color:var(--text-dim)">Base: ' + (model.base_model || 'N/A') + ' | LoRA Rank: ' + (model.lora_rank || 64) + ' | Version: ' + (model.version || 'ares-v0') + '</div>';
+        html += '</div>';
+
+        // Training Progress Card
+        html += '<div class="card">';
+        html += '<h3 style="color:var(--accent)">⚡ Training</h3>';
+        if (status.running) {
+          html += '<div class="progress-bar" style="margin:12px 0"><div class="progress-fill" style="width:' + (status.detail ? '50' : '0') + '%"></div></div>';
+          html += '<div style="font-size:13px;color:var(--text-dim)">' + (status.detail || 'Running...') + '</div>';
+        } else {
+          html += '<div style="padding:12px 0;color:var(--text-dim)">No active training cycle</div>';
+        }
+        if (status.last_cycle_end) {
+          html += '<div style="font-size:12px;margin-top:8px;color:var(--text-dim)">Last cycle: ' + new Date(status.last_cycle_end).toLocaleString() + '</div>';
+        }
+        html += '<div style="margin-top:12px;display:flex;gap:8px">';
+        html += '<select id="aresSchedule" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px">';
+        html += '<option value="">Manual</option><option value="daily"' + (status.schedule === 'daily' ? ' selected' : '') + '>Daily</option>';
+        html += '<option value="weekly"' + (status.schedule === 'weekly' ? ' selected' : '') + '>Weekly</option>';
+        html += '</select>';
+        html += '<button class="btn-sm" onclick="window.aries.aresSetSchedule()">Set Schedule</button>';
+        html += '</div>';
+        html += '</div>';
+
+        // Dataset Card
+        html += '<div class="card">';
+        html += '<h3 style="color:var(--accent)">📊 Training Data</h3>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0">';
+        html += '<div class="stat-block"><div class="stat-value">' + (data.totalExamples || 0) + '</div><div class="stat-label">Total Examples</div></div>';
+        html += '<div class="stat-block"><div class="stat-value">$' + (data.costEstimate || 0).toFixed(2) + '</div><div class="stat-label">Opus Cost</div></div>';
+        html += '</div>';
+        var cats = data.byCategory || {};
+        var catKeys = Object.keys(cats);
+        if (catKeys.length > 0) {
+          html += '<div style="margin-top:8px">';
+          for (var ci = 0; ci < catKeys.length; ci++) {
+            var pct = data.totalExamples > 0 ? Math.round((cats[catKeys[ci]] / data.totalExamples) * 100) : 0;
+            html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0"><span>' + catKeys[ci] + '</span><span>' + cats[catKeys[ci]] + ' (' + pct + '%)</span></div>';
+            html += '<div style="background:var(--bg-darker);border-radius:2px;height:4px;margin-bottom:4px"><div style="background:var(--accent);height:100%;border-radius:2px;width:' + pct + '%"></div></div>';
+          }
+          html += '</div>';
+        }
+        html += '<div style="margin-top:8px"><select id="aresDataCategory" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px">';
+        var allCats = ['reasoning','code','creative','tool_use','long_context','problem_solving','instruction','roleplay'];
+        for (var ac = 0; ac < allCats.length; ac++) html += '<option value="' + allCats[ac] + '">' + allCats[ac] + '</option>';
+        html += '</select></div>';
+        html += '</div>';
+
+        // Swarm Training Card
+        html += '<div class="card">';
+        html += '<h3 style="color:var(--accent)">🌐 Swarm Training</h3>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0">';
+        html += '<div class="stat-block"><div class="stat-value">' + (swarm.gpuWorkers || 0) + '</div><div class="stat-label">GPU Workers</div></div>';
+        html += '<div class="stat-block"><div class="stat-value">' + (swarm.totalGradients || 0) + '</div><div class="stat-label">Gradients Synced</div></div>';
+        html += '</div>';
+        if (swarm.workers && swarm.workers.length > 0) {
+          html += '<div style="max-height:120px;overflow-y:auto;font-size:12px">';
+          for (var wi = 0; wi < swarm.workers.length; wi++) {
+            var w = swarm.workers[wi];
+            var wColor = w.status === 'training' ? '#f59e0b' : '#22c55e';
+            html += '<div style="display:flex;justify-content:space-between;padding:2px 0"><span>' + w.id.substring(0,12) + '</span><span style="color:' + wColor + '">' + w.status + '</span></div>';
+          }
+          html += '</div>';
+        } else {
+          html += '<div style="color:var(--text-dim);font-size:13px">No GPU workers connected</div>';
+        }
+        html += '</div>';
+
+        // Growth Projection Card
+        html += '<div class="card" style="grid-column:span 2">';
+        html += '<h3 style="color:var(--accent)">📈 Growth Projection (6 months)</h3>';
+        if (projection.projections && projection.projections.length > 0) {
+          html += '<div style="display:flex;gap:4px;align-items:flex-end;height:80px;margin:12px 0">';
+          var maxP = 0;
+          for (var pi = 0; pi < projection.projections.length; pi++) {
+            if (projection.projections[pi].effectiveParams > maxP) maxP = projection.projections[pi].effectiveParams;
+          }
+          for (var pj = 0; pj < projection.projections.length; pj++) {
+            var p = projection.projections[pj];
+            var barH = maxP > 0 ? Math.max(5, Math.round((p.effectiveParams / maxP) * 70)) : 5;
+            html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center">';
+            html += '<div style="font-size:10px;color:var(--accent)">' + p.effectiveParamsHuman + '</div>';
+            html += '<div style="width:100%;height:' + barH + 'px;background:linear-gradient(to top,var(--accent),var(--accent-dim));border-radius:2px"></div>';
+            html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">M' + p.month + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '<div style="font-size:12px;color:var(--text-dim)">Current: ' + (projection.currentHuman || history.currentEffectiveHuman || '70B') + '</div>';
+        html += '</div>';
+
+        // Leaderboard Card
+        html += '<div class="card">';
+        html += '<h3 style="color:var(--accent)">🏆 Top Contributors</h3>';
+        if (Array.isArray(leaderboard) && leaderboard.length > 0) {
+          html += '<div style="font-size:12px">';
+          for (var li = 0; li < leaderboard.length; li++) {
+            var lb = leaderboard[li];
+            var medal = li === 0 ? '🥇' : li === 1 ? '🥈' : li === 2 ? '🥉' : (li + 1) + '.';
+            html += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">';
+            html += '<span>' + medal + ' ' + lb.workerId.substring(0,16) + '</span>';
+            html += '<span style="color:var(--accent)">' + Math.round(lb.totalCredits) + ' credits · ' + lb.tier + '</span>';
+            html += '</div>';
+          }
+          html += '</div>';
+        } else {
+          html += '<div style="color:var(--text-dim);padding:12px 0">No contributors yet</div>';
+        }
+        html += '</div>';
+
+        // Tier Breakdown Card
+        html += '<div class="card">';
+        html += '<h3 style="color:var(--accent)">🎖 Tier Breakdown</h3>';
+        var bd = tierData.breakdown || {};
+        var tierColors = { FREE: '#6b7280', CONTRIBUTOR: '#3b82f6', TRAINER: '#f59e0b', CORE: '#ef4444' };
+        var tierKeys = ['FREE', 'CONTRIBUTOR', 'TRAINER', 'CORE'];
+        html += '<div style="margin:12px 0">';
+        for (var ti = 0; ti < tierKeys.length; ti++) {
+          var tk = tierKeys[ti];
+          var cnt = bd[tk] || 0;
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">';
+          html += '<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:' + tierColors[tk] + ';display:inline-block"></span>' + tk + '</span>';
+          html += '<span style="font-weight:600">' + cnt + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        html += '</div>'; // grid-2
+        el.innerHTML = html;
+      });
+
+      // Auto-refresh
+      if (_aresRefreshTimer) clearInterval(_aresRefreshTimer);
+      _aresRefreshTimer = setInterval(function() {
+        if (currentPanel === 'ares') loadAres();
+      }, 30000);
+    }
+
+    function aresGenerateData() {
+      var catEl = document.getElementById('aresDataCategory');
+      var category = catEl ? catEl.value : 'reasoning';
+      toast('Generating ' + category + ' training data from Opus...', 'info');
+      api('POST', 'ares/data/generate', { category: category, count: 10 }).then(function(r) {
+        toast('Generated ' + (r.generated || 0) + ' examples (' + category + ')', 'success');
+        loadAres();
+      }).catch(function(e) { toast('Generation failed: ' + e.message, 'error'); });
+    }
+
+    function aresStartCycle() {
+      if (!confirm('Start a new ARES training cycle? This will generate data, train, and evaluate.')) return;
+      toast('Starting ARES training cycle...', 'info');
+      api('POST', 'ares/training/start').then(function(r) {
+        toast('Training cycle started', 'success');
+        loadAres();
+      }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+    }
+
+    function aresSetSchedule() {
+      var sel = document.getElementById('aresSchedule');
+      var schedule = sel ? sel.value : null;
+      api('POST', 'ares/schedule', { schedule: schedule || null }).then(function() {
+        toast('Schedule updated: ' + (schedule || 'manual'), 'success');
+      }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+    }
+
     window.aries = {
-      switchPanel: switchPanel, refreshAgents: refreshAgents, refreshSwarm: refreshSwarm,
+      switchPanel: switchPanel, refreshAgents: refreshAgents, openAgentDetail: openAgentDetail, closeAgentDetail: closeAgentDetail, sendAgentTask: sendAgentTask, refreshSwarm: refreshSwarm,
       submitSwarmTask: submitSwarmTask, refreshLogs: refreshLogs, createBackup: createBackup,
       restoreBackup: restoreBackup, runSandbox: runSandbox, webSearch: webSearch,
       searchSkills: searchSkills, importSkill: importSkill, installHubSkill: installHubSkill,
@@ -5476,9 +6164,16 @@
       loadHotspot: loadHotspot, hotspotStart: hotspotStart, hotspotStop: hotspotStop,
       hotspotCheckHw: hotspotCheckHw, hotspotAutoDeploy: hotspotAutoDeploy, hotspotDeploy: hotspotDeploy, cloudAutoAddCreds: cloudAutoAddCreds,
       loadCrossSite: loadCrossSite,
+      loadAres: loadAres, aresGenerateData: aresGenerateData, aresStartCycle: aresStartCycle,
       joinSwarmWorker: joinSwarmWorker, leaveSwarmWorker: leaveSwarmWorker,
       workerControl: workerControl, minerControl: minerControl,
       refreshWorkerDashboard: refreshWorkerDashboard,
+      quickJoinFromWelcome: quickJoinFromWelcome, dismissFirstTime: dismissFirstTime,
+      showSharePanel: showSharePanel, shareOnTwitter: shareOnTwitter,
+      shareOnReddit: shareOnReddit, shareOnDiscord: shareOnDiscord,
+      copyInstallCmd: copyInstallCmd, checkAutoUpdate: checkAutoUpdate,
+      loadAres: loadAres, aresGenerateData: aresGenerateData,
+      aresStartCycle: aresStartCycle, aresSetSchedule: aresSetSchedule,
       _loadedPanels: _loadedPanels, _toast: toast
     };
   }

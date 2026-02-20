@@ -550,8 +550,12 @@ function selectModel(taskType) {
  */
 async function callSwarmOllama(messages, model) {
   model = model || 'mistral';
-  const relayUrl = 'http://45.76.232.5:9700';
-  const secret = 'aries-swarm-jdw-2026';
+  let relayUrl = 'http://localhost:9700', secret = '';
+  try {
+    const _cfg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'config.json'), 'utf8'));
+    relayUrl = (_cfg.relay && _cfg.relay.url) || relayUrl;
+    secret = (_cfg.remoteWorkers && _cfg.remoteWorkers.secret) || (_cfg.relay && _cfg.relay.secret) || secret;
+  } catch {};
 
   const taskBody = JSON.stringify({
     task: messages[messages.length - 1]?.content || '',

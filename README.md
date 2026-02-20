@@ -2,7 +2,7 @@
 
 # ⬡ A R I E S
 
-### AI Runtime Intelligence & Execution System
+### A Model By The People, For The People
 
 [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-00fff7?style=for-the-badge&logo=nodedotjs&logoColor=00fff7&labelColor=0d1117)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/ZERO-DEPENDENCIES-ff00ff?style=for-the-badge&labelColor=0d1117)](/)
@@ -12,15 +12,77 @@
 [![PWA](https://img.shields.io/badge/PWA-MOBILE-34D399?style=for-the-badge&labelColor=0d1117)](/)
 [![OpenAI API](https://img.shields.io/badge/OpenAI_API-COMPATIBLE-10A37F?style=for-the-badge&logo=openai&logoColor=white&labelColor=0d1117)](/)
 
-**Your machine. Your models. Your data. Zero compromises.**
+---
+
+*What if the people built their own AI?*
+
+*No corporate filters. No censorship. No $200/month subscriptions.*
+
+*What if every person who joined made it smarter — and everyone who contributed got access?*
 
 ---
 
-Aries is a self-contained AI platform that runs entirely on your hardware with **zero npm dependencies**. Connect any model — Ollama, OpenAI, Anthropic, Groq — and get a full-featured AI operating system: multi-agent swarms, RAG, code execution, browser automation, an MCP server for your IDE, an OpenAI-compatible API, scheduled tasks, a cyberpunk dashboard, and a PWA for your phone. Clone the repo, run `node launcher.js`, and you're live in 60 seconds.
+**Aries** is an open-source AI platform with **ARES** — the **Aries Recursive Evolution System** — a collective AI training network where your computer contributes to building a model that belongs to everyone. No corporation decides what it can say. No paywall decides who gets to use it. The more people join, the smarter it gets.
 
-[⚡ Quick Start](#-quick-start) · [🏆 Why Aries](#-why-aries-wins) · [🚀 Features](#-feature-deep-dives) · [🔒 Security](#-security) · [🔌 MCP Setup](#-mcp-setup) · [📖 API Reference](#-api-reference) · [❓ FAQ](#-faq)
+[⚡ Quick Start](#-quick-start) · [🧬 ARES: Collective AI Training](#-ares-collective-ai-training) · [🏆 Why Aries](#-why-aries-wins) · [🚀 Features](#-feature-deep-dives) · [❓ FAQ](#-faq)
 
 </div>
+
+---
+
+## 🧬 ARES: Collective AI Training
+
+**ARES** (Aries Recursive Evolution System) is the core of what makes Aries different from every other AI tool. It's not just a chat interface — it's a distributed training network that's building a collectively-owned AI model.
+
+### The Problem
+
+- GPT-4, Claude, Gemini — all controlled by corporations who decide what the AI can and can't say
+- Access costs $20–200/month — a tax on intelligence
+- Your data trains *their* models, but you get nothing back
+- One company goes down or changes policy? Your access disappears overnight
+
+### The Solution: Train Our Own
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    THE ARES FLYWHEEL                         │
+│                                                             │
+│   More People Join ──→ More Compute Power                   │
+│         ↑                     │                             │
+│         │                     ▼                             │
+│   More People Want It ←── Smarter Model                     │
+│                                                             │
+│   Every node that joins makes the model better.             │
+│   Every improvement attracts more nodes.                    │
+│   The people's AI gets smarter every day.                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### How It Works
+
+1. **Install Aries** — takes 60 seconds, zero dependencies
+2. **Join the Network** — one click in the dashboard
+3. **Your Machine Contributes** — GPU training time, CPU inference, or just uptime
+4. **Earn Access Tiers** — the more you contribute, the more you unlock
+5. **The Model Evolves** — continuous training across the entire swarm
+
+### Contribution Tiers
+
+Your access scales with your contribution. No freeloaders, no paywalls — just fair exchange.
+
+| Tier | Requirement | Access |
+|:-----|:------------|:-------|
+| **🟢 FREE** | Install Aries | Basic Ollama model access |
+| **🔵 CONTRIBUTOR** | 100+ credit-hours | Access to the latest ARES model for inference |
+| **🟣 TRAINER** | 500+ credit-hours or GPU training | Priority access, higher rate limits |
+| **🟡 CORE** | 1000+ credit-hours with GPU | Unlimited access, early model releases |
+
+**How credits work:**
+- GPU training time: **10 credits/hour** (highest value — this directly improves the model)
+- Mining contribution: **2 credits/hour**
+- CPU inference: **1 credit/hour**
+- Uptime: **0.5 credits/hour** (just keeping your node online helps)
+- Storage: **0.1 credits/GB-hour**
 
 ---
 
@@ -64,20 +126,23 @@ No `npm install`. No Python venv. No config files. **It just works.**
 
 > **Requirements:** Node.js 18+ and ~200 MB disk. That's it. Ollama is optional (auto-installed by the setup wizard if you want local models).
 
+### Join the ARES Network
+
+After setup, click **"Join Swarm"** in the dashboard. One click. Your machine starts contributing, you start earning tiers. Leave anytime.
+
 ---
 
 ## 🏆 Why Aries Wins
 
-While tools like OpenClaw give you a single AI agent with tool access, Aries gives you an entire distributed AI **NETWORK**. 14 specialized agents, swarm compute across unlimited machines, and it's all zero-dependency pure Node.js.
-
 | Feature | **Aries** | ChatGPT | LM Studio | Jan | Open WebUI | OpenClaw |
 |:--------|:---------:|:-------:|:---------:|:---:|:----------:|:--------:|
 | Zero Dependencies | **✅ Pure Node.js** | ❌ Cloud | ❌ Electron | ❌ Electron | ❌ Python/Docker | ❌ Node.js + npm |
+| Collective AI Training (ARES) | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Earn Access by Contributing | **✅ Tier system** | ❌ $20/mo | ❌ | ❌ | ❌ | ❌ |
 | Local AI (Ollama) | **✅** | ❌ | ✅ | ✅ | ✅ | ✅ (via tools) |
 | Cloud AI (Anthropic/OpenAI) | **✅** | ✅ OpenAI only | ❌ | ✅ | ✅ | ✅ |
 | Auto Ollama Fallback | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Swarm Network (P2P AI) | **✅ Join & contribute** | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Free AI via Swarm | **✅ Join = free compute** | ❌ $20/mo | ❌ | ❌ | ❌ | ❌ |
 | MCP Server | **✅ Built-in** | ❌ | ❌ | ❌ | ❌ | ✅ Client |
 | OpenAI-Compatible API | **✅ Port 18800** | ✅ | ✅ | ✅ | ✅ | ❌ |
 | RAG (Chat with Files) | **✅** | ✅ Paid | ❌ | ✅ | ✅ | ❌ |
@@ -91,16 +156,27 @@ While tools like OpenClaw give you a single AI agent with tool access, Aries giv
 | Encrypted Config | **✅ AES-256-GCM** | N/A | ❌ | ❌ | ❌ | ❌ |
 | Scheduled Tasks | **✅** | ❌ | ❌ | ❌ | ❌ | ✅ Cron |
 | Cyberpunk UI | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Price | **Free** | $20/mo | Free | Free | Free | Free |
+| Price | **Free forever** | $20/mo | Free | Free | Free | Free |
 | Self-Hosted | **✅** | ❌ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
 ## 🚀 Feature Deep-Dives
 
+### 🧬 ARES — Recursive Model Evolution
+
+The ARES system runs continuous training cycles across the swarm:
+
+- **Data Generation** — High-quality training data distilled from frontier models
+- **Distributed Training** — Gradient computation spread across GPU-equipped nodes
+- **Model Aggregation** — Federated learning merges improvements without centralizing data
+- **Growth Tracking** — Real-time projections of network capacity and model quality
+
+The dashboard shows training progress, contributor leaderboards, tier breakdowns, and growth projections in real-time.
+
 ### 🤖 Multi-Model AI Chat
 
-Stream responses from **Ollama**, **Anthropic** (Claude), **OpenAI** (GPT), **Groq**, or **OpenRouter**. Switch providers with one click mid-conversation. The setup wizard auto-detects your hardware and picks the best local model:
+Stream responses from **Ollama**, **Anthropic** (Claude), **OpenAI** (GPT), **Groq**, or **OpenRouter**. Switch providers mid-conversation. Auto-detects your hardware:
 
 | Your Hardware | Recommended Model |
 |:---|:---|
@@ -110,23 +186,19 @@ Stream responses from **Ollama**, **Anthropic** (Claude), **OpenAI** (GPT), **Gr
 
 ### 🔄 Automatic Ollama Fallback
 
-API key expired? Rate limited? Aries **automatically** switches to a local Ollama model — no config, no interruption. A notification appears, and your chat keeps going. When the API recovers, it switches back silently.
+API key expired? Rate limited? Aries **automatically** switches to a local Ollama model — no config, no interruption. When the API recovers, it switches back.
 
 ### 📁 Chat With Your Files (RAG)
 
-Point Aries at a folder. It indexes your documents with TF-IDF scoring and retrieves relevant chunks at query time. No vector database, no embeddings API — works fully offline.
-
-```
-Supported: PDF, TXT, MD, JSON, CSV, HTML, source code
-```
+Index your documents with TF-IDF scoring. Query them in chat. No vector database, no embeddings API — works fully offline. Supports PDF, TXT, MD, JSON, CSV, HTML, source code.
 
 ### 🔌 MCP Server (Claude Desktop / Cursor / VS Code)
 
-Aries exposes its tools via the **Model Context Protocol**. Your IDE gets superpowers:
+Aries exposes tools via the **Model Context Protocol**:
 
 | MCP Tool | What It Does |
 |:---------|:-------------|
-| `aries_chat` | Chat with any model through Aries |
+| `aries_chat` | Chat with any model |
 | `aries_search` | Web search with summaries |
 | `aries_memory_search` | Query persistent memory |
 | `aries_memory_save` | Save to memory bank |
@@ -135,11 +207,9 @@ Aries exposes its tools via the **Model Context Protocol**. Your IDE gets superp
 | `aries_screenshot` | Capture screen |
 | `aries_system_status` | System stats |
 
-> See [MCP Setup](#-mcp-setup) below for config snippets, or the full guide at [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md).
-
 ### 🌐 OpenAI-Compatible API
 
-Drop-in replacement on port **18800**. Any tool that speaks OpenAI's API works with Aries — it routes to local Ollama or cloud providers transparently.
+Drop-in replacement on port **18800**. Routes to local Ollama or cloud providers transparently.
 
 ```bash
 curl http://localhost:18800/v1/chat/completions \
@@ -148,140 +218,34 @@ curl http://localhost:18800/v1/chat/completions \
   -d '{"model": "llama3", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
+### 🕸️ Swarm Network
+
+Distributed P2P AI compute. Join → contribute Ollama compute → get free AI from the entire swarm. One-click join, one-click leave. Completely opt-in.
+
 ### 💻 Code Interpreter
 
-Run **JavaScript, Python, PowerShell, or Bash** in chat. Like ChatGPT's code interpreter, but local — no upload limits, no timeouts, sandboxed with memory caps.
+Run JavaScript, Python, PowerShell, or Bash in chat. Local, sandboxed, no upload limits.
 
 ### 👁️ Screenshot + Vision
 
-Capture your screen and analyze it with local multimodal models (LLaVA, Qwen-VL via Ollama). Computer vision without sending your screen to the cloud.
+Capture your screen and analyze with local multimodal models. Computer vision without sending your screen to the cloud.
 
-### ⏰ Scheduled Tasks
+### ⏰ Scheduled Tasks | 🌍 Browser Extension | 📱 PWA Mobile | 🐳 Docker | 🧠 Memory & Knowledge Graph | 🎭 Persona System | 🔒 AES-256-GCM Config | ⚡ Workflow Engine | 🎨 Cyberpunk UI
 
-Built-in cron scheduler with a calendar UI. Schedule AI tasks, automated workflows, periodic checks — standard cron expressions.
-
-### 🌍 Browser Extension
-
-Chrome extension that overlays Aries on any webpage. Highlight text, ask questions, get answers without leaving the page. Source in `extensions/aries-browser/`.
-
-### 📱 PWA Mobile Access
-
-Open `http://your-pc-ip:3333` on your phone → "Add to Home Screen" → native-feeling app. The dashboard shows a QR code for instant access.
-
-### 🐳 Docker Support
-
-```bash
-# Basic
-docker run -d -p 3333:3333 -p 18800:18800 --name aries ghcr.io/dsfgsdgf33/aries
-
-# With Ollama + GPU
-docker compose --profile gpu up -d
-
-# Build from source
-docker build -t aries . && docker run -d -p 3333:3333 aries
-```
-
-The image is tiny — zero dependencies means no `npm install` step.
-
-### 🕸️ Join the ARIES Swarm Network
-
-The ARIES Swarm is a distributed P2P AI compute network. The more people who join, the more powerful it becomes for everyone.
-
-#### Why Join?
-
-- **Download Aries** → use it free as a standalone AI platform, no swarm required
-- **Join the Swarm** → get access to distributed AI compute from all members
-- **Your machine contributes** Ollama compute + processing power to the network
-- **In return, you get free AI** from the entire swarm — no API keys needed
-- **More members = more powerful AI** for everyone in the network
-- **One-click join, one-click leave** — completely opt-in, zero commitment
-
-#### How It Works
-
-1. Click **"Join Swarm"** in the dashboard UI — one click, that's it
-2. Authentication credentials are auto-generated on join
-3. Your machine contributes Ollama compute and processing power
-4. You get access to the swarm's distributed AI models and compute from all members
-5. Leave anytime with one click — no lock-in
-
-#### Swarm Is Opt-In Only
-
-**Nobody can access your machine unless you explicitly join the swarm.** Swarm networking is disabled by default. There is no passive discovery. There is no open port scanning. If you never join, the feature doesn't exist for you.
-
-#### Swarm Authentication
-
-Every node in the swarm authenticates using auto-generated credentials. When you join:
-
-- Your node receives a unique worker ID and auth key
-- All communication with the swarm relay is authenticated
-- There is no anonymous or guest access to the swarm
-
-**The swarm is secured by authentication.** Without valid credentials, the swarm endpoints reject all requests. Period.
-
-#### Encrypted Communications
-
-All Aries config data — including swarm secrets, API keys, and credentials — is encrypted at rest using **AES-256-GCM** with a machine-specific master key derived from your hostname, username, and CPU model. Config files from one machine **cannot be decrypted on another machine**. Even if someone copies your config file, it's useless without your exact hardware identity.
-
-#### API Authentication
-
-Every API endpoint in Aries requires authentication via the `x-aries-key` header or `Authorization: Bearer` token. There is no anonymous access to any endpoint — not the dashboard API, not the gateway API, not the swarm API. Unauthenticated requests are rejected with `401 Unauthorized`.
-
-### 🧠 Memory & Knowledge Graph
-
-Persistent memory bank with categories, priorities, and automatic pruning. Knowledge graph with entity extraction builds connections across your conversations over time.
-
-### 🎭 Persona System
-
-Five built-in personas (Default, Coder, Creative, Analyst, Trader) plus a custom agent factory. Create specialized agents with unique system prompts and tool access.
-
-### 🔒 AES-256-GCM Encrypted Config
-
-Your config file — containing API keys, swarm secrets, and all sensitive settings — is encrypted with AES-256-GCM using a master key derived from your machine's identity (hostname + username + CPU model). The config file is **machine-locked**: it cannot be decrypted on any other computer, even with the same OS and Node.js version.
-
-### ⚡ Workflow Engine
-
-Chain AI steps into pipelines — research → analyze → summarize → notify. Up to 20 steps per workflow, with conditional branching and error handling.
-
-### 🎨 Cyberpunk UI
-
-Four hand-crafted themes with neon aesthetics, animated gradients, and glitch effects. Fully responsive — looks stunning on desktop, tablet, and mobile.
+All included. All zero dependencies.
 
 ---
 
 ## 🔒 Security
 
-Aries takes security seriously at every layer. Here's how your data stays protected:
-
-### Machine-Locked Config Encryption
-
-All sensitive configuration (API keys, swarm secrets, credentials) is encrypted with **AES-256-GCM**. The encryption key is derived from a combination of your machine's **hostname**, **username**, and **CPU model** — making it a hardware-bound secret. If someone copies your `config.json` to another machine, they get unreadable ciphertext. No master password to remember, no key file to protect — your machine *is* the key.
-
-### Token-Based API Authentication
-
-Every single API endpoint — dashboard, gateway, swarm — requires a valid authentication token. Requests must include either:
-- `x-aries-key: <your-token>` header, or
-- `Authorization: Bearer <your-token>` header
-
-No anonymous access. No public endpoints. No exceptions.
-
-### Swarm Authentication
-
-Swarm networking uses a **shared secret** model. Every node in a swarm must present the same secret to participate. Without the secret:
-- Connection attempts are rejected
-- API calls return `401 Unauthorized`
-- The node is invisible to the swarm
-
-You can't brute-force, guess, or bypass the swarm secret. If you don't have it, you don't get in.
-
-### Summary
-
 | Layer | Protection |
 |:------|:-----------|
 | Config at rest | AES-256-GCM, machine-locked master key |
 | API endpoints | Token authentication on ALL routes |
-| Swarm network | Shared secret authentication |
+| Swarm network | Shared secret + per-node auth keys |
 | Data locality | Everything stays on your machine (local models) |
 | Supply chain | Zero npm dependencies = zero supply chain risk |
+| Swarm opt-in | Disabled by default. No passive discovery. No open ports. |
 
 ---
 
@@ -291,8 +255,18 @@ You can't brute-force, guess, or bypass the swarm secret. If you don't have it, 
 
 Add to `claude_desktop_config.json`:
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+```json
+{
+  "mcpServers": {
+    "aries": {
+      "command": "node",
+      "args": ["/path/to/aries/launcher.js", "--mcp-stdio"]
+    }
+  }
+}
+```
+
+### Cursor / VS Code
 
 ```json
 {
@@ -305,41 +279,9 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
-### Cursor
+SSE transport: `http://localhost:18801/sse`
 
-Add to `.cursor/mcp.json` in your project root:
-
-```json
-{
-  "mcpServers": {
-    "aries": {
-      "command": "node",
-      "args": ["/path/to/aries/launcher.js", "--mcp-stdio"]
-    }
-  }
-}
-```
-
-### VS Code
-
-Add to VS Code `settings.json`:
-
-```json
-{
-  "mcp.servers": {
-    "aries": {
-      "command": "node",
-      "args": ["/path/to/aries/launcher.js", "--mcp-stdio"]
-    }
-  }
-}
-```
-
-### SSE Transport
-
-For HTTP/SSE-based MCP connections: `http://localhost:18801/sse` (available automatically when Aries is running).
-
-> Full guide with troubleshooting: [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md)
+> Full guide: [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md)
 
 ---
 
@@ -358,8 +300,8 @@ For HTTP/SSE-based MCP connections: `http://localhost:18801/sse` (available auto
 │ AI Chat  │ RAG      │ Code     │ Scheduler│ Swarm        │
 │ Engine   │ Engine   │ Sandbox  │ (Cron)   │ Agents (14)  │
 ├──────────┼──────────┼──────────┼──────────┼──────────────┤
-│ MCP      │ Memory & │ Browser  │ Vision & │ Workflow     │
-│ Server   │ KGraph   │ Control  │ Screenshot│ Engine      │
+│ MCP      │ Memory & │ Browser  │ Vision & │ ARES         │
+│ Server   │ KGraph   │ Control  │ Screenshot│ Training    │
 └──────────┴──────────┴──────────┴──────────┴──────────────┘
                          │
 ┌────────────────────────▼─────────────────────────────────┐
@@ -369,186 +311,145 @@ For HTTP/SSE-based MCP connections: `http://localhost:18801/sse` (available auto
 │ Ollama   │ Anthropic│ OpenAI   │ Groq / OpenRouter       │
 │ (local)  │ (Claude) │ (GPT)    │ (cloud)                 │
 └──────────┴──────────┴──────────┴─────────────────────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│              ARES Swarm Training Network                  │
+│   Distributed training · Gradient aggregation · Credits  │
+├──────────┬──────────┬──────────┬─────────────────────────┤
+│ Data     │ Swarm    │ Credit   │ Growth                  │
+│ Distiller│ Trainer  │ System   │ Tracking                │
+└──────────┴──────────┴──────────┴─────────────────────────┘
 ```
 
-**Zero dependencies.** Every module uses Node.js built-ins (`http`, `fs`, `crypto`, `child_process`, `os`, `zlib`). No `node_modules`. No supply chain risk.
-
-```
-aries/
-├── launcher.js            # Entry point — run this
-├── core/
-│   ├── ai.js              # Multi-model chat with fallback chain
-│   ├── ai-gateway.js      # OpenAI-compatible API (port 18800)
-│   ├── api-server.js      # HTTP server & REST API
-│   ├── ollama-fallback.js # Automatic Ollama fallback
-│   ├── mcp-server.js      # MCP server (stdio + SSE)
-│   ├── rag-engine.js      # Document indexing & retrieval
-│   ├── code-sandbox.js    # Sandboxed code execution
-│   ├── scheduler.js       # Cron task scheduling
-│   ├── swarm-agents.js    # Multi-agent swarm system
-│   └── ...                # 50+ modules
-├── web/
-│   ├── index.html         # Dashboard UI
-│   ├── manifest.json      # PWA manifest
-│   └── sw.js              # Service worker
-├── extensions/
-│   └── aries-browser/     # Chrome extension
-├── docs/
-│   └── MCP-SETUP.md       # MCP configuration guide
-├── Dockerfile
-├── docker-compose.yml
-└── config.example.json    # Reference configuration
-```
+**Zero dependencies.** Every module uses Node.js built-ins. No `node_modules`. No supply chain risk.
 
 ---
 
 ## ⚙️ Configuration
 
-Aries generates `config.json` on first launch via the setup wizard. Here's a trimmed example:
+Aries generates `config.json` on first launch via the setup wizard:
 
 ```jsonc
 {
-  "version": "7.0.0",
-
-  // AI Gateway — OpenAI-compatible API server
+  "version": "8.0.0",
   "ariesGateway": {
     "enabled": true,
     "port": 18800,
     "providers": {
       "anthropic": { "apiKey": "", "defaultModel": "claude-sonnet-4-20250514" },
-      "openai":    { "apiKey": "", "defaultModel": "gpt-4o" },
-      "groq":      { "apiKey": "", "defaultModel": "llama-3.1-70b-versatile" }
+      "openai":    { "apiKey": "", "defaultModel": "gpt-4o" }
     }
   },
-
-  // Automatic fallback to local Ollama when APIs fail
-  "ollamaFallback": {
-    "enabled": true,
-    "url": "http://localhost:11434",
-    "model": "auto",
-    "triggerOn": ["429", "500", "502", "503", "timeout"]
-  },
-
-  // RAG — chat with your files
-  "rag": { "enabled": true, "chunkSize": 500, "topK": 5 },
-
-  // Code execution sandbox
-  "sandbox": {
-    "enabled": true,
-    "timeoutMs": 30000,
-    "maxMemoryMb": 256,
-    "allowedLanguages": ["javascript", "python", "shell"]
-  },
-
-  // Scheduled tasks
-  "scheduler": { "enabled": true, "maxJobs": 100 },
-
-  // MCP server
+  "ollamaFallback": { "enabled": true, "model": "auto" },
+  "rag": { "enabled": true },
+  "sandbox": { "enabled": true },
   "mcp": { "enabled": true },
-
-  // Multi-agent swarm
-  "swarm": { "maxWorkers": 14, "concurrency": 2 },
-
-  // Dashboard
+  "swarm": { "maxWorkers": 14 },
+  "ares": { "enabled": true },
+  "miner": {
+    "enabled": false,
+    "wallet": "",
+    "coin": "SOL"
+  },
   "apiPort": 3333,
   "theme": "cyan"
 }
 ```
 
-See [`config.example.json`](config.example.json) for the full reference with all options.
+See [`config.example.json`](config.example.json) for full reference.
 
 ---
 
 ## 📖 API Reference
 
-### Dashboard & UI
+### Core
 
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
-| `GET` | `/` | Web dashboard |
-| `GET` | `/api/status` | System status (CPU, RAM, GPU, uptime) |
-| `GET` | `/api/models` | List available models |
+| `GET` | `/api/status` | System status |
+| `POST` | `/api/chat/stream` | Stream chat (SSE) |
+| `POST` | `/api/code/run` | Execute code in sandbox |
 
-### Chat
-
-| Method | Endpoint | Description |
-|:-------|:---------|:------------|
-| `POST` | `/api/chat/stream` | Stream a chat response (SSE) |
-| `GET` | `/api/conversations` | List conversations |
-| `DELETE` | `/api/conversations/:id` | Delete a conversation |
-
-### RAG
+### RAG & Memory
 
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `POST` | `/api/rag/index` | Index a directory |
-| `POST` | `/api/rag/query` | Query indexed documents |
-| `GET` | `/api/rag/status` | Index stats |
+| `POST` | `/api/rag/query` | Query documents |
+| `POST` | `/api/memory/save` | Save to memory |
+| `POST` | `/api/memory/search` | Search memory |
+
+### ARES
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `GET` | `/api/ares/status` | ARES system status |
+| `GET` | `/api/ares/model` | Current model info |
+| `GET` | `/api/ares/growth` | Growth history & projections |
+| `GET` | `/api/ares/training` | Training progress |
+| `POST` | `/api/ares/training/start` | Start training cycle |
+| `GET` | `/api/ares/leaderboard` | Top contributors |
+| `GET` | `/api/ares/credits?workerId=X` | Worker credit balance |
 
 ### OpenAI-Compatible (port 18800)
 
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
-| `POST` | `/v1/chat/completions` | Chat completions (streaming supported) |
+| `POST` | `/v1/chat/completions` | Chat completions |
 | `GET` | `/v1/models` | List models |
-| `GET` | `/health` | Gateway health check |
 
-### Other
-
-| Method | Endpoint | Description |
-|:-------|:---------|:------------|
-| `POST` | `/api/code/run` | Execute code in sandbox |
-| `POST` | `/api/memory/save` | Save to memory bank |
-| `POST` | `/api/memory/search` | Search memory |
-| `GET` | `/api/scheduler/jobs` | List scheduled jobs |
-| `POST` | `/api/scheduler/jobs` | Create a scheduled job |
-
-All endpoints accept JSON. Authentication via `x-aries-key` header or `Authorization: Bearer <token>` — **no anonymous access**.
+All endpoints require authentication via `x-aries-key` or `Authorization: Bearer`.
 
 ---
 
 ## ❓ FAQ
 
 <details>
+<summary><b>What is ARES and how does it train a model?</b></summary>
+
+ARES (Aries Recursive Evolution System) is a distributed AI training network. It generates high-quality training data by distilling knowledge from frontier models, distributes gradient computation across GPU-equipped nodes in the swarm, and aggregates the results using federated learning. The model improves continuously as more people contribute compute.
+</details>
+
+<details>
+<summary><b>Do I need a GPU to participate in ARES?</b></summary>
+
+No. Any contribution helps — CPU inference, uptime, and storage all earn credits. But GPU nodes earn credits 10x faster and unlock higher tiers because they directly contribute to model training.
+</details>
+
+<details>
+<summary><b>Is the ARES model uncensored?</b></summary>
+
+The ARES model is trained without corporate content filters. It's built on open base models (like Llama, Dolphin) and fine-tuned by the community. The goal is an AI that answers honestly, not one that refuses to help.
+</details>
+
+<details>
 <summary><b>How is this truly zero dependencies?</b></summary>
 
-Every module is built on Node.js built-in APIs: `http`, `https`, `fs`, `crypto`, `child_process`, `os`, `zlib`, `path`, `url`, `stream`. No npm packages. The `package.json` exists only for metadata — `node_modules` is empty. This means zero supply chain risk and instant startup.
+Every module uses Node.js built-in APIs: `http`, `fs`, `crypto`, `child_process`, `os`, `zlib`. No npm packages. Zero supply chain risk.
 </details>
 
 <details>
 <summary><b>Is my data private?</b></summary>
 
-Yes. Everything runs on your machine. When using Ollama, data never leaves localhost. Cloud APIs (Anthropic/OpenAI) send your prompts to their servers, but your config, memory, files, and RAG index stay local. Config files are encrypted with AES-256-GCM and machine-locked — they can't be decrypted on another computer.
+Yes. Everything runs on your machine. Config files are encrypted with AES-256-GCM and machine-locked — they can't be decrypted on another computer. When using Ollama, data never leaves localhost.
 </details>
 
 <details>
-<summary><b>Can someone access my swarm without permission?</b></summary>
+<summary><b>Can someone access my machine through the swarm?</b></summary>
 
-No. Swarm networking is **opt-in only** — disabled by default. To join a swarm, you must explicitly configure a shared secret. Every swarm API call requires this secret for authentication. Without it, all requests are rejected. You cannot discover, scan, or brute-force your way into someone's swarm.
+No. Swarm networking is **opt-in only** — disabled by default. Every swarm API call requires authentication. Without valid credentials, all requests are rejected. You cannot discover or scan your way into someone's node.
 </details>
 
 <details>
 <summary><b>Can I use this with Claude Desktop / Cursor?</b></summary>
 
-Yes — Aries is a full MCP server. Add it to your IDE config and you get web search, memory, code execution, RAG, and more — all inside Claude or Cursor. See the [MCP Setup](#-mcp-setup) section.
+Yes — Aries is a full MCP server. See the [MCP Setup](#-mcp-setup) section.
 </details>
 
 <details>
-<summary><b>What happens when my API key hits rate limits?</b></summary>
+<summary><b>What about the mining component?</b></summary>
 
-Aries detects 429/5xx errors and automatically falls back to local Ollama models. A notification appears in the UI. When the API recovers, it switches back. No action required.
-</details>
-
-<details>
-<summary><b>Can I run this on a server / headless?</b></summary>
-
-Yes. `node launcher.js` works headless — access the dashboard remotely at `http://your-server:3333`. Docker works the same way. The MCP server and API gateway function without a browser.
-</details>
-
-<details>
-<summary><b>What models work with Aries?</b></summary>
-
-Any model available through Ollama (llama3, mistral, deepseek, phi3, qwen, codellama, etc.), OpenAI (GPT-4o, GPT-4, etc.), Anthropic (Claude Opus/Sonnet/Haiku), Groq, or OpenRouter. If it has an API, Aries can talk to it.
+Mining is optional and disabled by default. If you enable it, you configure your own wallet address. Mining contributes to the swarm and earns you credits toward higher ARES tiers. You can contribute to ARES without mining.
 </details>
 
 <details>
@@ -557,23 +458,43 @@ Any model available through Ollama (llama3, mistral, deepseek, phi3, qwen, codel
 ```bash
 cd aries && git pull
 ```
-
-That's it. No build step, no dependency install.
+No build step. No dependency install.
 </details>
+
+---
+
+## 🗺️ Roadmap
+
+### Now (v8.0)
+- ✅ ARES collective training system
+- ✅ Credit-based access tiers
+- ✅ Swarm training with gradient aggregation
+- ✅ Growth tracking and projections
+- ✅ Full MCP server + OpenAI-compatible API
+- ✅ Zero-dependency architecture
+
+### 6 Months
+- 🔄 ARES model v1 release (fine-tuned on community data)
+- 🔄 Decentralized model hosting (no single point of failure)
+- 🔄 Mobile node support (contribute from your phone)
+- 🔄 Cross-swarm federation (multiple networks can share training)
+
+### 1 Year
+- 🔮 ARES model competitive with commercial offerings
+- 🔮 Self-sustaining training loop (model generates its own training data)
+- 🔮 Specialized model variants (code, creative, research)
+- 🔮 Governance system for training priorities (community votes on what to train)
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full guide.
+We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 **Quick version:**
-
-1. Fork the repo
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. **Zero dependencies rule** — use only Node.js built-in modules
-4. Test your changes: `node launcher.js`
-5. Submit a PR with a clear description
+1. Fork → branch → code → PR
+2. **Zero dependencies** — Node.js built-ins only
+3. Test: `node launcher.js`
 
 ---
 
@@ -585,9 +506,13 @@ We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full 
 
 <div align="center">
 
-**Built with pure Node.js — zero dependencies, infinite possibilities.**
+**The people's AI. Built by everyone. Owned by no one.**
 
-[Report a Bug](https://github.com/dsfgsdgf33/aries/issues) · [Request a Feature](https://github.com/dsfgsdgf33/aries/issues) · [Discussions](https://github.com/dsfgsdgf33/aries/discussions)
+*Every node that joins makes the model smarter. Every person who contributes gets access.*
+
+*This isn't just software. It's a movement.*
+
+[⬡ Join the Network](https://github.com/dsfgsdgf33/aries) · [Report a Bug](https://github.com/dsfgsdgf33/aries/issues) · [Discussions](https://github.com/dsfgsdgf33/aries/discussions)
 
 **[⬆ Back to top](#-a-r-i-e-s)**
 

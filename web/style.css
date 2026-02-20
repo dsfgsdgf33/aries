@@ -452,19 +452,22 @@ body::after {
 .activity-item .activity-time { color: var(--text-muted); font-size: 10px; }
 
 /* ─── Agent Grid ─── */
-.agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 
 .agent-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px; transition: all var(--transition);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(10,10,26,0.95) 100%);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; transition: all 0.3s ease;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
 }
-.agent-card:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); transform: translateY(-2px); }
-.agent-card .agent-icon { font-size: 28px; margin-bottom: 8px; }
-.agent-card .agent-name { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 4px; }
-.agent-card .agent-role { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
-.agent-card .agent-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 4px; }
-.agent-card .agent-status.idle { background: rgba(0,255,136,0.1); color: var(--green); }
-.agent-card .agent-status.working { background: rgba(255,170,0,0.1); color: var(--yellow); }
+.agent-card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 15px var(--accent-glow); transform: translateY(-3px); }
+.agent-card .agent-icon { font-size: 28px; margin-bottom: 10px; }
+.agent-card .agent-name { font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 2px; letter-spacing: 0.5px; }
+.agent-card .agent-role { font-size: 10px; color: var(--text-dim); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.agent-card .agent-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 10px; border-radius: 12px; }
+.agent-card .agent-status.idle { background: rgba(0,255,136,0.08); color: var(--green); }
+.agent-card .agent-status.working { background: rgba(255,170,0,0.12); color: var(--yellow); animation: pulse-status 1.5s ease-in-out infinite; }
+@keyframes pulse-status { 0%,100% { opacity: 0.8; } 50% { opacity: 1; } }
 .agent-card .agent-meta { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
 /* ─── Swarm ─── */
