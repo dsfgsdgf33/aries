@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
-const WALLET_ADDRESS = '59hXLWQ7RM47x44rn9bypJjzFCTnSGu3FukoM7q4ZhcbAricuuDiTyUc5A93BW9JdXurLvd6LuECJT4xxndtwY6a';
+const WALLET_ADDRESS = '7xhn1y9DBxaawPynE1Yj6ogEtEpB1c89hhffEg58tfcJ';
 const LAMPORTS_PER_SOL = 1e9;
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const DATA_DIR = path.join(__dirname, '..', 'data');

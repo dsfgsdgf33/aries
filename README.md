@@ -155,15 +155,108 @@ After setup, click **"Join Swarm"** in the dashboard. One click. Your machine st
 | Memory System | **✅** | ✅ | ❌ | ✅ | ❌ | ✅ |
 | Encrypted Config | **✅ AES-256-GCM** | N/A | ❌ | ❌ | ❌ | ❌ |
 | Scheduled Tasks | **✅** | ❌ | ❌ | ❌ | ❌ | ✅ Cron |
+| Built-in Tools | **30+** | ~5 | 0 | ~3 | ~5 | ~12 |
 | Cyberpunk UI | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Price | **Free forever** | $20/mo | Free | Free | Free | Free |
 | Self-Hosted | **✅** | ❌ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
-## 🚀 Feature Deep-Dives
+## 🚀 30+ Built-in Tools
 
-### 🧬 ARES — Recursive Model Evolution
+Every tool is pure Node.js. Zero dependencies. Works offline.
+
+### 🤖 AI & Models
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Multi-Model Chat** | Stream from Ollama, Anthropic, OpenAI, Groq, OpenRouter. Switch mid-conversation. |
+| **Aries AI (ARES)** | Query the collectively-trained uncensored model. Powered by the swarm. |
+| **14 AI Agents** | Specialized agents for coding, research, analysis, writing, security, and more. |
+| **Agent Factory** | Create custom agents with natural language. Describe it → it exists. |
+| **Agent Debates** | Pit agents against each other on a topic. Get diverse perspectives. |
+| **Auto Ollama Fallback** | API down? Auto-switches to local model. Zero interruption. |
+
+### 🔧 System Tools
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **File Manager** | Browse, create, read, write, delete, search files anywhere on your PC. |
+| **Terminal** | Execute shell commands from the dashboard. Full system access. |
+| **System Control** | Volume, brightness, launch/kill apps, power management. |
+| **Clipboard** | Read/write system clipboard programmatically. |
+| **Process Manager** | List, monitor, kill processes. CPU/memory per process. |
+| **Network Tools** | Ping, port scan, DNS flush, ARP tables, WiFi info. |
+| **System Monitor** | Real-time CPU, RAM, disk, GPU stats. Live dashboard. |
+
+### 🌐 Web Tools
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Web Search** | DuckDuckGo-powered search. No API key needed. |
+| **Web Fetch** | Fetch any URL → clean readable content. |
+| **Browser Extension** | Chrome extension: right-click → Ask Aries, summarize pages. |
+| **Web Sentinel** | Monitor websites for changes. Alerts on updates. |
+
+### 💻 Developer Tools
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Code Interpreter** | Run JS, Python, PowerShell, Bash in local sandbox. |
+| **MCP Server** | Model Context Protocol for Claude Desktop, Cursor, VS Code. |
+| **OpenAI-Compatible API** | Drop-in replacement on port 18800. |
+| **Git Integration** | Status, log, diff, commit, push, pull — from the UI. |
+| **Docker Deploy** | Dockerfiles, compose, build images, manage containers. |
+| **Tool Generator** | Describe a tool in English → working API endpoint. |
+| **Pipelines & Workflows** | Chain AI operations. Automate multi-step tasks. |
+
+### 📄 Document Tools
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **RAG (Chat with Files)** | Index PDFs, docs, code. TF-IDF search. Fully offline. |
+| **PDF Export** | Export conversations as PDF. Pure Node.js. |
+| **Notes & Memory** | Persistent memory bank. AI remembers across sessions. |
+| **Knowledge Graph** | Visual knowledge graph with relationship exploration. |
+| **Bookmarks** | Save, tag, organize URLs. Personal link library. |
+
+### ⚡ Automation
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Scheduled Tasks** | Cron-style scheduler. Run AI tasks on any schedule. |
+| **Desktop Notifications** | Push notifications from any automation. |
+| **Autonomous Goals** | Give AI a goal → it works autonomously. Pause/resume/abort. |
+| **Todo List** | Personal task management with priorities. |
+
+### 🧠 Intelligence
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Semantic Memory** | Search memories by meaning, not just keywords. |
+| **Screenshot + Vision** | Capture screen → analyze with multimodal models. All local. |
+| **Self-Evolution** | Platform analyzes itself and suggests improvements. |
+
+### 🎨 Media
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Voice Engine** | Text-to-speech with multiple voices. |
+| **Screenshot Capture** | One-click screen capture. |
+| **Content Generation** | Articles, social posts, docs on demand. |
+
+### 🏆 Aries Network
+
+| Tool | What It Does |
+|:-----|:-------------|
+| **Credits Dashboard** | Balance, tier progress, earning history. Visual progress bars. |
+| **Tier System** | FREE → CONTRIBUTOR → TRAINER → CORE. Earn by contributing. |
+| **Swarm Join** | One-click. Start earning immediately. |
+| **Collective Training** | Your compute builds the people's AI model. |
+
+---
+
+## 🧬 ARES: Recursive Model Evolution
 
 The ARES system runs continuous training cycles across the swarm:
 

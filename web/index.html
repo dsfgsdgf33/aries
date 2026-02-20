@@ -60,6 +60,10 @@
         <a class="nav-item" data-panel="rag">&#x1F4C1; Files</a>
         <a class="nav-item" data-panel="agents">&#x1F916; Agents</a>
         <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
+        <a class="nav-item" data-panel="credits">&#x1F3C6; Credits</a>
+        <a class="nav-item" data-panel="todos">&#x2705; Tasks</a>
+        <a class="nav-item" data-panel="bookmarks">&#x1F516; Bookmarks</a>
+        <a class="nav-item" data-panel="git">&#x1F500; Git</a>
         <a class="nav-item" data-panel="aries-ai" id="navAriesAi" style="display:none">&#x1F9E0; Aries AI</a>
       </div>
       <!-- Admin-only tabs -->
@@ -917,6 +921,54 @@
             <div id="ariesAiStats"></div>
           </div>
         </div>
+      </section>
+
+      <!-- Credits Panel -->
+      <section id="panel-credits" class="panel">
+        <div class="panel-header"><h2>&#x1F3C6; Credits</h2><button class="btn-sm" onclick="window.aries.loadCredits()">&#x1F504; Refresh</button></div>
+        <div id="creditsContent" class="info-content"><div class="spinner"></div> Loading...</div>
+      </section>
+
+      <!-- Todos Panel -->
+      <section id="panel-todos" class="panel">
+        <div class="panel-header"><h2>&#x2705; Tasks</h2><button class="btn-sm" onclick="window.aries.loadTodos()">&#x1F504; Refresh</button></div>
+        <div style="display:flex;gap:8px;padding:0 16px 12px">
+          <input id="todoInput" placeholder="Add a task..." style="flex:1;padding:10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px" onkeydown="if(event.key==='Enter')window.aries.addTodo()" />
+          <select id="todoPriority" style="padding:8px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
+          <button class="btn-primary" onclick="window.aries.addTodo()">Add</button>
+        </div>
+        <div id="todosContent" class="info-content"></div>
+      </section>
+
+      <!-- Bookmarks Panel -->
+      <section id="panel-bookmarks" class="panel">
+        <div class="panel-header"><h2>&#x1F516; Bookmarks</h2><button class="btn-sm" onclick="window.aries.loadBookmarks()">&#x1F504; Refresh</button></div>
+        <div style="display:flex;gap:8px;padding:0 16px 12px">
+          <input id="bmUrl" placeholder="URL" style="flex:2;padding:10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px" />
+          <input id="bmTitle" placeholder="Title (optional)" style="flex:1;padding:10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px" />
+          <input id="bmTags" placeholder="Tags (comma-sep)" style="flex:1;padding:10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px" />
+          <button class="btn-primary" onclick="window.aries.addBookmark()">Save</button>
+        </div>
+        <div id="bookmarksContent" class="info-content"></div>
+      </section>
+
+      <!-- Git Panel -->
+      <section id="panel-git" class="panel">
+        <div class="panel-header"><h2>&#x1F500; Git</h2><button class="btn-sm" onclick="window.aries.loadGit()">&#x1F504; Refresh</button></div>
+        <div style="padding:0 16px 12px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="gitCmd" placeholder="git command (e.g. status, log, diff)" style="flex:1;padding:10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px" onkeydown="if(event.key==='Enter')window.aries.runGit()" />
+            <button class="btn-primary" onclick="window.aries.runGit()">Run</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='status';window.aries.runGit()">Status</button>
+            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='log --oneline -20';window.aries.runGit()">Log</button>
+            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='diff';window.aries.runGit()">Diff</button>
+            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='branch -a';window.aries.runGit()">Branches</button>
+            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='remote -v';window.aries.runGit()">Remotes</button>
+          </div>
+        </div>
+        <div id="gitContent" class="info-content" style="font-family:monospace;white-space:pre-wrap;font-size:12px"></div>
       </section>
 
       <!-- Notification Panel (overlay) -->

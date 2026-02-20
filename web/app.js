@@ -280,6 +280,10 @@
       case 'cloud-auto': loadCloudAuto(); break;
       case 'vbox': loadVbox(); break;
       case 'cross-site': loadCrossSite(); break;
+      case 'credits': loadCredits(); break;
+      case 'todos': loadTodos(); break;
+      case 'bookmarks': loadBookmarks(); break;
+      case 'git': loadGit(); break;
       case 'terminal': break;
     }
   }
@@ -6315,6 +6319,117 @@
       }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
     }
 
+    // ═══ Credits ═══
+    function loadCredits() {
+      var el = document.getElementById('creditsContent'); if (!el) return;
+      api('GET', 'credits').then(function(d) {
+        var tiers = ['FREE', 'CONTRIBUTOR', 'TRAINER', 'CORE'];
+        var tierColors = ['#666', '#0ff', '#f0f', '#ff0'];
+        var ci = d.tierIndex || 0;
+        var html = '<div style="text-align:center;padding:30px 20px">';
+        html += '<div style="font-size:64px;margin-bottom:12px">&#x1F3C6;</div>';
+        html += '<div style="font-size:48px;font-weight:bold;color:var(--accent);margin-bottom:4px">' + (d.balance || 0).toLocaleString() + '</div>';
+        html += '<div style="color:var(--text-dim);margin-bottom:24px">CREDITS</div>';
+        // Tier badge
+        html += '<div style="display:inline-block;padding:6px 20px;border:2px solid ' + tierColors[ci] + ';border-radius:20px;color:' + tierColors[ci] + ';font-weight:bold;font-size:14px;margin-bottom:20px">' + (d.tier || 'FREE') + ' TIER</div>';
+        // Progress bar
+        if (d.nextTier) {
+          html += '<div style="max-width:400px;margin:0 auto 24px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:4px"><span>' + d.tier + '</span><span>' + d.nextTier + ' (' + (d.nextTierMin || 0).toLocaleString() + ' credits)</span></div>';
+          html += '<div style="background:#1a1a2e;border-radius:10px;height:12px;overflow:hidden"><div style="background:linear-gradient(90deg,' + tierColors[ci] + ',' + tierColors[ci+1] + ');width:' + (d.progress || 0) + '%;height:100%;border-radius:10px;transition:width 0.5s"></div></div></div>';
+        }
+        // Earning rates
+        html += '<div style="max-width:500px;margin:0 auto 24px;text-align:left">';
+        html += '<h3 style="color:var(--accent);margin:0 0 12px">&#x1F4B0; How to Earn Credits</h3>';
+        var rates = [['Join network', '+50 welcome bonus'], ['Compute contribution', '+1/hour'], ['Complete AI task', '+5-50 per task'], ['Share model training', '+10/session'], ['Daily active bonus', '+5/day'], ['Refer a friend', '+25 each']];
+        for (var i = 0; i < rates.length; i++) html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a2e"><span style="color:var(--text)">' + rates[i][0] + '</span><span style="color:#0f0;font-weight:bold">' + rates[i][1] + '</span></div>';
+        html += '</div>';
+        // Join button or stats
+        if (!d.joined) {
+          html += '<button class="btn-primary" style="padding:14px 40px;font-size:16px;border-radius:12px" onclick="window.aries.joinNetwork()">&#x1F680; Join Aries Network</button>';
+        } else {
+          html += '<div style="max-width:500px;margin:0 auto;text-align:left"><h3 style="color:var(--accent);margin:0 0 12px">&#x1F4CA; Your Stats</h3>';
+          var s = d.stats || {};
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
+          html += '<div style="background:#111;border:1px solid #1a1a2e;border-radius:10px;padding:16px;text-align:center"><div style="font-size:24px;color:var(--accent);font-weight:bold">' + (s.computeHours || 0) + '</div><div style="color:var(--text-dim);font-size:11px">Compute Hours</div></div>';
+          html += '<div style="background:#111;border:1px solid #1a1a2e;border-radius:10px;padding:16px;text-align:center"><div style="font-size:24px;color:var(--accent);font-weight:bold">' + (s.tasksCompleted || 0) + '</div><div style="color:var(--text-dim);font-size:11px">Tasks Done</div></div>';
+          html += '<div style="background:#111;border:1px solid #1a1a2e;border-radius:10px;padding:16px;text-align:center"><div style="font-size:24px;color:var(--accent);font-weight:bold">' + (s.daysActive || 0) + '</div><div style="color:var(--text-dim);font-size:11px">Days Active</div></div>';
+          html += '</div></div>';
+        }
+        // History
+        if (d.history && d.history.length) {
+          html += '<div style="max-width:500px;margin:24px auto 0;text-align:left"><h3 style="color:var(--accent);margin:0 0 12px">&#x1F4DC; Recent Activity</h3>';
+          for (var h = 0; h < Math.min(d.history.length, 10); h++) {
+            var e = d.history[h]; var isEarn = e.type === 'earn';
+            html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #111"><span style="color:var(--text-dim);font-size:12px">' + escapeHtml(e.reason || '') + '</span><span style="color:' + (isEarn ? '#0f0' : '#f55') + ';font-weight:bold">' + (isEarn ? '+' : '-') + (e.amount || 0) + '</span></div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      }).catch(function() { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">Failed to load credits</div>'; });
+    }
+    function joinNetwork() { api('POST', 'credits', { action: 'join' }).then(function() { toast('Welcome to Aries Network! +50 credits', 'success'); loadCredits(); }).catch(function(e) { toast(e.message, 'error'); }); }
+
+    // ═══ Todos ═══
+    function loadTodos() {
+      var el = document.getElementById('todosContent'); if (!el) return;
+      api('GET', 'todos').then(function(d) {
+        var todos = d.todos || [];
+        if (!todos.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No tasks yet. Add one above!</div>'; return; }
+        var html = '';
+        var priColors = { high: '#f55', normal: 'var(--accent)', low: '#666' };
+        for (var i = 0; i < todos.length; i++) {
+          var t = todos[i];
+          html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #1a1a2e;opacity:' + (t.done ? '0.5' : '1') + '">';
+          html += '<input type="checkbox" ' + (t.done ? 'checked' : '') + ' onchange="window.aries.toggleTodo(\'' + t.id + '\')" style="width:18px;height:18px;accent-color:var(--accent)" />';
+          html += '<span style="flex:1;text-decoration:' + (t.done ? 'line-through' : 'none') + ';color:var(--text)">' + escapeHtml(t.text) + '</span>';
+          html += '<span style="font-size:10px;color:' + (priColors[t.priority] || priColors.normal) + ';text-transform:uppercase">' + (t.priority || 'normal') + '</span>';
+          html += '<button class="btn-sm" onclick="window.aries.deleteTodo(\'' + t.id + '\')" style="color:#f55">&#x2716;</button>';
+          html += '</div>';
+        }
+        el.innerHTML = html;
+      }).catch(function() { el.innerHTML = '<div style="color:#f55">Failed to load tasks</div>'; });
+    }
+    function addTodo() { var inp = document.getElementById('todoInput'); var pri = document.getElementById('todoPriority'); if (!inp || !inp.value.trim()) return; api('POST', 'todos', { action: 'add', text: inp.value.trim(), priority: pri ? pri.value : 'normal' }).then(function() { inp.value = ''; loadTodos(); }).catch(function(e) { toast(e.message, 'error'); }); }
+    function toggleTodo(id) { api('POST', 'todos', { action: 'toggle', id: id }).then(function() { loadTodos(); }); }
+    function deleteTodo(id) { api('POST', 'todos', { action: 'delete', id: id }).then(function() { loadTodos(); }); }
+
+    // ═══ Bookmarks ═══
+    function loadBookmarks() {
+      var el = document.getElementById('bookmarksContent'); if (!el) return;
+      api('GET', 'bookmarks').then(function(d) {
+        var bms = d.bookmarks || [];
+        if (!bms.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No bookmarks yet. Save one above!</div>'; return; }
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:8px">';
+        for (var i = 0; i < bms.length; i++) {
+          var b = bms[i];
+          html += '<div style="background:#111;border:1px solid #1a1a2e;border-radius:10px;padding:14px">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:start"><a href="' + escapeHtml(b.url) + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:bold;word-break:break-all">' + escapeHtml(b.title || b.url) + '</a>';
+          html += '<button class="btn-sm" onclick="window.aries.deleteBookmark(\'' + b.id + '\')" style="color:#f55;flex-shrink:0">&#x2716;</button></div>';
+          html += '<div style="color:var(--text-dim);font-size:11px;margin-top:4px;word-break:break-all">' + escapeHtml(b.url) + '</div>';
+          if (b.tags && b.tags.length) { html += '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'; for (var t = 0; t < b.tags.length; t++) html += '<span style="background:#1a1a2e;color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px">' + escapeHtml(b.tags[t]) + '</span>'; html += '</div>'; }
+          html += '</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      }).catch(function() { el.innerHTML = '<div style="color:#f55">Failed to load bookmarks</div>'; });
+    }
+    function addBookmark() { var u = document.getElementById('bmUrl'), t = document.getElementById('bmTitle'), tg = document.getElementById('bmTags'); if (!u || !u.value.trim()) return; var tags = tg && tg.value ? tg.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : []; api('POST', 'bookmarks', { action: 'add', url: u.value.trim(), title: t ? t.value.trim() : '', tags: tags }).then(function() { u.value = ''; if(t) t.value = ''; if(tg) tg.value = ''; loadBookmarks(); }).catch(function(e) { toast(e.message, 'error'); }); }
+    function deleteBookmark(id) { api('POST', 'bookmarks', { action: 'delete', id: id }).then(function() { loadBookmarks(); }); }
+
+    // ═══ Git ═══
+    function loadGit() {
+      var el = document.getElementById('gitContent'); if (!el) return;
+      api('GET', 'git/status').then(function(d) {
+        if (d.error) { el.innerHTML = '<span style="color:#f55">' + escapeHtml(d.error) + '</span>'; return; }
+        var html = '<span style="color:var(--accent);font-weight:bold">Branch: ' + escapeHtml(d.branch || 'unknown') + '</span>\n\n';
+        if (d.files && d.files.length) { html += '<span style="color:#0f0">Changed files:</span>\n'; for (var i = 0; i < d.files.length; i++) html += '  <span style="color:#ff0">' + escapeHtml(d.files[i].status) + '</span> ' + escapeHtml(d.files[i].file) + '\n'; }
+        else html += '<span style="color:#0f0">Working tree clean</span>\n';
+        el.innerHTML = html;
+      }).catch(function(e) { el.innerHTML = '<span style="color:#f55">' + escapeHtml(e.message) + '</span>'; });
+    }
+    function runGit() { var inp = document.getElementById('gitCmd'); if (!inp || !inp.value.trim()) return; var el = document.getElementById('gitContent'); el.innerHTML = '<div class="spinner"></div> Running...'; api('POST', 'git/command', { command: inp.value.trim() }).then(function(d) { var html = ''; if (d.output) html += escapeHtml(d.output); if (d.error) html += '\n<span style="color:#f55">' + escapeHtml(d.error) + '</span>'; el.innerHTML = html || '<span style="color:var(--text-dim)">No output</span>'; }).catch(function(e) { el.innerHTML = '<span style="color:#f55">' + escapeHtml(e.message) + '</span>'; }); }
+
     window.aries = {
       switchPanel: switchPanel, refreshAgents: refreshAgents, openAgentDetail: openAgentDetail, closeAgentDetail: closeAgentDetail, sendAgentTask: sendAgentTask, refreshSwarm: refreshSwarm,
       submitSwarmTask: submitSwarmTask, refreshLogs: refreshLogs, createBackup: createBackup,
@@ -6415,6 +6530,10 @@
       loadAres: loadAres, aresGenerateData: aresGenerateData,
       aresStartCycle: aresStartCycle, aresSetSchedule: aresSetSchedule,
       refreshAriesAi: refreshAriesAi, saveApiKeys: saveApiKeys, settingsPullModel: settingsPullModel,
+      loadCredits: loadCredits, joinNetwork: joinNetwork,
+      loadTodos: loadTodos, addTodo: addTodo, toggleTodo: toggleTodo, deleteTodo: deleteTodo,
+      loadBookmarks: loadBookmarks, addBookmark: addBookmark, deleteBookmark: deleteBookmark,
+      loadGit: loadGit, runGit: runGit,
       _loadedPanels: _loadedPanels, _toast: toast
     };
   }

@@ -7153,6 +7153,103 @@ undefined
       return json(res, 200, { specializations: si.getSpecializations() });
     }
 
+    // ═══ Git Integration ═══
+    if (method === 'GET' && reqPath === '/api/git/status') {
+      try { var { execSync } = require('child_process'); var out = execSync('git status --porcelain', { cwd: body && body.path || '.', timeout: 10000 }).toString(); var branch = execSync('git branch --show-current', { cwd: body && body.path || '.', timeout: 5000 }).toString().trim(); return json(res, 200, { branch: branch, files: out.trim().split('\n').filter(Boolean).map(function(l) { return { status: l.substring(0,2).trim(), file: l.substring(3) }; }) }); } catch(e) { return json(res, 200, { error: e.message }); }
+    }
+    if (method === 'POST' && reqPath === '/api/git/command') {
+      try { var b = typeof body === 'string' ? JSON.parse(body) : body; var { execSync } = require('child_process'); var allowed = ['status','log','diff','branch','remote','stash','add','commit','push','pull','checkout','fetch','tag','clone']; var cmd = (b.command || '').split(' ')[0]; if (allowed.indexOf(cmd) === -1) return json(res, 400, { error: 'Command not allowed: ' + cmd }); var out = execSync('git ' + b.command, { cwd: b.path || '.', timeout: 30000, encoding: 'utf-8' }); return json(res, 200, { output: out }); } catch(e) { return json(res, 200, { output: e.stdout || '', error: e.stderr || e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/git/log') {
+      try { var { execSync } = require('child_process'); var out = execSync('git log --oneline -20', { timeout: 10000, encoding: 'utf-8' }); return json(res, 200, { log: out.trim().split('\n') }); } catch(e) { return json(res, 200, { error: e.message }); }
+    }
+
+    // ═══ Todo / Task List ═══
+    if (method === 'GET' && reqPath === '/api/todos') {
+      try { var todosFile = require('path').join(__dirname, '..', 'data', 'todos.json'); var todos = require('fs').existsSync(todosFile) ? JSON.parse(require('fs').readFileSync(todosFile, 'utf-8')) : []; return json(res, 200, { todos: todos }); } catch(e) { return json(res, 200, { todos: [] }); }
+    }
+    if (method === 'POST' && reqPath === '/api/todos') {
+      try { var b = typeof body === 'string' ? JSON.parse(body) : body; var todosFile = require('path').join(__dirname, '..', 'data', 'todos.json'); var todos = require('fs').existsSync(todosFile) ? JSON.parse(require('fs').readFileSync(todosFile, 'utf-8')) : []; if (b.action === 'add') { todos.push({ id: Date.now().toString(36), text: b.text, done: false, priority: b.priority || 'normal', created: new Date().toISOString() }); } else if (b.action === 'toggle') { for (var i = 0; i < todos.length; i++) { if (todos[i].id === b.id) todos[i].done = !todos[i].done; } } else if (b.action === 'delete') { todos = todos.filter(function(t) { return t.id !== b.id; }); } require('fs').writeFileSync(todosFile, JSON.stringify(todos, null, 2)); return json(res, 200, { todos: todos }); } catch(e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ═══ Bookmarks ═══
+    if (method === 'GET' && reqPath === '/api/bookmarks') {
+      try { var bmFile = require('path').join(__dirname, '..', 'data', 'bookmarks.json'); var bms = require('fs').existsSync(bmFile) ? JSON.parse(require('fs').readFileSync(bmFile, 'utf-8')) : []; return json(res, 200, { bookmarks: bms }); } catch(e) { return json(res, 200, { bookmarks: [] }); }
+    }
+    if (method === 'POST' && reqPath === '/api/bookmarks') {
+      try { var b = typeof body === 'string' ? JSON.parse(body) : body; var bmFile = require('path').join(__dirname, '..', 'data', 'bookmarks.json'); var bms = require('fs').existsSync(bmFile) ? JSON.parse(require('fs').readFileSync(bmFile, 'utf-8')) : []; if (b.action === 'add') { bms.push({ id: Date.now().toString(36), url: b.url, title: b.title || b.url, tags: b.tags || [], created: new Date().toISOString() }); } else if (b.action === 'delete') { bms = bms.filter(function(bm) { return bm.id !== b.id; }); } require('fs').writeFileSync(bmFile, JSON.stringify(bms, null, 2)); return json(res, 200, { bookmarks: bms }); } catch(e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ═══ PDF Export ═══
+    if (method === 'POST' && reqPath === '/api/export/pdf') {
+      try {
+        var b = typeof body === 'string' ? JSON.parse(body) : body;
+        var content = b.content || b.text || '';
+        var title = b.title || 'Aries Export';
+        // Minimal PDF generation (pure Node.js)
+        var lines = content.split('\n');
+        var objects = [];
+        var objOffsets = [];
+        var pdfContent = '';
+        function addObj(s) { objOffsets.push(pdfContent.length); objects.push(s); pdfContent += (objects.length) + ' 0 obj\n' + s + '\nendobj\n'; }
+        pdfContent = '%PDF-1.4\n';
+        addObj('<< /Type /Catalog /Pages 2 0 R >>');
+        addObj('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+        // Encode text lines
+        var textOps = '';
+        var y = 750;
+        for (var li = 0; li < lines.length && y > 50; li++) {
+          var safeLine = lines[li].replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+          textOps += 'BT /F1 11 Tf 50 ' + y + ' Td (' + safeLine + ') Tj ET\n';
+          y -= 14;
+        }
+        var stream = textOps;
+        addObj('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>');
+        addObj('<< /Length ' + stream.length + ' >>\nstream\n' + stream + 'endstream');
+        addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+        var xrefOffset = pdfContent.length;
+        pdfContent += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
+        for (var oi = 0; oi < objOffsets.length; oi++) pdfContent += String(objOffsets[oi]).padStart(10, '0') + ' 00000 n \n';
+        pdfContent += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF';
+        var pdfBuf = Buffer.from(pdfContent, 'binary');
+        var fname = title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf';
+        var pdfPath = require('path').join(__dirname, '..', 'data', fname);
+        require('fs').writeFileSync(pdfPath, pdfBuf);
+        res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="' + fname + '"', 'Content-Length': pdfBuf.length });
+        res.end(pdfBuf);
+        return;
+      } catch(e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ═══ Credits System ═══
+    if (method === 'GET' && reqPath === '/api/credits') {
+      try {
+        var credFile = require('path').join(__dirname, '..', 'data', 'credits.json');
+        var creds = require('fs').existsSync(credFile) ? JSON.parse(require('fs').readFileSync(credFile, 'utf-8')) : { balance: 0, tier: 'FREE', totalEarned: 0, totalSpent: 0, history: [], joined: false, joinedAt: null, stats: { computeHours: 0, tasksCompleted: 0, daysActive: 0 } };
+        // Calculate tier
+        var te = creds.totalEarned || 0;
+        creds.tier = te >= 10000 ? 'CORE' : te >= 1000 ? 'TRAINER' : te >= 100 ? 'CONTRIBUTOR' : 'FREE';
+        var tiers = [{name:'FREE',min:0},{name:'CONTRIBUTOR',min:100},{name:'TRAINER',min:1000},{name:'CORE',min:10000}];
+        var ci = 0; for (var i = 0; i < tiers.length; i++) { if (te >= tiers[i].min) ci = i; }
+        var nextTier = ci < tiers.length - 1 ? tiers[ci + 1] : null;
+        var progress = nextTier ? ((te - tiers[ci].min) / (nextTier.min - tiers[ci].min) * 100) : 100;
+        return json(res, 200, { ...creds, tierIndex: ci, nextTier: nextTier ? nextTier.name : null, nextTierMin: nextTier ? nextTier.min : null, progress: Math.min(100, Math.round(progress)) });
+      } catch(e) { return json(res, 200, { balance: 0, tier: 'FREE', totalEarned: 0, totalSpent: 0, history: [], progress: 0 }); }
+    }
+    if (method === 'POST' && reqPath === '/api/credits') {
+      try {
+        var b = typeof body === 'string' ? JSON.parse(body) : body;
+        var credFile = require('path').join(__dirname, '..', 'data', 'credits.json');
+        var creds = require('fs').existsSync(credFile) ? JSON.parse(require('fs').readFileSync(credFile, 'utf-8')) : { balance: 0, tier: 'FREE', totalEarned: 0, totalSpent: 0, history: [], joined: false, joinedAt: null, stats: { computeHours: 0, tasksCompleted: 0, daysActive: 0 } };
+        if (b.action === 'earn') { creds.balance += b.amount || 0; creds.totalEarned += b.amount || 0; creds.history.unshift({ type: 'earn', amount: b.amount, reason: b.reason || 'contribution', time: new Date().toISOString() }); }
+        else if (b.action === 'spend') { if (creds.balance < (b.amount || 0)) return json(res, 400, { error: 'Insufficient credits' }); creds.balance -= b.amount || 0; creds.totalSpent += b.amount || 0; creds.history.unshift({ type: 'spend', amount: b.amount, reason: b.reason || 'query', time: new Date().toISOString() }); }
+        else if (b.action === 'join') { creds.joined = true; creds.joinedAt = new Date().toISOString(); creds.balance += 50; creds.totalEarned += 50; creds.history.unshift({ type: 'earn', amount: 50, reason: 'Welcome bonus', time: new Date().toISOString() }); }
+        if (creds.history.length > 200) creds.history = creds.history.slice(0, 200);
+        require('fs').writeFileSync(credFile, JSON.stringify(creds, null, 2));
+        return json(res, 200, creds);
+      } catch(e) { return json(res, 500, { error: e.message }); }
+    }
+
     return json(res, 404, { error: 'Not found', path: reqPath });
   } catch (e) {
     audit.request(req, 500, Date.now() - startMs);
