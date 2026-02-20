@@ -32,7 +32,7 @@
 
 ## 🧬 ARES: Collective AI Training
 
-**ARES** (Aries Recursive Evolution System) is the core of what makes Aries different from every other AI tool. It's not just a chat interface — it's a distributed training network that's building a collectively-owned AI model.
+**ARES** (Aries Recursive Evolution System) is the core of what makes Aries different from every other AI tool. It's not just a chat interface — it's a collective compute network that's building an uncensored AI model. The model lives on a central server; swarm members contribute compute and earn API access to query it.
 
 ### The Problem
 
@@ -52,8 +52,8 @@
 │         │                     ▼                             │
 │   More People Want It ←── Smarter Model                     │
 │                                                             │
-│   Every node that joins makes the model better.             │
-│   Every improvement attracts more nodes.                    │
+│   Every node that joins accelerates training.               │
+│   A better model attracts more contributors.                │
 │   The people's AI gets smarter every day.                   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -62,9 +62,9 @@
 
 1. **Install Aries** — takes 60 seconds, zero dependencies
 2. **Join the Network** — one click in the dashboard
-3. **Your Machine Contributes** — GPU training time, CPU inference, or just uptime
-4. **Earn Access Tiers** — the more you contribute, the more you unlock
-5. **The Model Evolves** — continuous training across the entire swarm
+3. **Your Machine Contributes** — GPU gradient computation, CPU tasks, mining, or just uptime
+4. **Earn Credits & Access** — the more you contribute, the higher your tier
+5. **Query the Model via API** — spend credits to access the ARES model hosted centrally
 
 ### Contribution Tiers
 
@@ -168,8 +168,8 @@ After setup, click **"Join Swarm"** in the dashboard. One click. Your machine st
 The ARES system runs continuous training cycles across the swarm:
 
 - **Data Generation** — High-quality training data distilled from frontier models
-- **Distributed Training** — Gradient computation spread across GPU-equipped nodes
-- **Model Aggregation** — Federated learning merges improvements without centralizing data
+- **Distributed Compute** — Gradient computation tasks farmed out to GPU-equipped swarm nodes, results sent back to the central server
+- **Central Training** — Gradients aggregated and applied on the ARES server; the model never leaves the server
 - **Growth Tracking** — Real-time projections of network capacity and model quality
 
 The dashboard shows training progress, contributor leaderboards, tier breakdowns, and growth projections in real-time.
@@ -220,7 +220,7 @@ curl http://localhost:18800/v1/chat/completions \
 
 ### 🕸️ Swarm Network
 
-Distributed P2P AI compute. Join → contribute Ollama compute → get free AI from the entire swarm. One-click join, one-click leave. Completely opt-in.
+P2P compute network. Join → contribute GPU/CPU compute → earn credits to query the ARES model. One-click join, one-click leave. Completely opt-in.
 
 ### 💻 Code Interpreter
 
@@ -313,12 +313,15 @@ SSE transport: `http://localhost:18801/sse`
 └──────────┴──────────┴──────────┴─────────────────────────┘
                          │
 ┌────────────────────────▼─────────────────────────────────┐
-│              ARES Swarm Training Network                  │
-│   Distributed training · Gradient aggregation · Credits  │
+│         ARES Central Server (model host)                  │
+│   Training · Gradient aggregation · Model serving        │
 ├──────────┬──────────┬──────────┬─────────────────────────┤
-│ Data     │ Swarm    │ Credit   │ Growth                  │
-│ Distiller│ Trainer  │ System   │ Tracking                │
+│ Data     │ Gradient │ Credit   │ Growth                  │
+│ Distiller│ Aggregator│ System  │ Tracking                │
 └──────────┴──────────┴──────────┴─────────────────────────┘
+                         ▲
+              Swarm nodes send gradients
+              & receive API access
 ```
 
 **Zero dependencies.** Every module uses Node.js built-ins. No `node_modules`. No supply chain risk.
@@ -407,13 +410,13 @@ All endpoints require authentication via `x-aries-key` or `Authorization: Bearer
 <details>
 <summary><b>What is ARES and how does it train a model?</b></summary>
 
-ARES (Aries Recursive Evolution System) is a distributed AI training network. It generates high-quality training data by distilling knowledge from frontier models, distributes gradient computation across GPU-equipped nodes in the swarm, and aggregates the results using federated learning. The model improves continuously as more people contribute compute.
+ARES (Aries Recursive Evolution System) is a collective compute network for AI training. It generates high-quality training data by distilling knowledge from frontier models, farms out gradient computation tasks to GPU-equipped swarm nodes, and aggregates the results on the central ARES server. The model lives and trains on one server — swarm members contribute compute power and earn API credits to query it. The model improves continuously as more people contribute.
 </details>
 
 <details>
 <summary><b>Do I need a GPU to participate in ARES?</b></summary>
 
-No. Any contribution helps — CPU inference, uptime, and storage all earn credits. But GPU nodes earn credits 10x faster and unlock higher tiers because they directly contribute to model training.
+No. Any contribution helps — CPU tasks, uptime, and storage all earn credits. But GPU nodes earn credits 10x faster and unlock higher tiers because they compute gradients that directly improve the model.
 </details>
 
 <details>
@@ -475,7 +478,7 @@ No build step. No dependency install.
 
 ### 6 Months
 - 🔄 ARES model v1 release (fine-tuned on community data)
-- 🔄 Decentralized model hosting (no single point of failure)
+- 🔄 Redundant model hosting (high availability)
 - 🔄 Mobile node support (contribute from your phone)
 - 🔄 Cross-swarm federation (multiple networks can share training)
 
@@ -508,7 +511,7 @@ We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 **The people's AI. Built by everyone. Owned by no one.**
 
-*Every node that joins makes the model smarter. Every person who contributes gets access.*
+*Every node that joins accelerates training. Every person who contributes earns access.*
 
 *This isn't just software. It's a movement.*
 

@@ -1,6 +1,8 @@
 /**
- * ARES Swarm Trainer — Distributed Training via Aries Swarm
- * Hivemind-style async gradient averaging across swarm GPU nodes.
+ * ARES Swarm Trainer — Distributed Compute via Aries Swarm
+ * Farms gradient computation tasks to swarm GPU nodes.
+ * Gradients are sent back and aggregated on the central ARES server.
+ * The model itself never leaves the server.
  */
 
 const fs = require('fs');

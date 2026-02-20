@@ -1,7 +1,7 @@
 /**
  * ARES Coordinator — The Brain
  * Central coordinator for the Aries Recursive Evolution System.
- * Manages: data_gen → distribute → train → merge → evaluate → repeat
+ * Manages: data_gen → farm_gradients → train_central → evaluate → repeat
  */
 
 const fs = require('fs');
@@ -122,7 +122,7 @@ class AresCoordinator extends EventEmitter {
       }
       cycleResult.phases.prepare = prepResult;
 
-      // Phase 3: Training (local or swarm-distributed)
+      // Phase 3: Training (local or swarm-assisted gradient computation)
       this._updateStatus('training', 'Cycle ' + cycle + ': training in progress');
       this.emit('cycle-phase', { cycle: cycle, phase: 'training' });
       var trainResult = {};
