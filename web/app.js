@@ -17,6 +17,10 @@
   var _currentPersona = 'default';
   var _notifCount = 0;
   var _wsWasConnected = false;
+  var _adminMode = false;
+  var _ariesNetworkJoined = false;
+  var _ariesCredits = 0;
+  var _ariesTier = 'FREE';
 
   // ── Personas ──
   var PERSONAS = {
@@ -266,6 +270,7 @@
       case 'network': break;
       case 'monitor': refreshMonitor(); break;
       case 'models': refreshModels(); break;
+      case 'aries-ai': loadAriesAi(); break;
       case 'mesh-network': loadMeshNetwork(); break;
       case 'relay-federation': loadRelayFederation(); break;
       case 'site-control': loadSiteControl(); break;
@@ -377,13 +382,46 @@
     api('GET', 'models').then(function(d) {
       var models = d.models || [];
       var html = '<option value="">Auto (default)</option>';
+
+      // Group models by source
+      var ollamaModels = [], cloudModels = [];
       for (var i = 0; i < models.length; i++) {
         var m = models[i];
-        var label = m.name || 'unknown';
-        var src = m.source ? ' (' + m.source + ')' : '';
-        var sizeStr = m.size ? ' [' + (m.size / 1e9).toFixed(1) + 'GB]' : '';
-        html += '<option value="' + escapeHtml(m.name) + '">' + escapeHtml(label) + src + sizeStr + '</option>';
+        if (m.source === 'ollama') ollamaModels.push(m);
+        else cloudModels.push(m);
       }
+
+      if (ollamaModels.length > 0) {
+        html += '<optgroup label="\uD83D\uDCBB Local (Ollama)">';
+        for (var oi = 0; oi < ollamaModels.length; oi++) {
+          var om = ollamaModels[oi];
+          var sizeStr = om.size ? ' [' + (om.size / 1e9).toFixed(1) + 'GB]' : '';
+          html += '<option value="' + escapeHtml(om.name) + '">' + escapeHtml(om.name || 'unknown') + sizeStr + '</option>';
+        }
+        html += '</optgroup>';
+      }
+
+      if (cloudModels.length > 0) {
+        html += '<optgroup label="\u2601\uFE0F Cloud">';
+        for (var ci = 0; ci < cloudModels.length; ci++) {
+          var cm = cloudModels[ci];
+          var src = cm.source ? ' (' + cm.source + ')' : '';
+          html += '<option value="' + escapeHtml(cm.name) + '">' + escapeHtml(cm.name || 'unknown') + src + '</option>';
+        }
+        html += '</optgroup>';
+      }
+
+      // Aries AI option
+      if (_ariesNetworkJoined) {
+        html += '<optgroup label="\u26A1 Aries Network">';
+        html += '<option value="aries-collective">\u26A1 Aries AI (collective)</option>';
+        html += '</optgroup>';
+      } else {
+        html += '<optgroup label="\u26A1 Aries Network">';
+        html += '<option value="_join_aries" disabled style="color:#0ff">\u26A1 Get free AI \u2192 Join Aries Network</option>';
+        html += '</optgroup>';
+      }
+
       sel.innerHTML = html;
       var saved = localStorage.getItem('aries-chat-model');
       if (saved) { sel.value = saved; _selectedModel = saved; }
@@ -391,6 +429,13 @@
       sel.innerHTML = '<option value="">Auto (default)</option>';
     });
     sel.addEventListener('change', function() {
+      if (this.value === '_join_aries') {
+        this.value = _selectedModel || '';
+        // Trigger join flow
+        if (typeof joinSwarmWorker === 'function') joinSwarmWorker();
+        else switchPanel('settings');
+        return;
+      }
       _selectedModel = this.value;
       localStorage.setItem('aries-chat-model', _selectedModel);
       var badge = document.getElementById('activeModelBadge');
@@ -1377,11 +1422,43 @@
       html += '<button class="btn-sm" onclick="window.aries.testAiToken()" id="settingTestTokenBtn">Test</button>';
       html += '<button class="btn-primary" onclick="window.aries.saveAiToken()">Save</button></div>';
       html += '<div id="settingTokenStatus" style="font-size:12px;margin-top:4px">' + (tokens.aiTokenSet ? '\u2705 Configured' : '\u26A0 Not Set') + '</div></div>';
+      // API Keys (public-facing)
+      html += '<div class="card" style="margin:0 0 16px"><h3 style="margin:0 0 12px;color:var(--accent)">&#x1F511; API Keys</h3>';
+      html += '<p style="color:#888;font-size:12px;margin:0 0 12px">Configure cloud AI providers. Keys are stored locally.</p>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+      var keyProviders = [
+        { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
+        { id: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
+        { id: 'groq', label: 'Groq', placeholder: 'gsk_...' },
+        { id: 'google', label: 'Google Gemini', placeholder: 'AIza...' }
+      ];
+      for (var ki = 0; ki < keyProviders.length; ki++) {
+        var kp = keyProviders[ki];
+        html += '<div><label class="setting-label">' + kp.label + '</label><input id="settingKey_' + kp.id + '" type="password" class="input-field" placeholder="' + kp.placeholder + '" style="width:100%" /></div>';
+      }
+      html += '</div><button class="btn-primary" onclick="window.aries.saveApiKeys()" style="margin-top:12px">Save Keys</button></div>';
+
+      // Ollama
+      html += '<div class="card" style="margin:0 0 16px"><h3 style="margin:0 0 12px;color:var(--accent)">&#x1F4BB; Ollama (Local AI)</h3>';
+      html += '<p style="color:#888;font-size:12px;margin:0 0 8px">Run AI models locally on your machine. <a href="https://ollama.ai" target="_blank" style="color:var(--accent)">Install Ollama</a></p>';
+      html += '<div id="settingsOllamaModels" style="margin-bottom:8px"><div class="spinner"></div></div>';
+      html += '<div style="display:flex;gap:8px"><input id="settingsPullModel" type="text" class="input-field" placeholder="Model name (e.g. llama3)" style="flex:1" />';
+      html += '<button class="btn-primary" onclick="window.aries.settingsPullModel()">Pull Model</button></div></div>';
+
+      // Join Aries Network
+      if (!_ariesNetworkJoined) {
+        html += '<div class="card" style="margin:0 0 16px;border:1px solid #0ff3"><h3 style="margin:0 0 8px;color:#0ff">&#x26A1; Join Aries Network</h3>';
+        html += '<p style="color:#888;font-size:13px;margin:0 0 12px">Get free AI credits by contributing compute to the Aries collective. Your machine helps train and run AI models in the background.</p>';
+        html += '<button class="btn-primary" onclick="window.aries.joinSwarmWorker()" style="background:#0ff;color:#000;font-weight:700;padding:10px 24px">&#x1F680; Join Aries Network</button>';
+        html += '<div id="joinProgress" style="display:none;margin-top:12px"><div class="progress-bar"><div id="joinBar" class="progress-fill" style="width:0%"></div></div><div id="joinStatus" class="progress-text" style="font-size:12px;color:var(--text-dim);margin-top:4px"></div></div>';
+        html += '</div>';
+      }
+
       // General
       html += '<div class="card" style="margin:0 0 12px"><h3 style="margin:0 0 12px;color:var(--accent)">&#x2699; General</h3>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
       html += '<div><label class="setting-label">User Name</label><input id="settingUserName" type="text" class="input-field" value="' + escapeHtml(cfg.userName || '') + '" /></div>';
-      html += '<div><label class="setting-label">Concurrency</label><input id="settingConcurrency" type="number" class="input-field" value="' + ((cfg.swarm && cfg.swarm.concurrency) || 10) + '" /></div>';
+      if (_adminMode) html += '<div><label class="setting-label">Concurrency</label><input id="settingConcurrency" type="number" class="input-field" value="' + ((cfg.swarm && cfg.swarm.concurrency) || 10) + '" /></div>';
       html += '</div><button class="btn-primary" onclick="window.aries.saveSettings()" style="margin-top:12px">Save</button></div>';
       // Tor .onion address
       if (torStatus.address) {
@@ -1392,6 +1469,33 @@
       el.innerHTML = html;
     }).catch(function() { el.innerHTML = '<p style="color:var(--red)">Failed.</p>'; });
   }
+
+  function saveApiKeys() {
+    var keys = {};
+    var providers = ['anthropic', 'openai', 'groq', 'google'];
+    for (var i = 0; i < providers.length; i++) {
+      var el = document.getElementById('settingKey_' + providers[i]);
+      if (el && el.value.trim()) keys[providers[i]] = el.value.trim();
+    }
+    api('POST', 'settings/api-keys', keys).then(function() {
+      toast('API keys saved!', 'success');
+      // Refresh model list
+      initModelSelector();
+    }).catch(function(e) { toast('Failed to save keys: ' + e.message, 'error'); });
+  }
+
+  function settingsPullModel() {
+    var name = document.getElementById('settingsPullModel');
+    if (!name || !name.value.trim()) { toast('Enter a model name', 'error'); return; }
+    toast('Pulling ' + name.value.trim() + '...', 'info');
+    api('POST', 'models/pull', { name: name.value.trim() }).then(function() {
+      toast('Model pulled!', 'success');
+      name.value = '';
+      initModelSelector();
+    }).catch(function(e) { toast('Pull failed: ' + e.message, 'error'); });
+  }
+
+  function refreshAriesAi() { _loadedPanels['aries-ai'] = false; loadAriesAi(); }
 
   function setTheme(name) { document.documentElement.setAttribute('data-theme', name); localStorage.setItem('aries-theme', name); toast('Theme: ' + name, 'success'); _loadedPanels['settings'] = false; loadSettings(); }
   function testAiToken() { var t = document.getElementById('settingAiToken').value.trim(); if (!t) return; var btn = document.getElementById('settingTestTokenBtn'); btn.textContent = '...'; btn.disabled = true; api('POST', 'settings/test-token', { token: t }).then(function(d) { btn.textContent = 'Test'; btn.disabled = false; document.getElementById('settingTokenStatus').innerHTML = d.valid ? '<span style="color:var(--green)">\u2705 Valid!</span>' : '<span style="color:var(--red)">\u274C Invalid</span>'; }).catch(function() { btn.textContent = 'Test'; btn.disabled = false; }); }
@@ -3078,6 +3182,135 @@
   // ═══════════════════════════════
   //  INIT
   // ═══════════════════════════════
+  function initPublicMode() {
+    // Check if admin mode via config or localStorage override
+    _adminMode = localStorage.getItem('aries-admin-mode') === 'true';
+
+    api('GET', 'config').then(function(d) {
+      var cfg = d.config || d || {};
+      if (cfg.adminMode === true) {
+        _adminMode = true;
+        localStorage.setItem('aries-admin-mode', 'true');
+      }
+      applyUiMode();
+    }).catch(function() {
+      applyUiMode();
+    });
+
+    // Check Aries network membership
+    api('GET', 'swarm/worker/status').then(function(d) {
+      if (d.enrolled) {
+        _ariesNetworkJoined = true;
+        var nav = document.getElementById('navAriesAi');
+        if (nav) nav.style.display = '';
+      }
+    }).catch(function() {});
+  }
+
+  function applyUiMode() {
+    var adminEls = document.querySelectorAll('[data-admin="true"]');
+    for (var i = 0; i < adminEls.length; i++) {
+      adminEls[i].style.display = _adminMode ? '' : 'none';
+    }
+    // Update title for public mode
+    if (!_adminMode) {
+      document.title = 'Aries AI';
+    } else {
+      document.title = 'ARIES v8.1 \u2014 Command Center';
+    }
+  }
+
+  function loadAriesAi() {
+    var el = document.getElementById('ariesAiStats');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div>';
+    Promise.all([
+      api('GET', 'swarm/worker/status').catch(function() { return {}; }),
+      api('GET', 'ares/status').catch(function() { return {}; }),
+      api('GET', 'ares/model').catch(function() { return {}; }),
+      api('GET', 'ares/growth').catch(function() { return { projection: {} }; }),
+      api('GET', 'ares/credits').catch(function() { return { breakdown: {} }; })
+    ]).then(function(results) {
+      var worker = results[0], status = results[1], model = results[2], growth = results[3], credits = results[4];
+      var w = worker.worker || {};
+      var tier = w.tier || 'FREE';
+      var totalCredits = w.credits || 0;
+      var uptime = worker.uptime || 0;
+      var tasks = w.tasksCompleted || worker.tasksCompleted || 0;
+
+      _ariesTier = tier;
+      _ariesCredits = totalCredits;
+
+      var tierColors = { FREE: '#6b7280', CONTRIBUTOR: '#06b6d4', TRAINER: '#f59e0b', CORE: '#ef4444' };
+      var tierColor = tierColors[tier] || '#6b7280';
+
+      var html = '';
+
+      // Your stats
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;text-align:center">';
+      html += '<div style="background:#111;padding:16px;border-radius:10px;border:1px solid ' + tierColor + '33"><div style="font-size:24px;font-weight:bold;color:' + tierColor + '">' + escapeHtml(tier) + '</div><div style="font-size:11px;color:#888;margin-top:4px">Your Tier</div></div>';
+      html += '<div style="background:#111;padding:16px;border-radius:10px;border:1px solid #1a1a2e"><div style="font-size:24px;font-weight:bold;color:#0ff">' + Math.round(totalCredits) + '</div><div style="font-size:11px;color:#888;margin-top:4px">Credits</div></div>';
+
+      var h = Math.floor(uptime / 3600), m = Math.floor((uptime % 3600) / 60);
+      html += '<div style="background:#111;padding:16px;border-radius:10px;border:1px solid #1a1a2e"><div style="font-size:24px;font-weight:bold;color:#0f0">' + (h > 0 ? h + 'h ' : '') + m + 'm</div><div style="font-size:11px;color:#888;margin-top:4px">Contributed</div></div>';
+      html += '<div style="background:#111;padding:16px;border-radius:10px;border:1px solid #1a1a2e"><div style="font-size:24px;font-weight:bold;color:#f0f">' + tasks + '</div><div style="font-size:11px;color:#888;margin-top:4px">AI Tasks Done</div></div>';
+      html += '</div>';
+
+      // Tier progression
+      html += '<div style="background:#111;padding:20px;border-radius:10px;border:1px solid #1a1a2e;margin-bottom:24px;text-align:left">';
+      html += '<h3 style="margin:0 0 12px;color:var(--accent);font-size:14px">Tier Progression</h3>';
+      var tiers = ['FREE', 'CONTRIBUTOR', 'TRAINER', 'CORE'];
+      var tierIdx = tiers.indexOf(tier);
+      html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
+      for (var t = 0; t < tiers.length; t++) {
+        var tc = tierColors[tiers[t]];
+        var active = t <= tierIdx;
+        html += '<div style="flex:1;height:6px;border-radius:3px;background:' + (active ? tc : '#222') + ';transition:background 0.3s"></div>';
+      }
+      html += '</div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:#666">';
+      for (var t2 = 0; t2 < tiers.length; t2++) {
+        html += '<span style="color:' + (t2 <= tierIdx ? tierColors[tiers[t2]] : '#444') + '">' + tiers[t2] + '</span>';
+      }
+      html += '</div></div>';
+
+      // Model stats
+      html += '<div style="background:#111;padding:20px;border-radius:10px;border:1px solid #1a1a2e;margin-bottom:24px;text-align:left">';
+      html += '<h3 style="margin:0 0 12px;color:var(--accent);font-size:14px">&#x1F9E0; Collective Model</h3>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+      html += '<div><div style="color:#888;font-size:11px">Effective Parameters</div><div style="font-size:18px;font-weight:bold;color:#0ff">' + escapeHtml(model.effective_params_human || '70B') + '</div></div>';
+      html += '<div><div style="color:#888;font-size:11px">Training Cycles</div><div style="font-size:18px;font-weight:bold;color:#0f0">' + (model.cycle || 0) + '</div></div>';
+      html += '</div></div>';
+
+      // Growth chart
+      var proj = growth.projection || {};
+      if (proj.projections && proj.projections.length > 0) {
+        html += '<div style="background:#111;padding:20px;border-radius:10px;border:1px solid #1a1a2e;margin-bottom:24px;text-align:left">';
+        html += '<h3 style="margin:0 0 12px;color:var(--accent);font-size:14px">&#x1F4C8; Growth — Getting Smarter Over Time</h3>';
+        html += '<div style="display:flex;gap:4px;align-items:flex-end;height:80px">';
+        var maxP = 0;
+        for (var pi = 0; pi < proj.projections.length; pi++) { if (proj.projections[pi].effectiveParams > maxP) maxP = proj.projections[pi].effectiveParams; }
+        for (var pj = 0; pj < proj.projections.length; pj++) {
+          var p = proj.projections[pj];
+          var barH = maxP > 0 ? Math.max(5, Math.round((p.effectiveParams / maxP) * 70)) : 5;
+          html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center">';
+          html += '<div style="font-size:10px;color:var(--accent)">' + (p.effectiveParamsHuman || '') + '</div>';
+          html += '<div style="width:100%;height:' + barH + 'px;background:linear-gradient(to top,var(--accent),#0f0);border-radius:2px"></div>';
+          html += '<div style="font-size:10px;color:#666;margin-top:4px">M' + (p.month || pj + 1) + '</div></div>';
+        }
+        html += '</div></div>';
+      }
+
+      // Messaging
+      html += '<div style="background:linear-gradient(135deg,#0a1a2a,#0a0a1a);padding:20px;border-radius:10px;border:1px solid #0ff3;text-align:center">';
+      html += '<div style="font-size:16px;color:#0ff;font-weight:600;margin-bottom:8px">You\'re helping build this &#x26A1;</div>';
+      html += '<div style="color:#888;font-size:13px">Every hour you contribute makes Aries smarter for everyone. The model grows with the community.</div>';
+      html += '</div>';
+
+      el.innerHTML = html;
+    });
+  }
+
   function init() {
     // Apply saved theme
     var savedTheme = localStorage.getItem('aries-theme');
@@ -3086,10 +3319,13 @@
     // Run boot animation first
     runBootAnimation();
 
+    // Initialize public/admin mode
+    initPublicMode();
+
     api('GET', 'status').then(function(d) {
-      window._ariesVersion = d.version || '5.0';
+      window._ariesVersion = d.version || '8.1';
       document.querySelectorAll('.version, .version-footer').forEach(function(el) { el.textContent = 'v' + window._ariesVersion; });
-      document.title = 'ARIES v' + window._ariesVersion + ' \u2014 Command Center';
+      if (_adminMode) document.title = 'ARIES v' + window._ariesVersion + ' \u2014 Command Center';
     }).catch(function() {});
 
     initNav();
@@ -5800,7 +6036,11 @@
         document.getElementById('joinBar').style.width = '100%';
         if (d.ok) {
           setText('joinStatus', "You're in! Worker ID: " + (d.workerId || ''));
-          toast('Joined the swarm!', 'success');
+          toast('Joined the Aries Network!', 'success');
+          _ariesNetworkJoined = true;
+          var nav = document.getElementById('navAriesAi');
+          if (nav) nav.style.display = '';
+          initModelSelector(); // Refresh to show Aries AI option
           setTimeout(refreshWorkerDashboard, 500);
         } else {
           setText('joinStatus', 'Failed: ' + (d.error || 'unknown'));
@@ -6174,6 +6414,7 @@
       copyInstallCmd: copyInstallCmd, checkAutoUpdate: checkAutoUpdate,
       loadAres: loadAres, aresGenerateData: aresGenerateData,
       aresStartCycle: aresStartCycle, aresSetSchedule: aresSetSchedule,
+      refreshAriesAi: refreshAriesAi, saveApiKeys: saveApiKeys, settingsPullModel: settingsPullModel,
       _loadedPanels: _loadedPanels, _toast: toast
     };
   }

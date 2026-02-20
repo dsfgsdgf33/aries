@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARIES v7.0 &#x2014; Command Center</title>
+  <title>Aries AI</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;&#x25B2;&lt;/text&gt;&lt;/svg&gt;">
   <link rel="manifest" href="manifest.json">
@@ -27,7 +27,7 @@
   <header id="topbar">
     <div class="topbar-left">
       <div class="logo">&#x25B2; ARIES</div>
-      <span class="version">v7.0</span>
+      <span class="version">v8.1</span>
       <span id="activeModelBadge" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#22c55e;color:#000;margin-left:8px;cursor:help" title="Active AI model">cloud</span>
       <span id="connDot" class="conn-dot offline" title="Disconnected"></span>
       <span id="connLabel" class="conn-label">Offline</span>
@@ -39,11 +39,11 @@
       <div id="globalSearchResults"></div>
     </div>
     <div class="topbar-right">
-      <div class="stat-chip"><span class="stat-label">CPU</span><span id="statCpu" class="stat-val">--</span></div>
-      <div class="stat-chip"><span class="stat-label">RAM</span><span id="statRam" class="stat-val">--</span></div>
-      <div class="stat-chip"><span class="stat-label">Uptime</span><span id="statUptime" class="stat-val">--</span></div>
-      <div class="stat-chip"><span class="stat-label">Agents</span><span id="statAgents" class="stat-val">--</span></div>
-      <div class="stat-chip"><span class="stat-label">Workers</span><span id="statWorkers" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">CPU</span><span id="statCpu" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">RAM</span><span id="statRam" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Uptime</span><span id="statUptime" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Agents</span><span id="statAgents" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Workers</span><span id="statWorkers" class="stat-val">--</span></div>
       <div id="notifBell" class="notif-bell" onclick="window.aries.toggleNotifications()" title="Notifications" data-tooltip="Notifications" role="button" aria-label="Notifications" tabindex="0">
         &#x1F514;<span id="notifBadge" class="notif-badge" style="display:none">0</span>
       </div>
@@ -53,20 +53,27 @@
   <div id="app">
     <!-- Sidebar -->
     <nav id="sidebar" role="navigation" aria-label="Main navigation">
+      <!-- Public tabs (always visible) -->
       <div class="nav-group">
+        <div class="nav-group-label">MAIN</div>
+        <a class="nav-item active" data-panel="chat">&#x1F4AC; Chat</a>
+        <a class="nav-item" data-panel="rag">&#x1F4C1; Files</a>
+        <a class="nav-item" data-panel="agents">&#x1F916; Agents</a>
+        <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
+        <a class="nav-item" data-panel="aries-ai" id="navAriesAi" style="display:none">&#x1F9E0; Aries AI</a>
+      </div>
+      <!-- Admin-only tabs -->
+      <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">CORE</div>
         <a class="nav-item" data-panel="home">&#x1F3E0; Home</a>
-        <a class="nav-item active" data-panel="chat">&#x1F4AC; Chat</a>
-        <a class="nav-item" data-panel="agents">&#x1F916; Agents</a>
         <a class="nav-item" data-panel="swarm">&#x1F310; Swarm</a>
       </div>
-      <div class="nav-group">
+      <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">INTELLIGENCE</div>
         <a class="nav-item" data-panel="memory">&#x1F9E0; Memory</a>
-        <a class="nav-item" data-panel="rag">&#x1F4DA; RAG</a>
         <a class="nav-item" data-panel="skills">&#x1F527; Skills</a>
       </div>
-      <div class="nav-group">
+      <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">TOOLS</div>
         <a class="nav-item" data-panel="browser">&#x1F310; Browser</a>
         <a class="nav-item" data-panel="sandbox">&#x1F4E6; Sandbox</a>
@@ -75,14 +82,14 @@
         <a class="nav-item" data-panel="agentfactory">&#x1F3ED; Agent Factory</a>
         <a class="nav-item" data-panel="free-keys">&#x1F511; Free Keys</a>
       </div>
-      <div class="nav-group">
+      <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">AI</div>
         <a class="nav-item" data-panel="gateway">&#x26A1; Gateway</a>
         <a class="nav-item" data-panel="ares">&#x1F9E0; Evolution</a>
         <a class="nav-item" data-panel="evolve">&#x1F9EC; Evolve</a>
         <a class="nav-item" data-panel="sentinel">&#x1F6E1; Sentinel</a>
       </div>
-      <div class="nav-group">
+      <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">SWARM</div>
         <a class="nav-item" data-panel="swarm-mgr">&#x1F4E1; Providers</a>
         <a class="nav-item" data-panel="usb-swarm">&#x1F50C; USB Swarm</a>
@@ -100,17 +107,16 @@
         <a class="nav-item" data-panel="cloud-auto">&#x2601; Free VMs</a>
         <a class="nav-item" data-panel="vbox">&#x1F5A5; VirtualBox</a>
       </div>
-      <div class="nav-group">
+      <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">SYSTEM</div>
         <a class="nav-item" data-panel="monitor">&#x1F4CA; Monitor</a>
         <a class="nav-item" data-panel="models">&#x1F9E0; Models</a>
         <a class="nav-item" data-panel="terminal">&#x1F4BB; Terminal</a>
         <a class="nav-item" data-panel="logs">&#x1F4CB; Logs</a>
         <a class="nav-item" data-panel="backup">&#x1F4BE; Backup</a>
-        <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
       </div>
       <div class="sidebar-footer">
-        ARIES <span class="version-footer">v7.0</span> &bull; Built by JDW &#x26A1;<br>
+        Aries <span class="version-footer">v8.1</span> &#x26A1;<br>
         <span id="sidebarUptime" class="uptime-counter"></span>
       </div>
     </nav>
@@ -171,7 +177,7 @@
       <!-- Swarm Panel -->
       <section id="panel-swarm" class="panel">
         <div class="panel-header">
-          <h2>&#x1F310; Swarm Network</h2>
+          <h2>&#x1F310; Aries Network</h2>
           <div>
             <button class="export-btn" onclick="window.aries.exportSwarmCSV()">&#x1F4E5; CSV</button>
             <button class="btn-sm" onclick="window.aries.refreshSwarm()">&#x21BB; Refresh</button>
@@ -215,8 +221,8 @@
           <h3>&#x1F4AA; My Contribution</h3>
           <div id="workerDashContent">
             <div id="workerNotJoined" style="text-align:center;padding:20px">
-              <p style="color:var(--text-dim);margin-bottom:12px">Join the swarm to contribute compute and access distributed AI.</p>
-              <button class="btn-primary" onclick="window.aries.joinSwarmWorker()" id="joinSwarmBtn">&#x1F680; Join Swarm</button>
+              <p style="color:var(--text-dim);margin-bottom:12px">Join the Aries Network to contribute compute and access distributed AI.</p>
+              <button class="btn-primary" onclick="window.aries.joinSwarmWorker()" id="joinSwarmBtn">&#x1F680; Join Aries Network</button>
               <div id="joinProgress" style="display:none;margin-top:12px">
                 <div class="progress-bar"><div id="joinBar" class="progress-fill" style="width:0%"></div></div>
                 <div id="joinStatus" class="progress-text" style="font-size:12px;color:var(--text-dim);margin-top:4px"></div>
@@ -237,7 +243,7 @@
                 <button class="btn-sm" onclick="window.aries.workerControl('stop')">&#x23F9; Stop Worker</button>
                 <button class="btn-sm" onclick="window.aries.minerControl('start')">&#x26CF; Start Miner</button>
                 <button class="btn-sm" onclick="window.aries.minerControl('stop')">&#x23F9; Stop Miner</button>
-                <button class="btn-sm" style="background:#c00" onclick="window.aries.leaveSwarmWorker()">&#x274C; Leave Swarm</button>
+                <button class="btn-sm" style="background:#c00" onclick="window.aries.leaveSwarmWorker()">&#x274C; Leave Network</button>
               </div>
               <p style="font-size:11px;color:var(--text-dim);margin-top:8px">You contribute AI compute + mining to the network. In return, you get full access to ARIES distributed AI. Miner runs at low priority and auto-pauses when your machine is busy.</p>
             </div>
@@ -897,6 +903,19 @@
 
           <!-- Build Log -->
           <div id="vboxBuildLog" style="display:none;margin-top:16px;padding:12px;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:12px;color:#0f0"></div>
+        </div>
+      </section>
+
+      <!-- Aries AI Panel (visible after joining network) -->
+      <section id="panel-aries-ai" class="panel">
+        <div class="panel-header"><h2>&#x1F9E0; Aries AI</h2><button class="btn-sm" onclick="window.aries.refreshAriesAi()">&#x21BB; Refresh</button></div>
+        <div id="ariesAiContent" class="info-content">
+          <div style="text-align:center;padding:40px 20px">
+            <div style="font-size:48px;margin-bottom:16px">&#x1F9E0;</div>
+            <h2 style="color:var(--accent);margin:0 0 8px">Aries Collective AI</h2>
+            <p style="color:var(--text-dim);max-width:500px;margin:0 auto 24px">A distributed AI that grows smarter as more people contribute. You're helping build something unprecedented.</p>
+            <div id="ariesAiStats"></div>
+          </div>
         </div>
       </section>
 
