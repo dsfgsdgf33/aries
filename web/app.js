@@ -24,11 +24,11 @@
 
   // ── Personas ──
   var PERSONAS = {
-    default:  { name: 'Default',  icon: '\u{1F916}', prompt: 'You are Aries, an advanced AI assistant.' },
-    coder:    { name: 'Coder',    icon: '\u{1F4BB}', prompt: 'You are Aries in Coder mode. Focus on code quality.' },
-    creative: { name: 'Creative', icon: '\u{1F3A8}', prompt: 'You are Aries in Creative mode. Be imaginative.' },
-    analyst:  { name: 'Analyst',  icon: '\u{1F4CA}', prompt: 'You are Aries in Analyst mode. Be data-focused.' },
-    trader:   { name: 'Trader',   icon: '\u{1F4C8}', prompt: 'You are Aries in Trader mode. Focus on markets and finance.' }
+    default:  { name: 'Default',  icon: '\u{1F916}', prompt: 'You are Aries, a sharp AI assistant. Be concise — lead with the answer, skip filler. Use markdown for clarity.' },
+    coder:    { name: 'Coder',    icon: '\u{1F4BB}', prompt: 'You are Aries in Coder mode. Be concise. Code first, explain only if asked. No boilerplate commentary.' },
+    creative: { name: 'Creative', icon: '\u{1F3A8}', prompt: 'You are Aries in Creative mode. Be imaginative but concise. Quality over quantity.' },
+    analyst:  { name: 'Analyst',  icon: '\u{1F4CA}', prompt: 'You are Aries in Analyst mode. Data-focused, concise. Numbers and insights, not essays.' },
+    trader:   { name: 'Trader',   icon: '\u{1F4C8}', prompt: 'You are Aries in Trader mode. Focus on markets and finance. Quick actionable insights.' }
   };
 
   // ── Slash Commands ──
@@ -554,6 +554,7 @@
     }
     appendChatMessage('user', msg);
     input.value = ''; input.style.height = 'auto';
+    input.classList.add('thinking');
     showChatTyping();
 
     fetch('/api/chat/stream', {
@@ -614,9 +615,12 @@
         }
         return reader.read().then(processChunk);
       }
-      return reader.read().then(processChunk);
+      return reader.read().then(processChunk).then(function() {
+        document.getElementById('chatInput').classList.remove('thinking');
+      });
     }).catch(function(e) {
       hideChatTyping();
+      document.getElementById('chatInput').classList.remove('thinking');
       toast('Chat error: ' + e.message, 'error');
     });
   }

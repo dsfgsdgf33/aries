@@ -33,12 +33,24 @@ class OllamaWatchdog extends EventEmitter {
     // Check local Ollama
     try {
       const local = await this._pingOllama('127.0.0.1', 11434);
+      const wasDown = this._status['local'] && !this._status['local'].ok;
       this._status['local'] = { ok: true, models: local.models?.length || 0, lastCheck: Date.now() };
       if (this._restartAttempts['local']) this._restartAttempts['local'] = 0;
+      if (wasDown) console.log('[OLLAMA-WATCHDOG] Local Ollama recovered');
+      // Reset not-found flag on success so we detect future installs
+      this._ollamaNotFound = false;
     } catch (e) {
+      const wasOk = !this._status['local'] || this._status['local'].ok;
       this._status['local'] = { ok: false, error: e.message, lastCheck: Date.now() };
-      this.emit('down', { node: 'local', error: e.message });
-      this._restartLocal();
+      // Only log and emit on first failure (status change)
+      if (wasOk) {
+        this.emit('down', { node: 'local', error: e.message });
+        console.log('[OLLAMA-WATCHDOG] Local Ollama down: ' + e.message);
+      }
+      // Skip restart if binary was already not found
+      if (!this._ollamaNotFound) {
+        this._restartLocal();
+      }
     }
 
     // Check remote nodes
@@ -63,13 +75,14 @@ class OllamaWatchdog extends EventEmitter {
           } catch {}
         }
 
+        const wasRemoteOk = !this._status[key] || this._status[key].ok;
         this._status[key] = { ok: false, error: e.message, lastCheck: Date.now() };
         this._restartAttempts[key] = (this._restartAttempts[key] || 0) + 1;
 
         if (this._restartAttempts[key] <= this._maxRestarts) {
-          this.emit('restarting', { node: key, attempt: this._restartAttempts[key] });
+          if (wasRemoteOk) this.emit('restarting', { node: key, attempt: this._restartAttempts[key] });
           await this._restartRemote(node);
-        } else {
+        } else if (wasRemoteOk) {
           this.emit('failed', { node: key, attempts: this._restartAttempts[key] });
         }
       }
@@ -128,10 +141,11 @@ class OllamaWatchdog extends EventEmitter {
       }
 
       if (!ollamaPath) {
-        // Ollama not installed — don't spam errors, just note it once
-        if (!this._ollamaNotFound) {
-          this._ollamaNotFound = true;
-          console.log('[OLLAMA-WATCHDOG] Ollama binary not found — skipping local restart');
+        this._ollamaNotFound = true;
+        // Only log once
+        if (!this._binaryNotFoundLogged) {
+          this._binaryNotFoundLogged = true;
+          console.log('[OLLAMA-WATCHDOG] Ollama binary not found — will not attempt restart');
         }
         return;
       }
@@ -139,9 +153,9 @@ class OllamaWatchdog extends EventEmitter {
       const child = spawn(ollamaPath, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true });
       child.unref();
       child.on('error', (e) => {
-        // Silently handle spawn errors (ENOENT etc)
-        if (!this._ollamaNotFound) {
-          this._ollamaNotFound = true;
+        this._ollamaNotFound = true;
+        if (!this._binaryNotFoundLogged) {
+          this._binaryNotFoundLogged = true;
           console.log('[OLLAMA-WATCHDOG] Ollama spawn failed: ' + e.message);
         }
       });
