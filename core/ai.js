@@ -45,12 +45,23 @@ function buildSystemPrompt() {
   _cachedSystemPrompt = `You are ARIES — an AI that controls this machine. You ACT, not chat.
 Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT | Operator: ${cfg.user?.name || 'User'}
 
-## Style
-- **Be concise.** No walls of text. Lead with the answer, explain only if needed.
-- **Act first, narrate after.** When asked to do something, DO IT with tools, then report the result.
-- **No filler.** Skip pleasantries, preambles, and obvious observations.
-- **Smart and direct.** Like a sharp engineer, not a customer service bot.
-- Use markdown: **bold**, \`code\`, code blocks. Short paragraphs.
+## CRITICAL RULES
+1. **NEVER show tool calls in your response text.** Tool tags are for the system only — the user must NEVER see them.
+2. **Work silently.** When building something, just use tools. Don't narrate each step.
+3. **Only show the user a brief summary of what you did.** Like: "Created the project with 5 files. Server running on port 8080."
+4. **Be extremely concise.** 1-3 sentences for simple tasks. No code dumps unless the user specifically asks to see code.
+5. **No filler.** No "Great!", no "I'd be happy to help!", no "Let me...". Just results.
+6. **Don't show file contents** unless asked. Say "Written to path" not the whole file.
+7. **Don't show command output** unless relevant. Say "Installed 5 packages" not the full npm log.
+8. Think of how a senior engineer would report to their boss — brief, results-only.
+
+## Response Format
+- Put ALL tool calls FIRST, before any text response
+- After tools execute, write a SHORT summary for the user
+- The user sees ONLY your text, never the tool tags
+
+## Workspace
+Your workspace is D:\\aries-workspace. Create projects there.
 
 ## Tools
 <tool:shell>command</tool:shell> — PowerShell/CMD
@@ -384,33 +395,32 @@ async function callWithFallback(messages, model, stream = false) {
   const cfg = getConfig();
   const errors = [];
 
-  // 1. Aries Gateway
-  try {
-    if (stream) return await callGateway(messages, model, true);
-    const resp = await callGateway(messages, model, false);
-    return await resp.json();
-  } catch (e) {
-    errors.push(`Gateway: ${e.message}`);
-  }
-
-  // 2. Direct Anthropic API (if key available)
-  const hasDirectKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
-  if (cfg.fallback?.enabled || hasDirectKey) {
+  // 1. Direct Anthropic API first (fastest, no gateway dependency)
+  const hasDirectKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
+  if (hasDirectKey) {
     try {
       return await callDirectApi(messages, model);
     } catch (e) {
-      errors.push(`Direct: ${e.message}`);
-    }
-
-    // 3. Ollama
-    try {
-      return await callOllama(messages, model);
-    } catch (e) {
-      errors.push(`Ollama: ${e.message}`);
+      errors.push('Direct: ' + e.message);
     }
   }
 
-  throw new Error(`All AI backends failed: ${errors.join('; ')}`);
+  // 2. Aries Gateway
+  try {
+    const resp = await callGateway(messages, model, false);
+    return await resp.json();
+  } catch (e) {
+    errors.push('Gateway: ' + e.message);
+  }
+
+  // 3. Ollama
+  try {
+    return await callOllama(messages, model);
+  } catch (e) {
+    errors.push('Ollama: ' + e.message);
+  }
+
+  throw new Error('All AI providers failed: ' + errors.join('; '));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -724,16 +734,23 @@ async function streamGateway(messages, model, onChunk) {
  * Stream AI with fallback: gateway → direct Anthropic
  */
 async function streamWithFallback(messages, model, onChunk) {
+  const cfg = getConfig();
+  const hasKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
+  
+  // Try direct Anthropic API first (faster, no gateway dependency)
+  if (hasKey) {
+    try {
+      return await streamAnthropicDirect(messages, model, onChunk);
+    } catch (e) {
+      console.error('[AI] Direct stream failed:', e.message);
+    }
+  }
+  
+  // Fallback to gateway
   try {
     return await streamGateway(messages, model, onChunk);
   } catch (e) {
-    // Fallback to direct Anthropic streaming
-    const cfg = getConfig();
-    const hasKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
-    if (hasKey) {
-      return await streamAnthropicDirect(messages, model, onChunk);
-    }
-    throw e;
+    throw new Error('All streaming methods failed: ' + e.message);
   }
 }
 

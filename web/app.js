@@ -18,6 +18,19 @@
   var _notifCount = 0;
   var _wsWasConnected = false;
   var _adminMode = false;
+
+  // Strip tool tags from displayed messages (tools execute silently)
+  function stripToolXml(text) {
+    if (!text) return text;
+    // Remove all <tool:...>...</tool:...> blocks
+    text = text.replace(/<tool:[^>]*>[sS]*?</tool:[^>]*>/g, '');
+    // Remove self-closing tool tags
+    text = text.replace(/<tool:[^/]*/>/g, '');
+    // Clean up excess whitespace left behind
+    text = text.replace(/\n{3,}/g, '\n\n');
+    return text.trim();
+  }
+
   var _ariesNetworkJoined = false;
   var _ariesCredits = 0;
   var _ariesTier = 'FREE';
@@ -700,6 +713,9 @@
   }
 
   function appendChatMessage(role, content) {
+    // Strip tool XML from displayed messages
+    if (role === 'assistant' && typeof stripToolXml === 'function') content = stripToolXml(content);
+
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'chat-msg ' + role;

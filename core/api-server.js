@@ -676,6 +676,8 @@ async function handleRequest(req, res) {
 
         const chatModel = body.model || undefined;
         let fullCleanResponse = '';
+        var _chunkBuffer = '';
+        var _lastSentClean = '';
 
         // Abort controller for stop button
         const ac = new (require('events').EventEmitter)();
@@ -688,10 +690,31 @@ async function handleRequest(req, res) {
 
         const result = await ai.agentLoop(messages, chatModel, {
           onChunk: (chunk) => {
-            res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+            // Buffer chunks and only send non-tool text to user
+            _chunkBuffer = (_chunkBuffer || '') + chunk;
+            // Check if we're inside a tool tag
+            const openTag = _chunkBuffer.lastIndexOf('<tool:');
+            const closeTag = _chunkBuffer.lastIndexOf('</tool:');
+            const closeEnd = _chunkBuffer.lastIndexOf('>');
+            // If we have an open tool tag without close, we're mid-tool — don't send
+            if (openTag > -1 && (closeTag === -1 || closeTag < openTag)) {
+              // Inside a tool tag, buffer it
+              return;
+            }
+            // Strip any complete tool tags from buffer
+            var clean = _chunkBuffer.replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').trim();
+            if (clean && clean !== _lastSentClean) {
+              // Only send the new part
+              var newPart = clean.substring((_lastSentClean || '').length);
+              if (newPart) {
+                res.write(`data: ${JSON.stringify({ type: 'chunk', text: newPart })}\n\n`);
+              }
+              _lastSentClean = clean;
+            }
           },
           onToolStart: (toolName, args) => {
-            res.write(`data: ${JSON.stringify({ type: 'tool-start', tool: toolName, args: String(args).substring(0, 500) })}\n\n`);
+            // Tool status sent only to WS, not SSE stream
+            // res.write(`data: ${JSON.stringify({ type: 'tool-start', tool: toolName, args: String(args).substring(0, 500) })}\n\n`);
             wsBroadcast({ type: 'chat-tool', tool: toolName, status: 'running', args: String(args).substring(0, 500) });
           },
           onToolResult: (toolName, result) => {
