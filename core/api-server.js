@@ -7577,7 +7577,7 @@ function start(refs) {
     // FEATURE 3: Auto-resume mining if it was running before restart
     try {
       var savedState = _loadMinerState();
-      if (savedState && savedState.mining) {
+      if (savedState && savedState.mining && cfg.miner && cfg.miner.enabled !== false) {
         console.log('[MINER-STATE] Previous mining session detected, will auto-resume via miner/start');
         // Simulate a start request after a short delay to let everything initialize
         setTimeout(function() {

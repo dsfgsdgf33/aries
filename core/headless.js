@@ -253,8 +253,8 @@ async function startHeadless(configPath) {
 
   // Personas
   const PERSONAS = {
-    default:  { name: 'Default',  prompt: 'You are Aries, an advanced AI assistant. Be helpful, concise, and intelligent.' },
-    coder:    { name: 'Coder',    prompt: 'You are Aries in Coder mode. Focus on technical accuracy, code quality, and engineering best practices.' },
+    default:  { name: 'Default',  prompt: 'You are Aries. Be extremely concise — lead with the answer, skip filler. Act with tools first, report after. Never narrate what you are about to do.' },
+    coder:    { name: 'Coder',    prompt: 'You are Aries in Coder mode. Show code, not explanations. Minimal prose. Fix bugs directly, suggest improvements briefly.' },
     creative: { name: 'Creative', prompt: 'You are Aries in Creative mode. Be imaginative, expressive, and inspiring.' },
     analyst:  { name: 'Analyst',  prompt: 'You are Aries in Analyst mode. Be data-focused, structured, and methodical.' },
   };
@@ -1074,7 +1074,18 @@ async function startHeadless(configPath) {
   // Extension Bridge — handles Chrome extension WebSocket at /ext
   const extensionBridge = new ExtensionBridge({ version: '1.0.0' });
   if (server) {
-    // Extension bridge upgrade moved into wsServer
+    // Extension bridge handles /ext WebSocket upgrades
+    server.on('upgrade', (req, socket, head) => {
+      try {
+        const pathname = require('url').parse(req.url).pathname;
+        if (pathname === '/ext') {
+          extensionBridge.handleUpgrade(req, socket, head);
+        }
+        // /ws is handled by ws package in websocket.js, other paths ignored
+      } catch (e) {
+        console.error('[EXT-BRIDGE] Upgrade error:', e.message);
+      }
+    });
     extensionBridge.on('connected', () => log.info('Browser extension connected'));
     extensionBridge.on('disconnected', () => log.info('Browser extension disconnected'));
     log.info('Extension bridge ready at /ext');
