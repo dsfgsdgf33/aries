@@ -4228,7 +4228,7 @@
     }
 
     // Initialize globe when swarm panel is shown
-    var _origSwitchPanel = switchPanel;
+    const _origSwitchPanel = switchPanel;
     switchPanel = function(name) {
       _origSwitchPanel(name);
       if (name === 'swarm') initSwarmGlobe();

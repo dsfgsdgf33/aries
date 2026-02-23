@@ -10,8 +10,12 @@ const path = require('path');
 const net = require('net');
 const { execSync, exec, spawn } = require('child_process');
 
+// SSL fix for Windows — allow self-signed certs
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const BASE_DIR = __dirname;
-const CONFIG_PATH = path.join(BASE_DIR, 'config.json');
+const CONFIG_PATH_NEW = path.join(BASE_DIR, 'config', 'aries.json');
+const CONFIG_PATH = fs.existsSync(CONFIG_PATH_NEW) ? CONFIG_PATH_NEW : path.join(BASE_DIR, 'config.json');
 const LOG_PATH = path.join(BASE_DIR, 'app.log');
 const DATA_DIR = path.join(BASE_DIR, 'data');
 const PID_FILE = path.join(DATA_DIR, 'aries.pid');

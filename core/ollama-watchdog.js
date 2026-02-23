@@ -115,20 +115,44 @@ class OllamaWatchdog extends EventEmitter {
 
   _restartLocal() {
     try {
-      // Check if ollama process exists
+      // Check if ollama binary exists before trying to spawn
+      let ollamaPath = null;
       if (process.platform === 'win32') {
-        try { execSync('tasklist /FI "IMAGENAME eq ollama.exe" /NH', { timeout: 3000, encoding: 'utf8' }); } catch {}
-        // Try to start ollama
-        spawn('ollama', ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-        console.log('[OLLAMA-WATCHDOG] Restarted local Ollama');
-        this.emit('restarted', { node: 'local' });
+        try {
+          ollamaPath = execSync('where ollama 2>nul', { timeout: 3000, encoding: 'utf8' }).trim().split('\n')[0];
+        } catch {}
       } else {
-        spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' }).unref();
-        console.log('[OLLAMA-WATCHDOG] Restarted local Ollama');
-        this.emit('restarted', { node: 'local' });
+        try {
+          ollamaPath = execSync('which ollama 2>/dev/null', { timeout: 3000, encoding: 'utf8' }).trim();
+        } catch {}
       }
+
+      if (!ollamaPath) {
+        // Ollama not installed — don't spam errors, just note it once
+        if (!this._ollamaNotFound) {
+          this._ollamaNotFound = true;
+          console.log('[OLLAMA-WATCHDOG] Ollama binary not found — skipping local restart');
+        }
+        return;
+      }
+
+      const child = spawn(ollamaPath, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true });
+      child.unref();
+      child.on('error', (e) => {
+        // Silently handle spawn errors (ENOENT etc)
+        if (!this._ollamaNotFound) {
+          this._ollamaNotFound = true;
+          console.log('[OLLAMA-WATCHDOG] Ollama spawn failed: ' + e.message);
+        }
+      });
+      console.log('[OLLAMA-WATCHDOG] Restarted local Ollama');
+      this.emit('restarted', { node: 'local' });
     } catch (e) {
-      console.error('[OLLAMA-WATCHDOG] Local restart failed:', e.message);
+      // Don't spam — log once
+      if (!this._restartLoggedOnce) {
+        this._restartLoggedOnce = true;
+        console.error('[OLLAMA-WATCHDOG] Local restart failed:', e.message);
+      }
     }
   }
 

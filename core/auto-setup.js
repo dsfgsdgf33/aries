@@ -111,6 +111,9 @@ class AutoSetup {
   _hasValidApiKey() {
     const cfg = this.config;
 
+    // Check if gateway URL is configured (e.g. OpenClaw gateway)
+    if (cfg.gateway?.url && cfg.gateway.url.length > 10) return true;
+
     // Check ariesGateway providers
     const providers = cfg.ariesGateway?.providers || {};
     for (const [, prov] of Object.entries(providers)) {

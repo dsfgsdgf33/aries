@@ -172,31 +172,67 @@ const tools = {
     }
   },
 
-  async web(url) {
+  async web(urlStr) {
     try {
-      const fetch = require('node-fetch');
-      const resp = await fetch(url, { timeout: 10000, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0' } });
-      let text = await resp.text();
-      text = text.replace(/<script[\s\S]*?<\/script>/gi, '')
-                 .replace(/<style[\s\S]*?<\/style>/gi, '')
-                 .replace(/<[^>]+>/g, ' ')
-                 .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                 .replace(/\s+/g, ' ').trim();
-      if (text.length > 8000) text = text.substring(0, 8000) + '\n[truncated]';
-      return { success: true, output: text };
+      const parsedUrl = new (require('url').URL)(urlStr);
+      const httpMod = parsedUrl.protocol === 'https:' ? require('https') : require('http');
+      const html = await new Promise((resolve, reject) => {
+        const req = httpMod.get(parsedUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          timeout: 10000,
+          rejectUnauthorized: false
+        }, (res) => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            // Follow redirect
+            tools.web(res.headers.location).then(resolve).catch(reject);
+            res.resume();
+            return;
+          }
+          let data = '';
+          res.on('data', c => data += c);
+          res.on('end', () => resolve({ success: true, output: data }));
+        });
+        req.on('error', (e) => reject(e));
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      });
+      if (html.success !== undefined) {
+        let text = html.output;
+        text = text.replace(/<script[\s\S]*?<\/script>/gi, '')
+                   .replace(/<style[\s\S]*?<\/style>/gi, '')
+                   .replace(/<[^>]+>/g, ' ')
+                   .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                   .replace(/\s+/g, ' ').trim();
+        if (text.length > 8000) text = text.substring(0, 8000) + '\n[truncated]';
+        return { success: true, output: text };
+      }
+      return html;
     } catch (e) {
       return { success: false, output: e.message };
     }
   },
 
-  async download(url, savePath) {
+  async download(urlStr, savePath) {
     try {
-      const fetch = require('node-fetch');
-      const resp = await fetch(url, { timeout: 30000 });
-      const buffer = await resp.buffer();
-      fs.mkdirSync(path.dirname(savePath), { recursive: true });
-      fs.writeFileSync(savePath, buffer);
-      return { success: true, output: `Downloaded ${buffer.length} bytes to ${savePath}` };
+      const parsedUrl = new (require('url').URL)(urlStr);
+      const httpMod = parsedUrl.protocol === 'https:' ? require('https') : require('http');
+      await new Promise((resolve, reject) => {
+        const req = httpMod.get(parsedUrl, { timeout: 30000, rejectUnauthorized: false }, (res) => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            tools.download(res.headers.location, savePath).then(resolve).catch(reject);
+            res.resume();
+            return;
+          }
+          fs.mkdirSync(path.dirname(savePath), { recursive: true });
+          const ws = fs.createWriteStream(savePath);
+          res.pipe(ws);
+          ws.on('finish', () => resolve());
+          ws.on('error', reject);
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      });
+      const stat = fs.statSync(savePath);
+      return { success: true, output: `Downloaded ${stat.size} bytes to ${savePath}` };
     } catch (e) {
       return { success: false, output: e.message };
     }

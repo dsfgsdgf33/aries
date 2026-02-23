@@ -1,145 +1,99 @@
 /**
- * ARIES v3.0 — System Info Monitor
- * 
- * Enhanced: GPU info, network connections count,
- * Docker container status.
+ * ARIES v5.0 — System Info Monitor (Zero Dependencies)
+ * Uses built-in Node.js os module + PowerShell for Windows-specific info.
  */
 
-const si = require('systeminformation');
+const os = require('os');
+const { execSync } = require('child_process');
 
 let cached = {
   cpu: 0, memUsed: 0, memTotal: 0,
   diskUsed: 0, diskTotal: 0,
   netUp: 0, netDown: 0,
   procs: [], uptime: 0,
-  gpu: null,         // { name, temp, utilization, vram }
-  netConns: 0,       // Active network connections
-  docker: null       // [{ name, state }] or null
+  gpu: null,
+  netConns: 0,
+  docker: null
 };
+
+function _ps(cmd, timeout = 5000) {
+  try {
+    return execSync(`powershell -NoProfile -Command "${cmd}"`, {
+      encoding: 'utf8', timeout, windowsHide: true
+    }).trim();
+  } catch { return ''; }
+}
 
 async function refresh() {
   try {
-    const [cpuLoad, mem, disk, net, procs, time] = await Promise.all([
-      si.currentLoad(),
-      si.mem(),
-      si.fsSize(),
-      si.networkStats(),
-      si.processes(),
-      si.time()
-    ]);
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    cached.memTotal = totalMem;
+    cached.memUsed = totalMem - freeMem;
+    cached.uptime = Math.round(os.uptime());
 
-    cached.cpu = Math.round(cpuLoad.currentLoad || 0);
-    cached.memUsed = mem.used;
-    cached.memTotal = mem.total;
-
-    if (disk && disk.length > 0) {
-      cached.diskUsed = disk[0].used;
-      cached.diskTotal = disk[0].size;
+    // CPU usage estimate
+    const cpus = os.cpus();
+    let totalIdle = 0, totalTick = 0;
+    for (const cpu of cpus) {
+      for (const type of Object.keys(cpu.times)) totalTick += cpu.times[type];
+      totalIdle += cpu.times.idle;
     }
+    cached.cpu = Math.round((1 - totalIdle / totalTick) * 100);
 
-    if (net && net.length > 0) {
-      cached.netUp = net[0].tx_sec || 0;
-      cached.netDown = net[0].rx_sec || 0;
-    }
+    // Disk info (Windows)
+    try {
+      const diskOut = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get Size,FreeSpace /format:list', {
+        encoding: 'utf8', timeout: 5000, windowsHide: true
+      });
+      const freeMatch = diskOut.match(/FreeSpace=(\d+)/);
+      const sizeMatch = diskOut.match(/Size=(\d+)/);
+      if (sizeMatch) {
+        cached.diskTotal = parseInt(sizeMatch[1]);
+        cached.diskUsed = cached.diskTotal - (freeMatch ? parseInt(freeMatch[1]) : 0);
+      }
+    } catch {}
 
-    cached.procs = (procs.list || [])
-      .sort((a, b) => (b.cpu || 0) - (a.cpu || 0))
-      .slice(0, 8)
-      .map(p => ({
-        name: p.name,
-        cpu: Math.round(p.cpu || 0),
-        mem: p.mem || 0,
-        memRss: p.memRss || 0
-      }));
+    // Top processes
+    try {
+      const procOut = _ps(
+        'Get-Process | Sort-Object CPU -Descending | Select-Object -First 15 Name,Id,@{N=\\"CPU\\";E={[math]::Round($_.CPU,1)}},@{N=\\"MemMB\\";E={[math]::Round($_.WorkingSet64/1MB,1)}} | ConvertTo-Json -Compress'
+      );
+      if (procOut) {
+        let procs = JSON.parse(procOut);
+        if (!Array.isArray(procs)) procs = [procs];
+        cached.procs = procs.map(p => ({
+          name: p.Name, pid: p.Id, cpu: p.CPU || 0, mem: p.MemMB || 0
+        }));
+      }
+    } catch {}
 
-    cached.uptime = time.uptime || 0;
-
-    // Slow checks (GPU, net conns, docker) only every ~30 seconds
-    _slowRefreshCounter++;
-    if (_slowRefreshCounter >= 10) {
-      _slowRefreshCounter = 0;
-      refreshGpu().catch(() => {});
-      refreshNetConns().catch(() => {});
-      refreshDocker().catch(() => {});
-    }
+    // GPU (optional)
+    try {
+      const gpuOut = _ps('(Get-CimInstance Win32_VideoController | Select-Object -First 1).Name');
+      if (gpuOut) cached.gpu = { name: gpuOut, temp: 0, utilization: 0, vram: 0 };
+    } catch {}
 
   } catch (e) {
-    // Keep cached values on error
+    console.error('[SYSTEM] Refresh error:', e.message);
   }
+
   return cached;
 }
 
-// Use child_process.exec (async) to avoid blocking the event loop
-const { exec } = require('child_process');
-
-function execAsync(cmd, opts = {}) {
-  return new Promise((resolve) => {
-    exec(cmd, { encoding: 'utf8', timeout: 5000, windowsHide: true, ...opts }, (err, stdout) => {
-      resolve(err ? '' : (stdout || '').trim());
-    });
-  });
-}
-
-let _slowRefreshCounter = 0;
-
-async function refreshGpu() {
-  try {
-    const output = await execAsync('nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits');
-    if (output) {
-      const parts = output.split(',').map(s => s.trim());
-      cached.gpu = {
-        name: parts[0] || 'GPU',
-        temp: parseInt(parts[1]) || 0,
-        utilization: parseInt(parts[2]) || 0,
-        vramUsed: parseInt(parts[3]) || 0,
-        vramTotal: parseInt(parts[4]) || 0
-      };
-    }
-  } catch {
-    cached.gpu = null;
-  }
-}
-
-async function refreshNetConns() {
-  try {
-    const output = await execAsync('powershell.exe -NoProfile -WindowStyle Hidden -Command "(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue).Count"');
-    cached.netConns = parseInt(output) || 0;
-  } catch {
-    cached.netConns = 0;
-  }
-}
-
-async function refreshDocker() {
-  try {
-    const output = await execAsync('docker ps --format "{{.Names}}|{{.State}}" 2>nul');
-    if (output) {
-      cached.docker = output.split('\n').filter(Boolean).map(line => {
-        const [name, state] = line.split('|');
-        return { name: name || '?', state: state || 'unknown' };
-      });
-    } else {
-      cached.docker = [];
-    }
-  } catch {
-    cached.docker = null;
-  }
-}
-
 function get() { return cached; }
+function getProcs() { return cached.procs; }
 
-function formatBytes(b) {
-  if (b >= 1073741824) return (b / 1073741824).toFixed(1) + 'GB';
-  if (b >= 1048576) return (b / 1048576).toFixed(1) + 'MB';
-  if (b >= 1024) return (b / 1024).toFixed(1) + 'KB';
-  return b + 'B';
+// Start polling
+let _interval = null;
+function startPolling(intervalMs = 5000) {
+  if (_interval) return;
+  refresh();
+  _interval = setInterval(refresh, intervalMs);
 }
 
-function formatUptime(s) {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 24) return Math.floor(h / 24) + 'd';
-  if (h > 0) return h + 'h' + (m > 0 ? m + 'm' : '');
-  return m + 'm';
+function stopPolling() {
+  if (_interval) { clearInterval(_interval); _interval = null; }
 }
 
-module.exports = { refresh, get, formatBytes, formatUptime };
+module.exports = { refresh, get, getProcs, startPolling, stopPolling, cached };

@@ -444,6 +444,22 @@ async function handleRequest(req, res) {
       res.end(docsPage);
       return;
     }
+    // Canvas route — serve HTML files from data/canvas/
+    if (reqPath.startsWith('/canvas/')) {
+      const canvasFile = reqPath.slice(8); // strip /canvas/
+      if (canvasFile && !canvasFile.includes('..')) {
+        const canvasPath = path.join(__dirname, '..', 'data', 'canvas', canvasFile);
+        try {
+          if (fs.existsSync(canvasPath)) {
+            const ext = path.extname(canvasFile).toLowerCase();
+            const mimeTypes = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
+            res.writeHead(200, { 'Content-Type': (mimeTypes[ext] || 'text/plain') + '; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(fs.readFileSync(canvasPath));
+            return;
+          }
+        } catch {}
+      }
+    }
     return serveStatic(res, reqPath.slice(1));
   }
 

@@ -167,7 +167,7 @@ class Config extends EventEmitter {
       server: { port: 3333, host: '0.0.0.0', cors: true },
       auth: { tokens: [], rateLimitPerMinute: 60, rateLimitBurst: 10, tokenRotationDays: 30 },
       gateway: { url: 'http://127.0.0.1:18800/v1/chat/completions', token: '', model: 'anthropic/claude-opus-4-6' },
-      fallback: { enabled: true, directApi: { url: '', model: '' }, ollama: { url: 'http://localhost:11434/api/chat', model: 'llama3' } },
+      fallback: { enabled: true, directApi: { url: '', model: '' }, ollama: { url: 'http://127.0.0.1:11434/api/chat', model: 'llama3' } },
       models: { chat: 'anthropic/claude-opus-4-6', coding: 'anthropic/claude-opus-4-6', research: 'anthropic/claude-sonnet-4-20250514', swarmDecompose: 'anthropic/claude-sonnet-4-20250514', swarmWorker: 'anthropic/claude-sonnet-4-20250514', swarmAggregate: 'anthropic/claude-opus-4-6' },
       user: { name: 'User', title: 'Master Control' },
       maxHistory: 30,
@@ -187,7 +187,7 @@ class Config extends EventEmitter {
       webSearch: { braveApiKey: '', duckduckgo: true },
       networkScanner: { enabled: true, timeout: 3000 },
       systemMonitor: { enabled: true, pollInterval: 15000 },
-      modelManager: { ollamaUrl: 'http://localhost:11434' },
+      modelManager: { ollamaUrl: 'http://127.0.0.1:11434' },
     };
 
     return this._deepMerge(defaults, raw);

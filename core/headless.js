@@ -8,7 +8,13 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 
-async function startHeadless(configPath = path.join(__dirname, '..', 'config.json')) {
+async function startHeadless(configPath) {
+  // Resolve config path: check config/aries.json first, then config.json
+  if (!configPath) {
+    const newPath = path.join(__dirname, '..', 'config', 'aries.json');
+    const legacyPath = path.join(__dirname, '..', 'config.json');
+    configPath = fs.existsSync(newPath) ? newPath : legacyPath;
+  }
   // Prevent uncaught errors from crashing the process
   process.on('uncaughtException', (err) => {
     console.error('[HEADLESS] Uncaught:', err.stack || err.message);
@@ -54,7 +60,8 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
   process.on('exit', _cleanupOnce);
 
   let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const baseDir = path.dirname(configPath);
+  // baseDir is always the project root, regardless of where config file lives
+  const baseDir = path.resolve(path.dirname(configPath), configPath.includes(path.join('config', 'aries.json')) ? '..' : '.');
 
   // Ensure data dir exists
   const dataDir = path.join(baseDir, 'data');
@@ -319,7 +326,7 @@ async function startHeadless(configPath = path.join(__dirname, '..', 'config.jso
   // Test AI (using built-in http/https only)
   async function testAI() {
     try {
-      const gatewayUrl = config.gateway && config.gateway.url ? config.gateway.url : 'http://localhost:18800/v1/chat/completions';
+      const gatewayUrl = config.gateway && config.gateway.url ? config.gateway.url : 'http://127.0.0.1:18800/v1/chat/completions';
       const parsedUrl = new (require('url').URL)(gatewayUrl);
       const httpMod = parsedUrl.protocol === 'https:' ? require('https') : require('http');
       const postData = JSON.stringify({ model: config.gateway.model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 10 });

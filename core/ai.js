@@ -341,7 +341,7 @@ async function callDirectApi(messages, model) {
  */
 async function callOllama(messages, model) {
   const cfg = getConfig();
-  const ollamaUrl = cfg.fallback?.ollama?.url || 'http://localhost:11434/api/chat';
+  const ollamaUrl = cfg.fallback?.ollama?.url || 'http://127.0.0.1:11434/api/chat';
   const ollamaModel = model || cfg.fallback?.ollama?.model || 'llama3';
 
   const postBody = JSON.stringify({ model: ollamaModel, messages, stream: false });
@@ -550,7 +550,7 @@ function selectModel(taskType) {
  */
 async function callSwarmOllama(messages, model) {
   model = model || 'mistral';
-  let relayUrl = 'http://localhost:9700', secret = '';
+  let relayUrl = 'http://127.0.0.1:9700', secret = '';
   try {
     const _cfg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'config.json'), 'utf8'));
     relayUrl = (_cfg.relay && _cfg.relay.url) || relayUrl;
