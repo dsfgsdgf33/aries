@@ -714,4 +714,28 @@ for (const [name, fn] of Object.entries(tools)) {
   }
 }
 
+const MAX_SINGLE_OUTPUT = 10240; // 10KB
+
+/**
+ * Execute a single tool call, return result as string. Never throws.
+ */
+async function executeSingle(toolName, args) {
+  try {
+    const fn = loggedTools[toolName];
+    if (!fn || typeof fn !== 'function') return `[error] Unknown tool: ${toolName}`;
+    const result = await fn.apply(loggedTools, Array.isArray(args) ? args : [args]);
+    if (!result) return '(no output)';
+    const output = typeof result === 'string' ? result : (result.output || JSON.stringify(result));
+    const success = result.success !== undefined ? result.success : true;
+    const prefix = success ? '✓' : '✗';
+    if (output.length > MAX_SINGLE_OUTPUT) {
+      return `${prefix} ${output.substring(0, MAX_SINGLE_OUTPUT)}\n... (truncated, ${output.length} bytes total)`;
+    }
+    return `${prefix} ${output}`;
+  } catch (e) {
+    return `[error] ${e.message}`;
+  }
+}
+
+loggedTools.executeSingle = executeSingle;
 module.exports = loggedTools;

@@ -353,7 +353,7 @@
   function initChat() {
     var input = document.getElementById('chatInput');
     var btn = document.getElementById('chatSend');
-    btn.addEventListener('click', sendChat);
+    btn.addEventListener('click', function() { if (_agentRunning) stopAgentLoop(); else sendChat(); });
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) { e.preventDefault(); sendChat(); }
       if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); sendChat(); }
@@ -536,6 +536,8 @@
 
   function hideSlashDropdown() { var el = document.getElementById('slashDropdown'); if (el) el.classList.remove('visible'); }
 
+  var _agentRunning = false;
+
   function sendChat() {
     var input = document.getElementById('chatInput');
     var msg = input.value.trim();
@@ -555,6 +557,8 @@
     appendChatMessage('user', msg);
     input.value = ''; input.style.height = 'auto';
     input.classList.add('thinking');
+    _agentRunning = true;
+    showAgentWorking(true);
     showChatTyping();
 
     fetch('/api/chat/stream', {
@@ -569,6 +573,23 @@
       var buffer = '';
       var fullText = '';
       var msgDiv = null;
+      var currentToolDiv = null;
+
+      function ensureMsgDiv() {
+        if (!msgDiv) {
+          msgDiv = document.createElement('div');
+          msgDiv.className = 'chat-msg assistant';
+          var roleLabel = document.createElement('div');
+          roleLabel.className = 'msg-role';
+          roleLabel.textContent = 'Aries';
+          msgDiv.appendChild(roleLabel);
+          var body = document.createElement('div');
+          body.className = 'msg-body';
+          msgDiv.appendChild(body);
+          document.getElementById('chatMessages').appendChild(msgDiv);
+        }
+        return msgDiv;
+      }
 
       function processChunk(result) {
         if (result.done) return;
@@ -584,32 +605,58 @@
             var parsed = JSON.parse(data);
             if (parsed.type === 'chunk' && parsed.text) {
               fullText += parsed.text;
-              if (!msgDiv) {
-                msgDiv = document.createElement('div');
-                msgDiv.className = 'chat-msg assistant';
-                var roleLabel = document.createElement('div');
-                roleLabel.className = 'msg-role';
-                roleLabel.textContent = 'Aries';
-                msgDiv.appendChild(roleLabel);
-                var body = document.createElement('div');
-                body.className = 'msg-body';
-                msgDiv.appendChild(body);
-                document.getElementById('chatMessages').appendChild(msgDiv);
-              }
-              msgDiv.querySelector('.msg-body').innerHTML = formatMessage(fullText);
+              var div = ensureMsgDiv();
+              div.querySelector('.msg-body').innerHTML = formatMessage(stripToolTagsClient(fullText));
               scrollChatToBottom();
             }
-            // Update active model badge when done event arrives
-            if (parsed.type === 'done' && parsed.usedModel) {
-              var badge = document.getElementById('activeModelBadge');
-              if (badge) {
-                var isOllama = parsed.usedModel.indexOf('ollama') >= 0;
-                badge.textContent = parsed.usedModel.split('/').pop();
-                badge.style.background = isOllama ? '#f97316' : '#22c55e';
-                badge.style.color = '#000';
-                badge.title = 'Last model: ' + parsed.usedModel;
-                badge._userSet = true;
+            if (parsed.type === 'tool-start') {
+              var div = ensureMsgDiv();
+              var toolBlock = document.createElement('div');
+              toolBlock.className = 'tool-block';
+              toolBlock.innerHTML = '<div class="tool-header" onclick="this.parentElement.querySelector(\'.tool-output\').classList.toggle(\'collapsed\')">' +
+                '\u26A1 ' + escapeHtml(parsed.tool) + ' <span class="tool-args">\u2192 ' + escapeHtml((parsed.args || '').substring(0, 80)) + '</span>' +
+                '<span class="tool-status tool-running">\u23F3</span></div>' +
+                '<pre class="tool-output collapsed"></pre>';
+              div.querySelector('.msg-body').appendChild(toolBlock);
+              currentToolDiv = toolBlock;
+              scrollChatToBottom();
+            }
+            if (parsed.type === 'tool-result') {
+              if (currentToolDiv) {
+                var statusEl = currentToolDiv.querySelector('.tool-status');
+                if (statusEl) { statusEl.textContent = '\u2713'; statusEl.className = 'tool-status tool-done'; }
+                var outputEl = currentToolDiv.querySelector('.tool-output');
+                if (outputEl) outputEl.textContent = parsed.result || '(no output)';
               }
+              currentToolDiv = null;
+              scrollChatToBottom();
+            }
+            if (parsed.type === 'iteration') {
+              if (!parsed.final) {
+                // New iteration starting — reset msgDiv so next chunks create fresh section
+                fullText = '';
+                msgDiv = null;
+                currentToolDiv = null;
+              }
+            }
+            if (parsed.type === 'done') {
+              if (parsed.usedModel) {
+                var badge = document.getElementById('activeModelBadge');
+                if (badge) {
+                  var isOllama = parsed.usedModel.indexOf('ollama') >= 0;
+                  badge.textContent = parsed.usedModel.split('/').pop();
+                  badge.style.background = isOllama ? '#f97316' : '#22c55e';
+                  badge.style.color = '#000';
+                  badge.title = 'Last model: ' + parsed.usedModel;
+                  badge._userSet = true;
+                }
+              }
+              if (parsed.stats && parsed.stats.iterations > 1) {
+                toast('Agent completed in ' + parsed.stats.iterations + ' iterations', 'info');
+              }
+            }
+            if (parsed.type === 'error') {
+              toast('AI error: ' + (parsed.error || 'unknown'), 'error');
             }
           } catch (e) {}
         }
@@ -617,12 +664,39 @@
       }
       return reader.read().then(processChunk).then(function() {
         document.getElementById('chatInput').classList.remove('thinking');
+        _agentRunning = false;
+        showAgentWorking(false);
       });
     }).catch(function(e) {
       hideChatTyping();
       document.getElementById('chatInput').classList.remove('thinking');
+      _agentRunning = false;
+      showAgentWorking(false);
       toast('Chat error: ' + e.message, 'error');
     });
+  }
+
+  function stripToolTagsClient(text) {
+    return text.replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').replace(/<tool:[^/]*\/>/g, '').trim();
+  }
+
+  function showAgentWorking(working) {
+    var input = document.getElementById('chatInput');
+    var sendBtn = document.getElementById('chatSend');
+    if (working) {
+      input.classList.add('agent-working');
+      if (sendBtn) { sendBtn.textContent = '\u25A0 Stop'; sendBtn._wasStop = true; }
+    } else {
+      input.classList.remove('agent-working');
+      if (sendBtn) { sendBtn.textContent = '\u27A4'; sendBtn._wasStop = false; }
+    }
+  }
+
+  function stopAgentLoop() {
+    fetch('/api/chat/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-aries-key': API_KEY }
+    }).then(function() { toast('Agent stopped', 'info'); }).catch(function() {});
   }
 
   function appendChatMessage(role, content) {

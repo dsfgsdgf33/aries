@@ -666,37 +666,53 @@ async function handleRequest(req, res) {
       if (refs.savePersistentChat) refs.savePersistentChat('user', message);
       wsBroadcast({ type: 'chat', role: 'user', content: message, timestamp: Date.now() });
 
+      // Use agent loop for iterative tool execution
       try {
+        const systemPrompt = ai.buildSystemPrompt ? ai.buildSystemPrompt() : (refs.getPersonaPrompt?.() || '');
         const messages = [
-          { role: 'system', content: refs.getPersonaPrompt?.() || '' },
+          { role: 'system', content: systemPrompt },
           ...chatHistory.slice(-30),
         ];
 
-        let fullResponse = '';
-        const onChunk = chunk => {
-          fullResponse += chunk;
-          res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
-        };
+        const chatModel = body.model || undefined;
+        let fullCleanResponse = '';
 
-        const chatOpts = body.model ? { model: body.model } : undefined;
-        let usedModel = null;
-        if (ai.chatStreamChunked) {
-          const result = await ai.chatStreamChunked(messages, onChunk, chatOpts);
-          fullResponse = result.response || fullResponse;
-          usedModel = result.usedModel || null;
-        } else {
-          const result = await ai.chatStream(messages, null, null, chatOpts);
-          fullResponse = (result.response || '').replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').replace(/<tool:[^/]*\/>/g, '').trim();
-          res.write(`data: ${JSON.stringify({ type: 'chunk', text: fullResponse })}\n\n`);
-        }
+        // Abort controller for stop button
+        const ac = new (require('events').EventEmitter)();
+        let aborted = false;
+        const signal = { get aborted() { return aborted; } };
+        // Store abort handle so stop endpoint can trigger it
+        if (!_refs._activeAgentLoops) _refs._activeAgentLoops = new Set();
+        const loopHandle = { abort: () => { aborted = true; } };
+        _refs._activeAgentLoops.add(loopHandle);
 
-        const clean = fullResponse.replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').replace(/<tool:[^/]*\/>/g, '').trim();
+        const result = await ai.agentLoop(messages, chatModel, {
+          onChunk: (chunk) => {
+            res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+          },
+          onToolStart: (toolName, args) => {
+            res.write(`data: ${JSON.stringify({ type: 'tool-start', tool: toolName, args: String(args).substring(0, 500) })}\n\n`);
+            wsBroadcast({ type: 'chat-tool', tool: toolName, status: 'running', args: String(args).substring(0, 500) });
+          },
+          onToolResult: (toolName, result) => {
+            const truncResult = String(result).substring(0, 5000);
+            res.write(`data: ${JSON.stringify({ type: 'tool-result', tool: toolName, result: truncResult })}\n\n`);
+            wsBroadcast({ type: 'chat-tool', tool: toolName, status: 'done', result: truncResult });
+          },
+          onIterationDone: (iter, isFinal) => {
+            res.write(`data: ${JSON.stringify({ type: 'iteration', iteration: iter, final: isFinal })}\n\n`);
+          }
+        }, signal);
+
+        _refs._activeAgentLoops.delete(loopHandle);
+
+        const clean = ai.stripToolTags ? ai.stripToolTags(result.response || '') : (result.response || '').replace(/<tool:[^>]*>[\s\S]*?<\/tool:[^>]*>/g, '').replace(/<tool:[^/]*\/>/g, '').trim();
         chatHistory.push({ role: 'assistant', content: clean });
         if (refs.savePersistentChat) refs.savePersistentChat('assistant', clean);
         refs.saveHistory?.();
         wsBroadcast({ type: 'chat', role: 'assistant', content: clean, timestamp: Date.now() });
 
-        res.write(`data: ${JSON.stringify({ type: 'done', stats: { tokens: Math.ceil(clean.length / 4) }, usedModel: usedModel })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', stats: { tokens: Math.ceil(clean.length / 4), iterations: result.iterations } })}\n\n`);
         res.write('data: [DONE]\n\n');
       } catch (e) {
         res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
@@ -704,6 +720,15 @@ async function handleRequest(req, res) {
       res.end();
       audit.request(req, 200, Date.now() - startMs);
       return;
+    }
+
+    // ═══ POST /api/chat/stop ═══
+    if (method === 'POST' && reqPath === '/api/chat/stop') {
+      const loops = _refs._activeAgentLoops || new Set();
+      let count = 0;
+      for (const handle of loops) { handle.abort(); count++; }
+      loops.clear();
+      return json(res, 200, { stopped: count });
     }
 
     // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â // â• â•â• POST /api/chat/local â•â•â•£

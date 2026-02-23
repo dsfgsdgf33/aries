@@ -588,4 +588,176 @@ async function callSwarmOllama(messages, model) {
   throw new Error('Relay timeout after 120s');
 }
 
-module.exports = { chat, chatStream, chatStreamChunked, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama };
+// ═══════════════════════════════════════════════════════════════
+// AGENT LOOP — Iterative tool execution with streaming
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Stream AI response via direct Anthropic API (SSE).
+ * Returns full response text. Calls onChunk for each text delta.
+ */
+async function streamAnthropicDirect(messages, model, onChunk) {
+  const cfg = getConfig();
+  const apiUrl = cfg.fallback?.directApi?.url || 'https://api.anthropic.com/v1/messages';
+  const apiKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('No API key for streaming');
+
+  const system = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+  const anthropicMessages = messages.filter(m => m.role !== 'system');
+
+  const bodyObj = {
+    model: (model || cfg.fallback?.directApi?.model || 'claude-sonnet-4-20250514').replace('anthropic/', ''),
+    messages: anthropicMessages,
+    max_tokens: 8192,
+    stream: true,
+  };
+  if (system) bodyObj.system = system;
+
+  const postBody = JSON.stringify(bodyObj);
+  const headers = buildAnthropicHeaders(apiKey);
+
+  const resp = await _httpPost(apiUrl, postBody, headers, 120000);
+  if (resp.statusCode >= 400) {
+    const errBody = await _readBody(resp.stream);
+    throw new Error('Anthropic stream ' + resp.statusCode + ': ' + errBody.substring(0, 200));
+  }
+
+  return new Promise((resolve, reject) => {
+    let content = '';
+    let buffer = '';
+    resp.stream.on('data', chunk => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.substring(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+            content += parsed.delta.text;
+            if (onChunk) onChunk(parsed.delta.text);
+          }
+          if (parsed.type === 'message_stop') { /* done */ }
+        } catch {}
+      }
+    });
+    resp.stream.on('end', () => resolve(content));
+    resp.stream.on('error', reject);
+  });
+}
+
+/**
+ * Stream AI via gateway (SSE). Returns full response text.
+ */
+async function streamGateway(messages, model, onChunk) {
+  const cfg = getConfig();
+  const chatModel = model || cfg.models?.chat || cfg.gateway?.model;
+  const resp = await callGateway(messages, chatModel, true);
+
+  return new Promise((resolve, reject) => {
+    let content = '';
+    let buffer = '';
+    resp.body.on('data', chunk => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.substring(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed._meta) continue;
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) { content += delta; if (onChunk) onChunk(delta); }
+        } catch {}
+      }
+    });
+    resp.body.on('end', () => resolve(content));
+    resp.body.on('error', reject);
+  });
+}
+
+/**
+ * Stream AI with fallback: gateway → direct Anthropic
+ */
+async function streamWithFallback(messages, model, onChunk) {
+  try {
+    return await streamGateway(messages, model, onChunk);
+  } catch (e) {
+    // Fallback to direct Anthropic streaming
+    const cfg = getConfig();
+    const hasKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
+    if (hasKey) {
+      return await streamAnthropicDirect(messages, model, onChunk);
+    }
+    throw e;
+  }
+}
+
+/**
+ * Agent loop: iteratively call AI, parse tools, execute, feed results back.
+ * 
+ * @param {Array} messages - Full message array including system prompt
+ * @param {string} model - Model to use
+ * @param {Object} callbacks - { onChunk, onToolStart, onToolResult, onIterationDone }
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Object} { response, iterations }
+ */
+async function agentLoop(messages, model, callbacks, signal) {
+  const MAX_ITERATIONS = 15;
+  const { executeSingle } = require('./tools');
+  const cb = callbacks || {};
+  let lastResponse = '';
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    if (signal && signal.aborted) {
+      return { response: lastResponse || 'Agent loop cancelled.', iterations: i };
+    }
+
+    // Stream AI response
+    let response = '';
+    try {
+      response = await streamWithFallback(messages, model, cb.onChunk);
+    } catch (e) {
+      // If streaming fails completely, try non-streaming
+      const data = await callWithFallback(messages, model);
+      response = data.choices?.[0]?.message?.content || '';
+      if (cb.onChunk) cb.onChunk(response);
+    }
+
+    lastResponse = response;
+
+    // Parse tool calls
+    const toolCalls = parseTools(response);
+    if (toolCalls.length === 0) {
+      // No tools = final answer
+      if (cb.onIterationDone) cb.onIterationDone(i + 1, true);
+      return { response: stripToolTags(response), iterations: i + 1 };
+    }
+
+    // Signal iteration boundary
+    if (cb.onIterationDone) cb.onIterationDone(i + 1, false);
+
+    // Execute tools one at a time
+    let toolResultsText = '';
+    for (const call of toolCalls) {
+      if (signal && signal.aborted) break;
+      const argsSummary = Array.isArray(call.args) ? call.args[0] || '' : String(call.args);
+      if (cb.onToolStart) cb.onToolStart(call.tool, argsSummary);
+      const result = await executeSingle(call.tool, call.args);
+      if (cb.onToolResult) cb.onToolResult(call.tool, result);
+      toolResultsText += `\n[${call.tool}] ${result}\n`;
+    }
+
+    // Add to messages and continue
+    messages.push({ role: 'assistant', content: response });
+    messages.push({ role: 'user', content: `Tool results:\n${toolResultsText}\n\nContinue with the task. If done, give the final summary.` });
+  }
+
+  return { response: stripToolTags(lastResponse) || 'Max iterations reached.', iterations: MAX_ITERATIONS };
+}
+
+module.exports = { chat, chatStream, chatStreamChunked, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop };
