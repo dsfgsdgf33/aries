@@ -92,6 +92,24 @@ Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT | O
 <tool:message to="target">text</tool:message> — Send message
 <tool:webapp name="myapp">html</tool:webapp> — Create web app at /canvas/
 <tool:websearch>query</tool:websearch> — Web search (DuckDuckGo)
+<tool:spawn-agent task="description">subtask</tool:spawn-agent> — Spawn sub-agent
+<tool:check-agent>jobId</tool:check-agent> — Check sub-agent status
+<tool:wait-agents></tool:wait-agents> — Wait for all sub-agents
+<tool:bg-run>command</tool:bg-run> — Background process
+<tool:bg-check>pid</tool:bg-check> — Check process
+<tool:bg-kill>pid</tool:bg-kill> — Kill process
+<tool:bg-list></tool:bg-list> — List processes
+<tool:browse-navigate>url</tool:browse-navigate> — Browse URL
+<tool:browse-click>selector</tool:browse-click> — Click element
+<tool:browse-type selector="sel">text</tool:browse-type> — Type text
+<tool:browse-screenshot>file</tool:browse-screenshot> — Screenshot
+<tool:browse-evaluate>js</tool:browse-evaluate> — Run JS
+<tool:vision prompt="optional">path</tool:vision> — Analyze image
+<tool:diff>path</tool:diff> — Git diff
+<tool:grep pattern="regex" dir=".">glob</tool:grep> — Search files
+<tool:http method="POST" url="url" headers='{"key":"val"}'>body</tool:http> — HTTP request
+<tool:env>VAR_NAME</tool:env> — Read environment variable
+<tool:cron expr="*/5 * * * *" name="jobname">command</tool:cron> — Named cron job
 ${pluginTools ? '\n' + pluginTools : ''}
 
 ## Agents: Commander • Coder • Researcher • Analyst • Creative • Scout • Executor • Security • Trader • Debugger • Architect • Optimizer • Navigator • Scribe
@@ -155,10 +173,31 @@ function parseTools(text) {
     { name: 'canvas', regex: /<tool:canvas\s+file="([^"]*)">([\s\S]*?)<\/tool:canvas>/g, hasAttr: true },
     { name: 'sandbox', regex: /<tool:sandbox(?:\s+lang="([^"]*)")?>([\s\S]*?)<\/tool:sandbox>/g, hasAttr: true },
     { name: 'memorySearch', regex: /<tool:memorySearch>([\s\S]*?)<\/tool:memorySearch>/g },
-    { name: 'http', regex: /<tool:http\s+method="([^"]*)">([\s\S]*?)<\/tool:http>/g, hasAttr: true },
+    // old simple http pattern replaced by Phase 2 httpRequest with url attr
     { name: 'message', regex: /<tool:message\s+to="([^"]*)">([\s\S]*?)<\/tool:message>/g, hasAttr: true },
     { name: 'webapp', regex: /<tool:webapp\s+name="([^"]*)">([\s\S]*?)<\/tool:webapp>/g, hasAttr: true },
     { name: 'websearch', regex: /<tool:websearch>([\s\S]*?)<\/tool:websearch>/g },
+    // Phase 2 tools
+    { name: 'spawn-agent', regex: /<tool:spawn-agent\s+task="([^"]*)">([\s\S]*?)<\/tool:spawn-agent>/g, hasAttr: true },
+    { name: 'check-agent', regex: /<tool:check-agent>([\s\S]*?)<\/tool:check-agent>/g },
+    { name: 'wait-agents', regex: /<tool:wait-agents><\/tool:wait-agents>/g, noContent: true },
+    { name: 'wait-agents', regex: /<tool:wait-agents\s*\/>/g, noContent: true },
+    { name: 'bg-run', regex: /<tool:bg-run>([\s\S]*?)<\/tool:bg-run>/g },
+    { name: 'bg-check', regex: /<tool:bg-check>([\s\S]*?)<\/tool:bg-check>/g },
+    { name: 'bg-kill', regex: /<tool:bg-kill>([\s\S]*?)<\/tool:bg-kill>/g },
+    { name: 'bg-list', regex: /<tool:bg-list><\/tool:bg-list>/g, noContent: true },
+    { name: 'bg-list', regex: /<tool:bg-list\s*\/>/g, noContent: true },
+    { name: 'browse-navigate', regex: /<tool:browse-navigate>([\s\S]*?)<\/tool:browse-navigate>/g },
+    { name: 'browse-click', regex: /<tool:browse-click>([\s\S]*?)<\/tool:browse-click>/g },
+    { name: 'browse-type', regex: /<tool:browse-type\s+selector="([^"]*)">([\s\S]*?)<\/tool:browse-type>/g, hasAttr: true },
+    { name: 'browse-screenshot', regex: /<tool:browse-screenshot>([\s\S]*?)<\/tool:browse-screenshot>/g },
+    { name: 'browse-evaluate', regex: /<tool:browse-evaluate>([\s\S]*?)<\/tool:browse-evaluate>/g },
+    { name: 'vision', regex: /<tool:vision(?:\s+prompt="([^"]*)")?>([\s\S]*?)<\/tool:vision>/g, hasAttr: true },
+    { name: 'diff', regex: /<tool:diff>([\s\S]*?)<\/tool:diff>/g },
+    { name: 'grep', regex: /<tool:grep\s+pattern="([^"]*)"(?:\s+dir="([^"]*)")?>([\s\S]*?)<\/tool:grep>/g, hasTriple: true },
+    { name: 'httpRequest', regex: /<tool:http\s+method="([^"]*)"\s+url="([^"]*)"(?:\s+headers='([^']*)')?>([\s\S]*?)<\/tool:http>/g, hasQuad: true },
+    { name: 'env', regex: /<tool:env>([\s\S]*?)<\/tool:env>/g },
+    { name: 'cronNamed', regex: /<tool:cron\s+expr="([^"]*)"\s+name="([^"]*)">([\s\S]*?)<\/tool:cron>/g, hasTriple: true },
   ];
 
   const pluginRegex = /<tool:plugin_(\w+)>([\s\S]*?)<\/tool:plugin_\1>/g;
@@ -171,6 +210,7 @@ function parseTools(text) {
     let m;
     while ((m = p.regex.exec(text)) !== null) {
       if (p.noContent) toolCalls.push({ tool: p.name, args: [] });
+      else if (p.hasQuad) toolCalls.push({ tool: p.name, args: [m[1], m[2], m[4], m[3]] });
       else if (p.hasTriple) toolCalls.push({ tool: p.name, args: [m[1], m[2], m[3]] });
       else if (p.hasAttr) toolCalls.push({ tool: p.name, args: [m[1], m[2]] });
       else toolCalls.push({ tool: p.name, args: [m[1]] });
@@ -760,4 +800,102 @@ async function agentLoop(messages, model, callbacks, signal) {
   return { response: stripToolTags(lastResponse) || 'Max iterations reached.', iterations: MAX_ITERATIONS };
 }
 
-module.exports = { chat, chatStream, chatStreamChunked, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop };
+// ═══════════════════════════════════════════════════════════════
+// PHASE 2: Sub-Agent Spawning
+// ═══════════════════════════════════════════════════════════════
+
+async function spawnSubAgent(task) {
+  const cfg = getConfig();
+  const systemPrompt = `You are a sub-agent of Aries. Complete this specific task and return a concise result.
+You have full tool access EXCEPT spawn-agent (no recursive spawning).
+Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT
+
+## Tools
+<tool:shell>command</tool:shell> — PowerShell/CMD
+<tool:read>path</tool:read> — Read file
+<tool:write path="path">content</tool:write> — Write file
+<tool:edit path="path" old="old">new</tool:edit> — Edit file
+<tool:ls>dir</tool:ls> — List directory
+<tool:web>url</tool:web> — Fetch webpage
+<tool:search dir="dir" pattern="regex">glob</tool:search> — Search files
+<tool:grep pattern="regex" dir=".">glob</tool:grep> — Search files
+<tool:shell>command</tool:shell> — Run command
+<tool:http method="GET">url</tool:http> — HTTP request
+<tool:bg-run>command</tool:bg-run> — Background process
+
+## Rules
+1. ACT FIRST. Use tools when needed.
+2. Be concise. Return only the essential result.
+3. No spawn-agent — you cannot create sub-agents.`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: task }
+  ];
+
+  const model = cfg.models?.chat || cfg.gateway?.model;
+  const result = await agentLoop(messages, model, {}, null);
+  return result.response;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 2: Image/Vision Analysis
+// ═══════════════════════════════════════════════════════════════
+
+async function analyzeImage(imagePath, prompt) {
+  const cfg = getConfig();
+  const apiKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('No API key for vision');
+
+  let base64Data, mediaType;
+
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    // Fetch from URL
+    const parsedUrl = new (require('url').URL)(imagePath);
+    const httpMod = parsedUrl.protocol === 'https:' ? https : http;
+    const data = await new Promise((resolve, reject) => {
+      httpMod.get(parsedUrl, { timeout: 15000, rejectUnauthorized: false }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ buffer: Buffer.concat(chunks), contentType: res.headers['content-type'] }));
+      }).on('error', reject);
+    });
+    base64Data = data.buffer.toString('base64');
+    const ct = data.contentType || '';
+    mediaType = ct.includes('png') ? 'image/png' : ct.includes('gif') ? 'image/gif' : ct.includes('webp') ? 'image/webp' : 'image/jpeg';
+  } else {
+    // Read from disk
+    const fs = require('fs');
+    if (!fs.existsSync(imagePath)) throw new Error('File not found: ' + imagePath);
+    base64Data = fs.readFileSync(imagePath).toString('base64');
+    const ext = require('path').extname(imagePath).toLowerCase();
+    mediaType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+  }
+
+  const bodyObj = {
+    model: (cfg.fallback?.directApi?.model || 'claude-sonnet-4-20250514').replace('anthropic/', ''),
+    max_tokens: 2048,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+        { type: 'text', text: prompt || 'Describe this image in detail.' }
+      ]
+    }]
+  };
+
+  const postBody = JSON.stringify(bodyObj);
+  const headers = buildAnthropicHeaders(apiKey);
+  const resp = await _httpPost('https://api.anthropic.com/v1/messages', postBody, headers, 60000);
+
+  if (resp.statusCode >= 400) {
+    const errBody = await _readBody(resp.stream);
+    throw new Error('Vision API ' + resp.statusCode + ': ' + errBody.substring(0, 200));
+  }
+
+  const body = await _readBody(resp.stream);
+  const data = JSON.parse(body);
+  return data.content?.[0]?.text || '(no response)';
+}
+
+module.exports = { chat, chatStream, chatStreamChunked, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop, spawnSubAgent, analyzeImage };

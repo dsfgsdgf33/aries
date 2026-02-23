@@ -13,6 +13,25 @@ const MAX_OUTPUT = 4000;
 const TOOL_LOG_FILE = path.join(__dirname, '..', 'data', 'tool-log.json');
 const MAX_LOG_ENTRIES = 100;
 
+// ── Phase 2: Background process tracking ──
+const bgProcesses = new Map();
+const BG_MAX_BUFFER = 5120; // 5KB circular buffer
+
+// ── Phase 2: Sub-agent job queue ──
+const subAgentJobs = new Map();
+const MAX_CONCURRENT_AGENTS = 3;
+
+// Auto-cleanup bg processes after 1 hour
+setInterval(() => {
+  const cutoff = Date.now() - 3600000;
+  for (const [pid, proc] of bgProcesses) {
+    if (proc.startedAt < cutoff) {
+      try { proc.child && proc.child.kill(); } catch {}
+      bgProcesses.delete(pid);
+    }
+  }
+}, 60000);
+
 function truncate(str, max = MAX_OUTPUT) {
   if (!str) return '';
   if (str.length > max) return str.substring(0, max) + '\n[truncated]';
@@ -121,13 +140,26 @@ const tools = {
 
   async edit(filePath, oldText, newText) {
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      if (!content.includes(oldText)) {
-        return { success: false, output: 'Old text not found in file' };
+      let content = fs.readFileSync(filePath, 'utf8');
+      // Handle CRLF/LF: try exact match first, then normalize
+      let idx = content.indexOf(oldText);
+      if (idx === -1) {
+        // Try normalizing line endings
+        const normalizedContent = content.replace(/\r\n/g, '\n');
+        const normalizedOld = oldText.replace(/\r\n/g, '\n');
+        const nIdx = normalizedContent.indexOf(normalizedOld);
+        if (nIdx === -1) {
+          const preview = oldText.substring(0, 50).replace(/\n/g, '\\n');
+          return { success: false, output: `Error: old text not found. Searched for: "${preview}..."` };
+        }
+        // Work with normalized content
+        content = normalizedContent;
+        idx = nIdx;
       }
-      const updated = content.replace(oldText, newText);
+      const lineNum = content.substring(0, idx).split('\n').length;
+      const updated = content.substring(0, idx) + newText + content.substring(idx + oldText.length);
       fs.writeFileSync(filePath, updated);
-      return { success: true, output: `Edited: ${filePath} (replaced ${oldText.length} chars)` };
+      return { success: true, output: `Edited file: replaced ${oldText.length} bytes at line ${lineNum}` };
     } catch (e) {
       return { success: false, output: e.message };
     }
@@ -691,6 +723,266 @@ const tools = {
     }
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Sub-Agent Spawning
+  // ═══════════════════════════════════════════════════════════════
+
+  async 'spawn-agent'(task, subtaskDetails) {
+    const running = [...subAgentJobs.values()].filter(j => j.status === 'running').length;
+    if (running >= MAX_CONCURRENT_AGENTS) {
+      return { success: false, output: `Max ${MAX_CONCURRENT_AGENTS} concurrent sub-agents. Use <tool:wait-agents> or <tool:check-agent>jobId</tool:check-agent>.` };
+    }
+    const id = 'sa-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+    const job = { id, task, status: 'running', result: null, startedAt: Date.now() };
+    subAgentJobs.set(id, job);
+
+    // Launch async — don't await
+    (async () => {
+      try {
+        const ai = require('./ai');
+        const result = await ai.spawnSubAgent(task + '\n\n' + (subtaskDetails || ''));
+        job.status = 'complete';
+        job.result = result;
+      } catch (e) {
+        job.status = 'error';
+        job.result = e.message;
+      }
+    })();
+
+    return { success: true, output: `Sub-agent spawned: ${id} — Task: ${task.substring(0, 100)}` };
+  },
+
+  async 'check-agent'(jobId) {
+    const job = subAgentJobs.get(jobId);
+    if (!job) return { success: false, output: `No sub-agent with ID: ${jobId}` };
+    if (job.status === 'running') {
+      const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
+      return { success: true, output: `Status: running (${elapsed}s elapsed)\nTask: ${job.task.substring(0, 200)}` };
+    }
+    return { success: true, output: `Status: ${job.status}\nResult: ${typeof job.result === 'string' ? job.result.substring(0, 3000) : JSON.stringify(job.result).substring(0, 3000)}` };
+  },
+
+  async 'wait-agents'() {
+    const running = [...subAgentJobs.values()].filter(j => j.status === 'running');
+    if (running.length === 0) return { success: true, output: 'No running sub-agents.' };
+
+    const timeout = Date.now() + 120000;
+    while (Date.now() < timeout) {
+      const stillRunning = [...subAgentJobs.values()].filter(j => j.status === 'running');
+      if (stillRunning.length === 0) break;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    const results = [...subAgentJobs.values()].map(j =>
+      `[${j.id}] ${j.status}: ${(j.result || '').toString().substring(0, 500)}`
+    ).join('\n\n');
+    return { success: true, output: results || 'All sub-agents complete.' };
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Background Process Management
+  // ═══════════════════════════════════════════════════════════════
+
+  async 'bg-run'(command) {
+    try {
+      const child = spawn(command, [], { shell: 'powershell.exe', stdio: ['ignore', 'pipe', 'pipe'], detached: false });
+      const pid = child.pid;
+      const proc = { pid, command, stdout: '', stderr: '', exitCode: null, startedAt: Date.now(), child };
+
+      child.stdout.on('data', d => {
+        proc.stdout += d.toString();
+        if (proc.stdout.length > BG_MAX_BUFFER) proc.stdout = proc.stdout.slice(-BG_MAX_BUFFER);
+      });
+      child.stderr.on('data', d => {
+        proc.stderr += d.toString();
+        if (proc.stderr.length > BG_MAX_BUFFER) proc.stderr = proc.stderr.slice(-BG_MAX_BUFFER);
+      });
+      child.on('exit', code => { proc.exitCode = code; proc.child = null; });
+
+      bgProcesses.set(pid, proc);
+      return { success: true, output: `Background process started: PID ${pid} — ${command.substring(0, 100)}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async 'bg-check'(pidStr) {
+    const pid = parseInt(pidStr);
+    const proc = bgProcesses.get(pid);
+    if (!proc) return { success: false, output: `No tracked process with PID ${pid}` };
+    const running = proc.exitCode === null;
+    const elapsed = Math.round((Date.now() - proc.startedAt) / 1000);
+    let out = `PID: ${pid} | Status: ${running ? 'running' : 'exited (' + proc.exitCode + ')'} | Elapsed: ${elapsed}s\nCommand: ${proc.command.substring(0, 200)}`;
+    if (proc.stdout) out += `\n\n--- stdout (last ${Math.min(proc.stdout.length, 2000)} chars) ---\n${proc.stdout.slice(-2000)}`;
+    if (proc.stderr) out += `\n\n--- stderr (last ${Math.min(proc.stderr.length, 1000)} chars) ---\n${proc.stderr.slice(-1000)}`;
+    return { success: true, output: out };
+  },
+
+  async 'bg-kill'(pidStr) {
+    const pid = parseInt(pidStr);
+    const proc = bgProcesses.get(pid);
+    if (!proc) return { success: false, output: `No tracked process with PID ${pid}` };
+    try {
+      if (proc.child) proc.child.kill();
+      else { execSync(`taskkill /PID ${pid} /F`, { shell: 'powershell.exe', timeout: 5000 }); }
+      bgProcesses.delete(pid);
+      return { success: true, output: `Killed process ${pid}` };
+    } catch (e) {
+      bgProcesses.delete(pid);
+      return { success: false, output: e.message };
+    }
+  },
+
+  async 'bg-list'() {
+    if (bgProcesses.size === 0) return { success: true, output: 'No tracked background processes.' };
+    const lines = [...bgProcesses.values()].map(p => {
+      const running = p.exitCode === null;
+      const elapsed = Math.round((Date.now() - p.startedAt) / 1000);
+      return `PID ${p.pid} | ${running ? 'RUNNING' : 'EXITED(' + p.exitCode + ')'} | ${elapsed}s | ${p.command.substring(0, 80)}`;
+    });
+    return { success: true, output: lines.join('\n') };
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Web Browsing Agent
+  // ═══════════════════════════════════════════════════════════════
+
+  async 'browse-navigate'(url) {
+    try {
+      // Check extension bridge first
+      const refs = global.ariesRefs || {};
+      if (refs.extensionBridge && refs.extensionBridge.connected) {
+        const result = await refs.extensionBridge.sendCommand('navigate', { url });
+        return { success: true, output: typeof result === 'string' ? result.substring(0, 8000) : JSON.stringify(result).substring(0, 8000) };
+      }
+      // Fallback: HTTP fetch
+      return await tools.web(url);
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async 'browse-click'(selector) {
+    try {
+      const refs = global.ariesRefs || {};
+      if (refs.extensionBridge && refs.extensionBridge.connected) {
+        const result = await refs.extensionBridge.sendCommand('click', { selector });
+        return { success: true, output: `Clicked: ${selector}` };
+      }
+      return { success: false, output: 'No browser extension connected. Use <tool:browse-navigate>url</tool:browse-navigate> for HTTP-only browsing.' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async 'browse-type'(selector, text) {
+    try {
+      const refs = global.ariesRefs || {};
+      if (refs.extensionBridge && refs.extensionBridge.connected) {
+        const result = await refs.extensionBridge.sendCommand('type', { selector, text });
+        return { success: true, output: `Typed into ${selector}: ${text.substring(0, 50)}` };
+      }
+      return { success: false, output: 'No browser extension connected.' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async 'browse-screenshot'(filename) {
+    try {
+      const refs = global.ariesRefs || {};
+      if (refs.extensionBridge && refs.extensionBridge.connected) {
+        const savePath = filename || path.join(__dirname, '..', 'data', `browse-${Date.now()}.png`);
+        const result = await refs.extensionBridge.sendCommand('screenshot', { path: savePath });
+        return { success: true, output: `Screenshot saved: ${savePath}` };
+      }
+      return { success: false, output: 'No browser extension connected.' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async 'browse-evaluate'(js) {
+    try {
+      const refs = global.ariesRefs || {};
+      if (refs.extensionBridge && refs.extensionBridge.connected) {
+        const result = await refs.extensionBridge.sendCommand('evaluate', { code: js });
+        return { success: true, output: truncate(typeof result === 'string' ? result : JSON.stringify(result)) };
+      }
+      return { success: false, output: 'No browser extension connected.' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Vision / Image Analysis
+  // ═══════════════════════════════════════════════════════════════
+
+  async vision(pathOrUrl, prompt) {
+    try {
+      const ai = require('./ai');
+      const result = await ai.analyzeImage(pathOrUrl, prompt || 'Describe this image in detail.');
+      return { success: true, output: result };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Bonus Tools
+  // ═══════════════════════════════════════════════════════════════
+
+  async diff(filePath) {
+    try {
+      const output = execSync(`git diff "${filePath}"`, { encoding: 'utf8', timeout: 10000, cwd: path.dirname(filePath) || process.cwd() });
+      return { success: true, output: truncate(output.trim() || '(no changes)') };
+    } catch (e) {
+      return { success: false, output: truncate((e.stdout || '') + (e.stderr || '') || e.message) };
+    }
+  },
+
+  async grep(pattern, dir) {
+    try {
+      const searchDir = dir || '.';
+      const cmd = `Get-ChildItem -Path "${searchDir}" -Recurse -File -ErrorAction SilentlyContinue | Select-String -Pattern "${pattern}" -ErrorAction SilentlyContinue | Select-Object -First 50 | ForEach-Object { "$($_.Path):$($_.LineNumber): $($_.Line.TrimStart())" }`;
+      return await tools.shell(cmd, 15000);
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async httpRequest(method, url, body, headers) {
+    try {
+      const parsedHeaders = typeof headers === 'string' ? JSON.parse(headers) : (headers || {});
+      return await tools.http(method, url, body, parsedHeaders);
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async env(varName) {
+    const val = process.env[varName];
+    if (val === undefined) return { success: false, output: `Environment variable not set: ${varName}` };
+    return { success: true, output: val };
+  },
+
+  async cronNamed(expr, name, command) {
+    try {
+      const cronFile = path.join(__dirname, '..', 'data', 'cron-jobs.json');
+      let jobs = [];
+      try { jobs = JSON.parse(fs.readFileSync(cronFile, 'utf8')); } catch {}
+      // Remove existing job with same name
+      if (name) jobs = jobs.filter(j => j.name !== name);
+      const job = { id: Date.now().toString(36), name: name || undefined, expression: expr, command, created: new Date().toISOString() };
+      jobs.push(job);
+      fs.writeFileSync(cronFile, JSON.stringify(jobs, null, 2));
+      return { success: true, output: `Cron job ${name ? `"${name}" ` : ''}added: ${expr} → ${command}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
   /** Get list of all available tool names */
   list() {
     return Object.keys(tools).filter(k => typeof tools[k] === 'function' && k !== 'list' && k !== 'getLog');
@@ -721,7 +1013,9 @@ const MAX_SINGLE_OUTPUT = 10240; // 10KB
  */
 async function executeSingle(toolName, args) {
   try {
-    const fn = loggedTools[toolName];
+    // Support hyphenated tool names
+    let fn = loggedTools[toolName];
+    if (!fn || typeof fn !== 'function') fn = loggedTools[toolName.replace(/-/g, '_')];
     if (!fn || typeof fn !== 'function') return `[error] Unknown tool: ${toolName}`;
     const result = await fn.apply(loggedTools, Array.isArray(args) ? args : [args]);
     if (!result) return '(no output)';
