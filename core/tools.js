@@ -435,6 +435,220 @@ const tools = {
     }
   },
 
+  // ── Additional Admin Tools ──
+
+  async desktopScreenshot(filename) {
+    try {
+      const savePath = filename || path.join(__dirname, '..', 'data', `desktop-${Date.now()}.png`);
+      const ps = `Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp=New-Object System.Drawing.Bitmap($b.Width,$b.Height); $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save('${savePath.replace(/'/g, "''")}'); $g.Dispose(); $bmp.Dispose()`;
+      execSync(ps, { shell: 'powershell.exe', timeout: 10000, windowsHide: true });
+      return { success: true, output: `Desktop screenshot saved: ${savePath}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async tts(text, voice) {
+    try {
+      const ps = `Add-Type -AssemblyName System.Speech; $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Speak('${text.replace(/'/g, "''")}')`;
+      execSync(ps, { shell: 'powershell.exe', timeout: 30000, windowsHide: true });
+      return { success: true, output: `Spoke: ${text.substring(0, 100)}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async cron(expression, command) {
+    try {
+      const cronFile = path.join(__dirname, '..', 'data', 'cron-jobs.json');
+      let jobs = [];
+      try { jobs = JSON.parse(fs.readFileSync(cronFile, 'utf8')); } catch {}
+      const job = { id: Date.now().toString(36), expression, command, created: new Date().toISOString() };
+      jobs.push(job);
+      fs.writeFileSync(cronFile, JSON.stringify(jobs, null, 2));
+      return { success: true, output: `Cron job added: ${expression} → ${command}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async git(command) {
+    try {
+      const allowed = ['status', 'log', 'diff', 'branch', 'remote', 'stash', 'add', 'commit', 'push', 'pull', 'checkout', 'fetch', 'tag', 'clone', 'init'];
+      const cmd = command.split(' ')[0];
+      if (!allowed.includes(cmd)) return { success: false, output: 'Git command not allowed: ' + cmd };
+      const output = execSync('git ' + command, { encoding: 'utf8', timeout: 30000, cwd: process.cwd() });
+      return { success: true, output: truncate(output.trim()) };
+    } catch (e) {
+      return { success: false, output: truncate((e.stdout || '') + (e.stderr || '') || e.message) };
+    }
+  },
+
+  async netscan(subnet) {
+    try {
+      const target = subnet || '192.168.1';
+      const result = await this.shell(`1..254 | ForEach-Object { $ip="${target}.$_"; if(Test-Connection $ip -Count 1 -Quiet -TimeoutSeconds 1){$ip} }`, 60000);
+      return result;
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async computerControl(action, args) {
+    try {
+      const cc = require('./computer-control');
+      if (typeof cc[action] === 'function') {
+        const result = cc[action](args);
+        return { success: true, output: typeof result === 'string' ? result : JSON.stringify(result) };
+      }
+      return { success: false, output: 'Unknown action: ' + action };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async imageAnalysis(imagePath) {
+    try {
+      if (!fs.existsSync(imagePath)) return { success: false, output: 'File not found: ' + imagePath };
+      const base64 = fs.readFileSync(imagePath).toString('base64');
+      const ext = path.extname(imagePath).toLowerCase();
+      const mime = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
+      return { success: true, output: `Image loaded (${mime}, ${Math.round(base64.length * 0.75 / 1024)}KB). Use AI vision to analyze.`, base64, mediaType: mime };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async spawn(command, args) {
+    try {
+      const { spawn: spawnChild } = require('child_process');
+      const child = spawnChild(command, args || [], { detached: true, stdio: 'ignore', shell: true });
+      child.unref();
+      return { success: true, output: `Spawned: ${command} (PID ${child.pid})` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async crypto(action, data) {
+    try {
+      const crypto = require('crypto');
+      if (action === 'hash') return { success: true, output: crypto.createHash('sha256').update(data).digest('hex') };
+      if (action === 'uuid') return { success: true, output: crypto.randomUUID() };
+      if (action === 'random') return { success: true, output: crypto.randomBytes(parseInt(data) || 32).toString('hex') };
+      if (action === 'base64') return { success: true, output: Buffer.from(data).toString('base64') };
+      if (action === 'decode64') return { success: true, output: Buffer.from(data, 'base64').toString('utf8') };
+      return { success: false, output: 'Actions: hash, uuid, random, base64, decode64' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async serve(dir, port) {
+    try {
+      const http = require('http');
+      const servePath = dir || '.';
+      const servePort = port || 8080;
+      const server = http.createServer((req, res) => {
+        const filePath = path.join(servePath, req.url === '/' ? 'index.html' : req.url);
+        try {
+          const content = fs.readFileSync(filePath);
+          const ext = path.extname(filePath).toLowerCase();
+          const mimes = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg' };
+          res.writeHead(200, { 'Content-Type': mimes[ext] || 'text/plain' });
+          res.end(content);
+        } catch {
+          res.writeHead(404); res.end('Not found');
+        }
+      });
+      server.listen(servePort, '127.0.0.1');
+      return { success: true, output: `Serving ${servePath} on http://127.0.0.1:${servePort}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async canvas(filename, content) {
+    try {
+      const canvasDir = path.join(__dirname, '..', 'data', 'canvas');
+      if (!fs.existsSync(canvasDir)) fs.mkdirSync(canvasDir, { recursive: true });
+      const filePath = path.join(canvasDir, filename);
+      fs.writeFileSync(filePath, content);
+      return { success: true, output: `Canvas created: /canvas/${filename}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async sandbox(code, language) {
+    try {
+      const lang = (language || 'node').toLowerCase();
+      if (lang === 'node' || lang === 'javascript' || lang === 'js') {
+        const tmpFile = path.join(os.tmpdir(), `aries-sandbox-${Date.now()}.js`);
+        fs.writeFileSync(tmpFile, code);
+        const result = execSync(`node "${tmpFile}"`, { encoding: 'utf8', timeout: 30000 });
+        try { fs.unlinkSync(tmpFile); } catch {}
+        return { success: true, output: truncate(result.trim()) };
+      } else if (lang === 'python' || lang === 'py') {
+        const tmpFile = path.join(os.tmpdir(), `aries-sandbox-${Date.now()}.py`);
+        fs.writeFileSync(tmpFile, code);
+        const result = execSync(`python "${tmpFile}"`, { encoding: 'utf8', timeout: 30000 });
+        try { fs.unlinkSync(tmpFile); } catch {}
+        return { success: true, output: truncate(result.trim()) };
+      }
+      return { success: false, output: 'Supported languages: node, python' };
+    } catch (e) {
+      return { success: false, output: truncate((e.stdout || '') + (e.stderr || '') || e.message) };
+    }
+  },
+
+  async memorySearch(query) {
+    try {
+      const entries = memory.list();
+      const q = query.toLowerCase();
+      const matches = entries.filter(m => (m.text || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q));
+      if (matches.length === 0) return { success: true, output: 'No matches found' };
+      return { success: true, output: matches.slice(0, 10).map(m => `[${m.priority || 'normal'}/${m.category || 'general'}] ${m.text}`).join('\n') };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async http(method, url, body, headers) {
+    try {
+      const parsedUrl = new (require('url').URL)(url);
+      const httpMod = parsedUrl.protocol === 'https:' ? require('https') : require('http');
+      return new Promise((resolve) => {
+        const opts = { method: method || 'GET', headers: headers || {}, timeout: 15000, rejectUnauthorized: false };
+        if (body) opts.headers['Content-Length'] = Buffer.byteLength(body);
+        const req = httpMod.request(parsedUrl, opts, (res) => {
+          let data = '';
+          res.on('data', c => data += c);
+          res.on('end', () => resolve({ success: true, output: truncate(`HTTP ${res.statusCode}\n${data}`) }));
+        });
+        req.on('error', (e) => resolve({ success: false, output: e.message }));
+        req.on('timeout', () => { req.destroy(); resolve({ success: false, output: 'timeout' }); });
+        if (body) req.write(body);
+        req.end();
+      });
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async message(target, text) {
+    try {
+      const msg = require('./messaging');
+      if (msg && msg.send) {
+        const result = await msg.send(target, text);
+        return { success: true, output: `Message sent to ${target}` };
+      }
+      return { success: false, output: 'Messaging not configured' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
   /** Get list of all available tool names */
   list() {
     return Object.keys(tools).filter(k => typeof tools[k] === 'function' && k !== 'list' && k !== 'getLog');

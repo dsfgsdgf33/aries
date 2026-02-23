@@ -901,6 +901,11 @@ async function handleRequest(req, res) {
       if (safe.auth) delete safe.auth.tokens;
       if (safe.remoteWorkers) safe.remoteWorkers.secret = '***';
       if (safe.relay) safe.relay.secret = '***';
+      if (safe.fallback?.directApi?.key) safe.fallback.directApi.key = '***';
+      if (safe.fallback?.directApi?.apiKey) safe.fallback.directApi.apiKey = '***';
+      if (safe.anthropic?.apiKey) safe.anthropic.apiKey = '***';
+      if (safe.miner?.telegram?.botToken) safe.miner.telegram.botToken = '***';
+      if (safe.discord?.botToken) safe.discord.botToken = '***';
       return json(res, 200, { config: safe });
     }
 

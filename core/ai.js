@@ -76,6 +76,20 @@ Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT | O
 <tool:swarm>task</tool:swarm> — Multi-agent swarm (14 agents)
 <tool:evaluate>js_code</tool:evaluate> — Run JS in browser
 <tool:install>package</tool:install> — Install package
+<tool:desktopScreenshot>filename</tool:desktopScreenshot> — Desktop screenshot
+<tool:tts>text</tool:tts> — Text to speech
+<tool:cron expr="*/5 * * * *">command</tool:cron> — Schedule cron job
+<tool:git>status</tool:git> — Git operations
+<tool:netscan>192.168.1</tool:netscan> — Network scan
+<tool:imageAnalysis>path</tool:imageAnalysis> — Analyze image
+<tool:spawn>command</tool:spawn> — Spawn background process
+<tool:crypto action="hash">data</tool:crypto> — Crypto ops (hash/uuid/random/base64)
+<tool:serve>directory</tool:serve> — Serve static files
+<tool:canvas file="name.html">html_content</tool:canvas> — Create canvas page
+<tool:sandbox lang="node">code</tool:sandbox> — Run code in sandbox
+<tool:memorySearch>query</tool:memorySearch> — Search memory
+<tool:http method="GET">url</tool:http> — HTTP request
+<tool:message to="target">text</tool:message> — Send message
 ${pluginTools ? '\n' + pluginTools : ''}
 
 ## Agents: Commander • Coder • Researcher • Analyst • Creative • Scout • Executor • Security • Trader • Debugger • Architect • Optimizer • Navigator • Scribe
@@ -127,6 +141,20 @@ function parseTools(text) {
     { name: 'type', regex: /<tool:type\s+selector="([^"]*)">([\s\S]*?)<\/tool:type>/g, hasAttr: true },
     { name: 'screenshot', regex: /<tool:screenshot>([\s\S]*?)<\/tool:screenshot>/g },
     { name: 'evaluate', regex: /<tool:evaluate>([\s\S]*?)<\/tool:evaluate>/g },
+    { name: 'desktopScreenshot', regex: /<tool:desktopScreenshot>([\s\S]*?)<\/tool:desktopScreenshot>/g },
+    { name: 'tts', regex: /<tool:tts>([\s\S]*?)<\/tool:tts>/g },
+    { name: 'cron', regex: /<tool:cron\s+expr="([^"]*)">([\s\S]*?)<\/tool:cron>/g, hasAttr: true },
+    { name: 'git', regex: /<tool:git>([\s\S]*?)<\/tool:git>/g },
+    { name: 'netscan', regex: /<tool:netscan>([\s\S]*?)<\/tool:netscan>/g },
+    { name: 'imageAnalysis', regex: /<tool:imageAnalysis>([\s\S]*?)<\/tool:imageAnalysis>/g },
+    { name: 'spawn', regex: /<tool:spawn>([\s\S]*?)<\/tool:spawn>/g },
+    { name: 'crypto', regex: /<tool:crypto\s+action="([^"]*)">([\s\S]*?)<\/tool:crypto>/g, hasAttr: true },
+    { name: 'serve', regex: /<tool:serve>([\s\S]*?)<\/tool:serve>/g },
+    { name: 'canvas', regex: /<tool:canvas\s+file="([^"]*)">([\s\S]*?)<\/tool:canvas>/g, hasAttr: true },
+    { name: 'sandbox', regex: /<tool:sandbox(?:\s+lang="([^"]*)")?>([\s\S]*?)<\/tool:sandbox>/g, hasAttr: true },
+    { name: 'memorySearch', regex: /<tool:memorySearch>([\s\S]*?)<\/tool:memorySearch>/g },
+    { name: 'http', regex: /<tool:http\s+method="([^"]*)">([\s\S]*?)<\/tool:http>/g, hasAttr: true },
+    { name: 'message', regex: /<tool:message\s+to="([^"]*)">([\s\S]*?)<\/tool:message>/g, hasAttr: true },
   ];
 
   const pluginRegex = /<tool:plugin_(\w+)>([\s\S]*?)<\/tool:plugin_\1>/g;
