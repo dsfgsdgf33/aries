@@ -90,6 +90,8 @@ Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT | O
 <tool:memorySearch>query</tool:memorySearch> — Search memory
 <tool:http method="GET">url</tool:http> — HTTP request
 <tool:message to="target">text</tool:message> — Send message
+<tool:webapp name="myapp">html</tool:webapp> — Create web app at /canvas/
+<tool:websearch>query</tool:websearch> — Web search (DuckDuckGo)
 ${pluginTools ? '\n' + pluginTools : ''}
 
 ## Agents: Commander • Coder • Researcher • Analyst • Creative • Scout • Executor • Security • Trader • Debugger • Architect • Optimizer • Navigator • Scribe
@@ -155,6 +157,8 @@ function parseTools(text) {
     { name: 'memorySearch', regex: /<tool:memorySearch>([\s\S]*?)<\/tool:memorySearch>/g },
     { name: 'http', regex: /<tool:http\s+method="([^"]*)">([\s\S]*?)<\/tool:http>/g, hasAttr: true },
     { name: 'message', regex: /<tool:message\s+to="([^"]*)">([\s\S]*?)<\/tool:message>/g, hasAttr: true },
+    { name: 'webapp', regex: /<tool:webapp\s+name="([^"]*)">([\s\S]*?)<\/tool:webapp>/g, hasAttr: true },
+    { name: 'websearch', regex: /<tool:websearch>([\s\S]*?)<\/tool:websearch>/g },
   ];
 
   const pluginRegex = /<tool:plugin_(\w+)>([\s\S]*?)<\/tool:plugin_\1>/g;

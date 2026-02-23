@@ -649,6 +649,48 @@ const tools = {
     }
   },
 
+  async webapp(name, html) {
+    try {
+      const canvasDir = path.join(__dirname, '..', 'data', 'canvas');
+      if (!fs.existsSync(canvasDir)) fs.mkdirSync(canvasDir, { recursive: true });
+      const fileName = (name || 'app') + '.html';
+      fs.writeFileSync(path.join(canvasDir, fileName), html);
+      return { success: true, output: `Web app created at /canvas/${fileName} — open http://127.0.0.1:3333/canvas/${fileName}` };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  async websearch(query) {
+    try {
+      // Use DuckDuckGo instant answer API (zero deps)
+      const https = require('https');
+      const q = encodeURIComponent(query);
+      return new Promise((resolve) => {
+        const req = https.get(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1`, { timeout: 10000, rejectUnauthorized: false }, (res) => {
+          let data = '';
+          res.on('data', c => data += c);
+          res.on('end', () => {
+            try {
+              const j = JSON.parse(data);
+              const results = [];
+              if (j.Abstract) results.push(`**${j.Heading}**: ${j.Abstract}`);
+              if (j.Answer) results.push(`Answer: ${j.Answer}`);
+              (j.RelatedTopics || []).slice(0, 5).forEach(t => {
+                if (t.Text) results.push(`• ${t.Text}`);
+              });
+              resolve({ success: true, output: results.length > 0 ? results.join('\n') : 'No instant results. Try <tool:web>https://www.google.com/search?q=' + q + '</tool:web>' });
+            } catch { resolve({ success: true, output: 'Search returned no structured results. Use <tool:web> to fetch search page.' }); }
+          });
+        });
+        req.on('error', (e) => resolve({ success: false, output: e.message }));
+        req.on('timeout', () => { req.destroy(); resolve({ success: false, output: 'timeout' }); });
+      });
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
   /** Get list of all available tool names */
   list() {
     return Object.keys(tools).filter(k => typeof tools[k] === 'function' && k !== 'list' && k !== 'getLog');
