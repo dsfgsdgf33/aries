@@ -2841,6 +2841,11 @@
     var overlay = document.getElementById('firstTimeWelcome');
     if (overlay) return; // already showing
     if (localStorage.getItem('aries-setup-done')) return;
+    // Skip setup wizard in admin mode
+    if (_adminMode || localStorage.getItem('aries-admin-mode') === 'true') {
+      localStorage.setItem('aries-setup-done', 'true');
+      return;
+    }
     overlay = document.createElement('div');
     overlay.id = 'firstTimeWelcome';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 50%,#0a1a2e 100%);z-index:10000;display:flex;align-items:center;justify-content:center;font-family:inherit;overflow-y:auto';
@@ -3199,6 +3204,10 @@
       if (cfg.adminMode === true) {
         _adminMode = true;
         localStorage.setItem('aries-admin-mode', 'true');
+        localStorage.setItem('aries-setup-done', 'true');
+        // Remove setup wizard if it showed before config loaded
+        var ftw = document.getElementById('firstTimeWelcome');
+        if (ftw) ftw.remove();
       }
       applyUiMode();
     }).catch(function() {

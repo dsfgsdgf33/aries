@@ -1074,17 +1074,7 @@ async function startHeadless(configPath) {
   // Extension Bridge — handles Chrome extension WebSocket at /ext
   const extensionBridge = new ExtensionBridge({ version: '1.0.0' });
   if (server) {
-    server.on('upgrade', (req, socket, head) => {
-      try {
-        const pathname = new (require('url').URL)(req.url, 'http://localhost').pathname;
-        if (pathname === '/ext') {
-          extensionBridge.handleUpgrade(req, socket, head);
-        }
-      } catch (e) {
-        console.error('[UPGRADE] WebSocket upgrade error:', e.message);
-        try { socket.destroy(); } catch (_) {}
-      }
-    });
+    // Extension bridge upgrade moved into wsServer
     extensionBridge.on('connected', () => log.info('Browser extension connected'));
     extensionBridge.on('disconnected', () => log.info('Browser extension disconnected'));
     log.info('Extension bridge ready at /ext');

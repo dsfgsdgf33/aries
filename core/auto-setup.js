@@ -122,6 +122,10 @@ class AutoSetup {
 
     // Check fallback direct API key
     if (cfg.fallback?.directApi?.key && cfg.fallback.directApi.key.length > 10) return true;
+    if (cfg.fallback?.directApi?.apiKey && cfg.fallback.directApi.apiKey.length > 10) return true;
+
+    // Check anthropic.apiKey
+    if (cfg.anthropic?.apiKey && cfg.anthropic.apiKey.length > 10) return true;
 
     // Check environment variables
     const envKeys = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY', 'MISTRAL_API_KEY'];

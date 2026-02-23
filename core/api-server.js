@@ -5321,6 +5321,30 @@ undefined
           }
         }
       }
+      // Add Anthropic models if API key is configured
+      var anthropicKey = (refs.config.anthropic && refs.config.anthropic.apiKey) ||
+                         (refs.config.fallback && refs.config.fallback.directApi && refs.config.fallback.directApi.apiKey) ||
+                         process.env.ANTHROPIC_API_KEY;
+      if (anthropicKey && anthropicKey.length > 10) {
+        var aModels = ['claude-opus-4-20250514','claude-sonnet-4-20250514','claude-haiku-3-20240307'];
+        for (var ami = 0; ami < aModels.length; ami++) {
+          if (!existingNames[aModels[ami]]) {
+            models.push({ name: aModels[ami], source: 'anthropic', configured: true });
+            existingNames[aModels[ami]] = true;
+          }
+        }
+      }
+      // Add models from config.models
+      if (refs.config.models) {
+        var cfgModelKeys = Object.keys(refs.config.models);
+        for (var mki = 0; mki < cfgModelKeys.length; mki++) {
+          var mval = refs.config.models[cfgModelKeys[mki]];
+          if (mval && !existingNames[mval]) {
+            models.push({ name: mval, source: 'config', configured: true });
+            existingNames[mval] = true;
+          }
+        }
+      }
       return json(res, 200, { models: models, count: models.length });
     }
 
