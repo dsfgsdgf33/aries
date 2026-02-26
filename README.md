@@ -134,20 +134,22 @@ Up to **20 iteration loops** — Aries Code will keep fixing until it works or e
 
 | Feature | Aries Code | Claude Code | OpenClaw | Cursor | GitHub Copilot |
 |---------|:----------:|:-----------:|:--------:|:------:|:--------------:|
+| **Cost** | ✅ **FREE** (earn via compute) | ❌ $20/mo minimum | ❌ Needs API keys ($$$) | ❌ $20/mo | ❌ $10/mo |
+| **Own AI Model** | ✅ **Training to 1T params** | ❌ Wrapper around Claude | ❌ Wrapper around Claude | ❌ Wrapper around OpenAI | ❌ Wrapper around Codex |
+| **Decentralized** | ✅ **Community-owned** | ❌ Corporate cloud | ❌ Corporate cloud | ❌ Corporate cloud | ❌ Corporate cloud |
 | Autonomous coding loop | ✅ 20 iterations | ✅ | ❌ Relies on Claude | ✅ | ❌ |
 | Multi-agent parallel coding | ✅ 5-role swarm | ❌ | ❌ | ❌ | ❌ |
-| Zero cost with local models | ✅ Ollama | ❌ $20/mo min | ❌ Needs API key | ❌ $20/mo | ❌ $10/mo |
-| Any model provider | ✅ All providers | ❌ Anthropic only | ✅ Multiple | ❌ OpenAI mainly | ❌ GitHub only |
+| Swarm compute network | ✅ P2P distributed | ❌ | ❌ | ❌ | ❌ |
 | Built-in web dashboard | ✅ Full GUI | ❌ CLI only | ❌ CLI only | ✅ VS Code ext | ✅ VS Code ext |
 | Phase-based app generation | ✅ 5 phases | ❌ | ❌ | ❌ | ❌ |
 | Live app preview | ✅ Hot reload | ❌ | ❌ | ❌ | ❌ |
 | Self-hosted / 100% private | ✅ Local | ❌ Cloud API | ❌ Cloud API | ❌ Cloud | ❌ Cloud |
-| Swarm compute network | ✅ P2P | ❌ | ❌ | ❌ | ❌ |
+| Uncensored / No filters | ✅ Your model, your rules | ❌ Corporate filters | ❌ Corporate filters | ❌ Corporate filters | ❌ Corporate filters |
+| Gets smarter over time | ✅ Community trains it | ❌ You have no control | ❌ You have no control | ❌ You have no control | ❌ You have no control |
 | Zero npm dependencies | ✅ Pure Node | N/A (Python) | N/A | ❌ Hundreds | ❌ |
-| Full app generation | ✅ End-to-end | Partial | ❌ | Partial | ❌ |
 | Built-in file/shell/web tools | ✅ 42+ tools | ✅ | ✅ | ❌ | ❌ |
 
-**Bottom line:** Aries Code gives you **multi-agent autonomous coding with zero cost** — something no competitor offers.
+> **The fundamental difference:** Every other tool is a **wrapper around someone else's AI model.** You're paying a corporation for access to THEIR intelligence. Aries is building **its OWN model** — trained by the people, for the people — and you earn access by contributing compute. No middleman. No subscription. No corporate censorship.
 
 ---
 
@@ -281,19 +283,65 @@ Up to **20 iteration loops** — Aries Code will keep fixing until it works or e
 
 ## 🎯 Vision & Mission
 
-### Vision
+### The Vision: Compute-for-AI Economy
 
-> A world where every person has access to a powerful, private, uncensored AI that runs on their own hardware — **free from corporate control, subscription fees, and data harvesting.**
+> **Trade your idle compute power for access to an AI model that rivals GPT-5 — built by the people, for the people.**
 
-### Mission
+Every computer sitting idle is wasted potential. Aries turns that waste into intelligence.
 
-Build the most capable self-hosted AI platform that:
+### 🔄 How The Economy Works
 
-1. **🏛️ Democratizes AI** — Gives individuals the same AI power as tech corporations
-2. **⌨️ Codes autonomously** — Better than any paid tool, for free
-3. **🔒 Runs 100% locally** — Zero cloud dependency, zero data leakage
-4. **🌱 Evolves through community** — Not corporate roadmaps
-5. **🆓 Remains free and open** — Forever uncompromised
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    THE ARIES ECONOMY                         │
+│                                                              │
+│  ┌─────────┐    Idle Compute    ┌──────────────┐            │
+│  │  YOUR    │ ────────────────► │   ARIES      │            │
+│  │  PC      │                   │   SWARM      │            │
+│  │          │ ◄──────────────── │   NETWORK    │            │
+│  └─────────┘    Aries Tokens    └──────┬───────┘            │
+│                                        │                     │
+│  Spend tokens to ──────────────►  ┌────▼────────┐           │
+│  query the model                  │ ARIES MODEL │           │
+│                                   │ 405B → 1T   │           │
+│  Low-spec PC? ──► Mine crypto     │ Self-Training│          │
+│  instead (still earn!)            └─────────────┘           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Step 1: Join the Swarm** → Your PC contributes idle CPU/GPU to the network  
+**Step 2: Earn Tokens** → Earn Aries tokens proportional to your compute contribution  
+**Step 3: Spend Tokens** → Use tokens to query the Aries AI model — no subscription, no API fees  
+**Step 4: Low-End PCs** → Can't run LLM workloads? Mine crypto instead — still profitable for every participant  
+
+### 🧠 The Self-Training AI
+
+This is what makes Aries fundamentally different from **every other AI tool in existence.** They're all wrappers around corporate APIs. Aries is building its **OWN model.**
+
+| What | How |
+|------|-----|
+| **Teacher Model** | Claude Opus generates high-quality training data (instruction/response pairs) |
+| **Distributed Training** | The swarm processes learning data — thousands of machines fine-tuning together |
+| **Parameter Growth** | Continuous training grows the model from **405B → 1 Trillion parameters** |
+| **Self-Improvement** | Aries generates its own training data, evaluates quality, and evolves autonomously |
+| **Daily Progress** | The model literally gets smarter every day as more people join |
+
+### 🖥️ Infrastructure
+
+The core model runs on **10 Mac Studios linked together** (Apple Silicon cluster) with additional **GPU nodes** for acceleration. The swarm provides the distributed compute for both training and inference. Fully decentralized — no single point of failure.
+
+### 💰 Why This Changes Everything
+
+| | **Aries** | **ChatGPT** | **Claude** | **Cursor** |
+|--|-----------|------------|-----------|-----------|
+| **Cost** | **FREE** (earn via compute) | $20-200/mo | $20-200/mo | $20/mo |
+| **Model** | **Own model** (training to 1T) | OpenAI's model | Anthropic's model | Wrapper |
+| **Control** | **Community owned** | Corporate | Corporate | Corporate |
+| **Censorship** | **None** | Heavy filters | Heavy filters | N/A |
+| **Your Data** | **Stays on your machine** | Stored on their servers | Stored on their servers | Sent to cloud |
+| **Training** | **You help build it** | You're the product | You're the product | N/A |
+
+> *Every other AI tool charges you to use someone else's model. Aries lets you **help build the model** and **earn your access.** The more people join, the smarter it gets, and the smarter it gets, the more people join.*
 
 ---
 
