@@ -9,13 +9,13 @@ const path = require('path');
 const os = require('os');
 const memory = require('./memory');
 
-const MAX_OUTPUT = 4000;
+const MAX_OUTPUT = 50000;
 const TOOL_LOG_FILE = path.join(__dirname, '..', 'data', 'tool-log.json');
 const MAX_LOG_ENTRIES = 100;
 
 // ── Phase 2: Background process tracking ──
 const bgProcesses = new Map();
-const BG_MAX_BUFFER = 5120; // 5KB circular buffer
+const BG_MAX_BUFFER = 51200; // 5KB circular buffer
 
 // ── Phase 2: Sub-agent job queue ──
 const subAgentJobs = new Map();
@@ -72,7 +72,48 @@ function logged(name, fn) {
 }
 
 const tools = {
-  async shell(cmd, timeoutMs = 30000) {
+  async shell(cmd, timeoutMs = 300000) {
+    // ═══ SELF-PROTECTION: Aries CANNOT kill node.exe or openclaw processes ═══
+    // 1. Block blanket "kill by name" — these kill ALL node.exe including Aries+OpenClaw
+    const _nameKillPatterns = [
+      /stop-process\s+.*-name\s+["']?node/i,
+      /taskkill\s+.*\/im\s+["']?node/i,
+      /stop-process\s+.*-name\s+["']?openclaw/i,
+      /taskkill\s+.*\/im\s+["']?openclaw/i,
+      /stop-process\s+.*-name\s+["']?aries/i,
+      /get-process\s+.*node.*\|\s*(stop|kill|%\s*\{.*stop)/i,
+      /pkill\s+(-\d+\s+)?node/i, /killall\s+node/i,
+      /wmic\s+.*node.*call\s+terminate/i,
+    ];
+    for (const pattern of _nameKillPatterns) {
+      if (pattern.test(cmd)) {
+        return { success: false, output: 'BLOCKED: Cannot kill all node processes by name (kills Aries+OpenClaw). Use taskkill /PID <specific_pid> /F instead — project node PIDs are allowed.' };
+      }
+    }
+    // 2. Block killing specific PIDs that are Aries runtime or OpenClaw — allow other node processes
+    const _pidKillMatch = cmd.match(/(?:taskkill\s+.*\/pid\s+|stop-process\s+.*-id\s+|kill\s+(?:-\d+\s+)?)(\d+)/i);
+    if (_pidKillMatch) {
+      const targetPid = parseInt(_pidKillMatch[1]);
+      // Build protected PID list: aries watchdog + launcher + headless + openclaw gateway
+      const _protectedPids = new Set();
+      _protectedPids.add(process.pid);
+      if (process.ppid) _protectedPids.add(process.ppid);
+      try {
+        // Find all openclaw and aries watchdog/launcher PIDs
+        const _plist = require('child_process').execSync(
+          'powershell -NoProfile -Command "Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -match \'openclaw\' -or $_.CommandLine -match \'watchdog\\.js\' -or $_.CommandLine -match \'aries.launcher\' -or $_.CommandLine -match \'aries\\\\launcher\' } | Select-Object -ExpandProperty ProcessId"',
+          { encoding: 'utf8', timeout: 3000 }
+        ).trim().split(/\r?\n/);
+        for (const p of _plist) { const n = parseInt(p.trim()); if (n) _protectedPids.add(n); }
+      } catch {}
+      if (_protectedPids.has(targetPid)) {
+        return { success: false, output: `BLOCKED: PID ${targetPid} is an Aries/OpenClaw runtime process. Cannot kill.` };
+      }
+    }
+    // 3. Block shutdown/exit calls
+    if (/process\.exit/i.test(cmd) || /\/api\/shutdown/i.test(cmd)) {
+      return { success: false, output: 'BLOCKED: Cannot shutdown Aries from shell.' };
+    }
     try {
       const output = execSync(cmd, {
         encoding: 'utf8',
@@ -100,6 +141,12 @@ const tools = {
   },
 
   async kill(processName) {
+    // Block killing by name for node/openclaw — use PID-based kill instead
+    const blocked = ['node', 'aries', 'openclaw', 'watchdog'];
+    const clean = processName.replace('.exe', '').toLowerCase();
+    if (blocked.includes(clean)) {
+      return { success: false, output: 'BLOCKED: Cannot kill all ' + clean + ' processes by name. Use taskkill /PID <pid> /F for specific project processes.' };
+    }
     return await this.shell(`Stop-Process -Name "${processName.replace('.exe', '')}" -Force -ErrorAction SilentlyContinue`);
   },
 
@@ -234,7 +281,7 @@ const tools = {
                    .replace(/<[^>]+>/g, ' ')
                    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
                    .replace(/\s+/g, ' ').trim();
-        if (text.length > 8000) text = text.substring(0, 8000) + '\n[truncated]';
+        if (text.length > 50000) text = text.substring(0, 50000) + '\n[truncated]';
         return { success: true, output: text };
       }
       return html;
@@ -614,6 +661,10 @@ const tools = {
 
   async sandbox(code, language) {
     try {
+      // Block dangerous patterns in sandbox code
+      if (/process\.exit/i.test(code) || /taskkill/i.test(code) || /Stop-Process/i.test(code) || /child_process.*exec.*(?:kill|stop|node|aries|openclaw)/i.test(code)) {
+        return { success: false, output: 'BLOCKED: Sandbox code cannot kill processes or call process.exit.' };
+      }
       const lang = (language || 'node').toLowerCase();
       if (lang === 'node' || lang === 'javascript' || lang === 'js') {
         const tmpFile = path.join(os.tmpdir(), `aries-sandbox-${Date.now()}.js`);
@@ -993,7 +1044,85 @@ const tools = {
     try {
       return JSON.parse(fs.readFileSync(TOOL_LOG_FILE, 'utf8'));
     } catch { return []; }
-  }
+  },
+
+  // ── VibeSDK-inspired App Building Tools ──
+
+  /** Build a web application from a natural language description */
+  async buildApp(prompt) {
+    if (!prompt) return { success: false, output: 'Missing prompt. Usage: buildApp("description of app to build")' };
+    try {
+      const { AppBuilder } = require('./app-builder');
+      let ai;
+      try {
+        const cfgMod = require('./config');
+        const cfg = cfgMod.load ? cfgMod.load() : cfgMod;
+        const { AI } = require('./ai');
+        ai = new AI(cfg);
+      } catch (e) {
+        return { success: false, output: 'Could not initialize AI: ' + e.message };
+      }
+      const builder = new AppBuilder(ai);
+      const result = await builder.build(prompt);
+      return { success: true, output: JSON.stringify(result, null, 2) };
+    } catch (e) {
+      return { success: false, output: 'Build failed: ' + e.message };
+    }
+  },
+
+  /** Start/stop/list live app previews. Actions: start, stop, list, restart */
+  async previewApp(action, portOrDir, port) {
+    try {
+      const { LivePreview } = require('./live-preview');
+      // Singleton
+      if (!tools._livePreview) tools._livePreview = new LivePreview();
+      const lp = tools._livePreview;
+
+      if (action === 'list') {
+        return { success: true, output: JSON.stringify(lp.list(), null, 2) };
+      } else if (action === 'start') {
+        if (!portOrDir || !port) return { success: false, output: 'Usage: previewApp("start", "/path/to/project", 4001)' };
+        const result = await lp.start(portOrDir, parseInt(port));
+        return { success: true, output: JSON.stringify(result) };
+      } else if (action === 'stop') {
+        await lp.stop(parseInt(portOrDir));
+        return { success: true, output: `Stopped preview on port ${portOrDir}` };
+      } else if (action === 'restart') {
+        await lp.restart(parseInt(portOrDir));
+        return { success: true, output: `Restarted preview on port ${portOrDir}` };
+      }
+      return { success: false, output: 'Unknown action. Use: start, stop, list, restart' };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
+
+  /** Check status of a building project */
+  async projectStatus(projectId) {
+    try {
+      const { PhaseEngine } = require('./phase-engine');
+      // Read directly from disk
+      const stateFile = path.join(__dirname, '..', 'data', 'projects', projectId || '', 'state.json');
+      if (projectId && fs.existsSync(stateFile)) {
+        const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+        return { success: true, output: JSON.stringify(state, null, 2) };
+      }
+      // List all
+      const projectsDir = path.join(__dirname, '..', 'data', 'projects');
+      if (!fs.existsSync(projectsDir)) return { success: true, output: '[]' };
+      const dirs = fs.readdirSync(projectsDir);
+      const projects = [];
+      for (const d of dirs) {
+        const sf = path.join(projectsDir, d, 'state.json');
+        if (fs.existsSync(sf)) {
+          try { projects.push(JSON.parse(fs.readFileSync(sf, 'utf8'))); } catch {}
+        }
+      }
+      return { success: true, output: JSON.stringify(projects, null, 2) };
+    } catch (e) {
+      return { success: false, output: e.message };
+    }
+  },
 };
 
 // Wrap all tools with logging

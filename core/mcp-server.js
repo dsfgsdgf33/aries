@@ -398,4 +398,6 @@ class MCPServer extends EventEmitter {
   }
 }
 
-module.exports = MCPServer;
+const _instance = new MCPServer();
+module.exports = _instance;
+module.exports.MCPServer = MCPServer;

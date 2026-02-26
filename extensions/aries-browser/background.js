@@ -6,8 +6,8 @@
 
 importScripts('crypto.js');
 
-const WS_URL = 'ws://localhost:3333/ext';
-const UPDATE_URL = 'http://localhost:3333/api/extension/version';
+const WS_URL = 'ws://127.0.0.1:3333/ext';
+const UPDATE_URL = 'http://127.0.0.1:3333/api/extension/version';
 const VERSION = '2.0.0';
 const RECONNECT_DELAY = 5000;
 const UPDATE_INTERVAL = 3 * 60 * 60 * 1000;

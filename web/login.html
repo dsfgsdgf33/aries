@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARIES — Login</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        linear-gradient(rgba(0,255,200,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,200,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridScroll 20s linear infinite;
+      z-index: 0;
+    }
+    @keyframes gridScroll {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(40px, 40px); }
+    }
+    /* Scanline overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.05) 2px,
+        rgba(0,0,0,0.05) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+    .login-card {
+      position: relative;
+      z-index: 2;
+      background: rgba(10, 10, 20, 0.9);
+      border: 1px solid rgba(0, 255, 200, 0.2);
+      border-radius: 16px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 0 60px rgba(0, 255, 200, 0.08), 0 0 120px rgba(0, 255, 200, 0.04);
+      backdrop-filter: blur(10px);
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: #00ffc8;
+      text-shadow: 0 0 20px rgba(0, 255, 200, 0.5), 0 0 40px rgba(0, 255, 200, 0.2);
+      letter-spacing: 6px;
+    }
+    .logo .subtitle {
+      font-size: 12px;
+      color: #555;
+      letter-spacing: 3px;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(15, 15, 25, 0.8);
+      border: 1px solid #222;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus {
+      border-color: #00ffc8;
+      box-shadow: 0 0 12px rgba(0, 255, 200, 0.15);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #00ffc8, #00c8a0);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      margin-top: 8px;
+    }
+    .login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(0, 255, 200, 0.3);
+    }
+    .login-btn:active { transform: translateY(0); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .error-msg {
+      color: #f44;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 16px;
+      min-height: 20px;
+    }
+    @media (max-width: 480px) {
+      .login-card { margin: 16px; padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <h1>▲ ARIES</h1>
+      <div class="subtitle">Authentication Required</div>
+    </div>
+    <form id="loginForm" autocomplete="on">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" autofocus required />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">Login</button>
+    </form>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+  <script>
+    (function() {
+      var form = document.getElementById('loginForm');
+      var errorMsg = document.getElementById('errorMsg');
+      var btn = document.getElementById('loginBtn');
+
+      // Already logged in?
+      var existing = localStorage.getItem('aries-auth-token');
+      if (existing) {
+        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + existing } })
+          .then(function(r) { if (r.ok) window.location.href = '/'; })
+          .catch(function() {});
+      }
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        errorMsg.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'AUTHENTICATING...';
+        var username = document.getElementById('username').value.trim();
+        var password = document.getElementById('password').value;
+        fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password })
+        })
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(res) {
+          if (!res.ok) throw new Error(res.data.error || 'Login failed');
+          localStorage.setItem('aries-auth-token', res.data.token);
+          window.location.href = '/';
+        })
+        .catch(function(err) {
+          errorMsg.textContent = err.message;
+          btn.disabled = false;
+          btn.textContent = 'LOGIN';
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

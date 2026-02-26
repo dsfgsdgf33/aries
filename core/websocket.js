@@ -21,9 +21,15 @@ class WebSocketServer extends EventEmitter {
 
   get clientCount() { return this._clients.size; }
 
+  handleUpgrade(req, socket, head) {
+    this._wss.handleUpgrade(req, socket, head, (ws) => {
+      this._wss.emit('connection', ws, req);
+    });
+  }
+
   attach(server) {
     const self = this;
-    this._wss = new WSS({ server, path: '/ws' });
+    this._wss = new WSS({ noServer: true });
 
     this._wss.on('connection', function(ws, req) {
       // Auth check

@@ -106,9 +106,15 @@ async function applyFix(signature, group) {
         const out = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf8', timeout: 5000 }).trim();
         const pidMatch = out.match(/\s+(\d+)\s*$/m);
         if (pidMatch) {
-          try {
+          // Safety: don't kill node.exe processes (could be Aries/OpenClaw)
+          let procName = '';
+          try { procName = execSync(`powershell -NoProfile -Command "(Get-Process -Id ${pidMatch[1]} -ErrorAction SilentlyContinue).ProcessName"`, { encoding: 'utf8', timeout: 3000 }).trim().toLowerCase(); } catch {}
+          if (procName === 'node' || procName === 'openclaw') {
+            result.action = `PID ${pidMatch[1]} on port ${port} is ${procName} — NOT killed (self-protection)`;
+            result.success = false;
+          } else try {
             execSync(`taskkill /PID ${pidMatch[1]} /F`, { timeout: 5000 });
-            result.action = `Killed PID ${pidMatch[1]} using port ${port}`;
+            result.action = `Killed PID ${pidMatch[1]} (${procName}) using port ${port}`;
             result.success = true;
           } catch (e) {
             result.action = `Found PID ${pidMatch[1]} on port ${port} but couldn't kill: ${e.message}`;

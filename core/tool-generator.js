@@ -67,7 +67,44 @@ class ToolGenerator extends EventEmitter {
       }
 
       const prompt = [
-        { role: 'system', content: 'You are a tool generator for ARIES AI platform. Generate a new tool based on the description. Return ONLY valid JSON with this structure:\n{\n  "name": "toolName",\n  "displayName": "Tool Display Name",\n  "description": "What the tool does",\n  "category": "utility|data|ai|web|system|security",\n  "parameters": [{"name": "param1", "type": "string", "required": true, "description": "..."}],\n  "implementation": "// JavaScript function body. Use only Node.js built-ins (fs, path, http, https, crypto, child_process, os). The function receives (params) object and must return { success: boolean, output: string }. Wrap everything in try/catch.",\n  "testCases": [{"input": {"param1": "value"}, "expectedSuccess": true, "description": "Test description"}]\n}\n\nIMPORTANT: Use ONLY Node.js built-in modules. No npm packages.' },
+        { role: 'system', content: `You are a tool generator for ARIES AI platform. Generate a new tool based on the description. Return ONLY valid JSON with this structure:
+{
+  "name": "toolName",
+  "displayName": "Tool Display Name",
+  "description": "What the tool does",
+  "category": "utility|data|ai|web|system|security",
+  "parameters": [{"name": "param1", "type": "string", "required": true, "description": "..."}],
+  "implementation": "...function body...",
+  "testCases": [{"input": {"param1": "value"}, "expectedSuccess": true, "description": "Test description"}]
+}
+
+CRITICAL: The "implementation" field must be the BODY of an async function that receives \`params\` and must return \`{ success: boolean, output: string }\`. It will be wrapped as:
+  async function execute(params) {
+    <your implementation here>
+  }
+Do NOT include the function declaration — just the body. Use only Node.js built-ins (fs, path, http, https, crypto, child_process, os). No npm packages.
+
+## Example 1: Word count tool
+{
+  "name": "wordCount",
+  "displayName": "Word Counter",
+  "description": "Count words in a file",
+  "category": "utility",
+  "parameters": [{"name": "filePath", "type": "string", "required": true, "description": "Path to file"}],
+  "implementation": "try {\\n  const fs = require('fs');\\n  const content = fs.readFileSync(params.filePath, 'utf8');\\n  const count = content.split(/\\\\s+/).filter(Boolean).length;\\n  return { success: true, output: 'Word count: ' + count };\\n} catch (e) {\\n  return { success: false, output: e.message };\\n}",
+  "testCases": [{"input": {"filePath": "test.txt"}, "expectedSuccess": true, "description": "Count words in file"}]
+}
+
+## Example 2: Port checker tool
+{
+  "name": "portCheck",
+  "displayName": "Port Checker",
+  "description": "Check if a TCP port is open",
+  "category": "system",
+  "parameters": [{"name": "host", "type": "string", "required": true, "description": "Host"}, {"name": "port", "type": "number", "required": true, "description": "Port"}],
+  "implementation": "const net = require('net');\\nreturn new Promise((resolve) => {\\n  const sock = new net.Socket();\\n  sock.setTimeout(3000);\\n  sock.on('connect', () => { sock.destroy(); resolve({ success: true, output: params.host + ':' + params.port + ' is OPEN' }); });\\n  sock.on('error', () => resolve({ success: true, output: params.host + ':' + params.port + ' is CLOSED' }));\\n  sock.on('timeout', () => { sock.destroy(); resolve({ success: true, output: params.host + ':' + params.port + ' TIMEOUT' }); });\\n  sock.connect(params.port, params.host);\\n});",
+  "testCases": [{"input": {"host": "127.0.0.1", "port": 80}, "expectedSuccess": true, "description": "Check port 80"}]
+}` },
         { role: 'user', content: description }
       ];
 
@@ -155,6 +192,19 @@ class ToolGenerator extends EventEmitter {
         // Remove invalid file
         try { fs.unlinkSync(filePath); } catch {}
         throw new Error('Generated code has syntax errors: ' + (syntaxErr.stderr || syntaxErr.message));
+      }
+
+      // Smoke test: require the file and verify it exports execute as a function
+      try {
+        const resolvedPath = path.resolve(filePath);
+        delete require.cache[resolvedPath];
+        const mod = require(resolvedPath);
+        if (typeof mod.execute !== 'function') {
+          throw new Error('Module does not export execute as a function');
+        }
+      } catch (smokeErr) {
+        try { fs.unlinkSync(filePath); } catch {}
+        throw new Error('Smoke test failed: ' + smokeErr.message);
       }
 
       // Register the tool

@@ -862,19 +862,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   flex-direction: column;
 }
 
-.boot-grid {
+#matrixCanvas {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  animation: bootGridPulse 2s ease-in-out infinite;
-}
-
-@keyframes bootGridPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.8; }
+  width: 100%;
+  height: 100%;
+  z-index: 0;
 }
 
 .boot-content {
@@ -883,18 +876,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   text-align: center;
   width: 500px;
   max-width: 90vw;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(0,255,100,0.15);
+  border-radius: 12px;
+  padding: 32px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 0 60px rgba(0,255,100,0.1);
 }
 
 .boot-logo {
-  font-size: 36px;
+  font-size: 42px;
   font-weight: 800;
-  color: #00e5ff;
-  letter-spacing: 8px;
-  text-shadow: 0 0 30px rgba(0,229,255,0.6), 0 0 60px rgba(0,229,255,0.3);
+  color: #00ff41;
+  letter-spacing: 10px;
+  text-shadow: 0 0 30px rgba(0,255,65,0.8), 0 0 60px rgba(0,255,65,0.4), 0 0 100px rgba(0,255,65,0.2);
   margin-bottom: 32px;
   opacity: 0;
   transform: scale(0.8);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition: opacity 0.8s ease, transform 0.8s ease;
 }
 
 .boot-logo.visible {
@@ -909,17 +908,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: #00e5ff;
   min-height: 200px;
   padding: 16px;
-  background: rgba(0,229,255,0.03);
-  border: 1px solid rgba(0,229,255,0.1);
+  background: rgba(0,255,65,0.03);
+  border: 1px solid rgba(0,255,65,0.1);
   border-radius: 8px;
   margin-bottom: 20px;
+  color: #00ff41;
 }
 
 .boot-line {
   opacity: 0;
   animation: bootLineIn 0.3s ease forwards;
   margin-bottom: 4px;
-  text-shadow: 0 0 8px rgba(0,229,255,0.5);
+  color: #00ff41;
+  text-shadow: 0 0 8px rgba(0,255,65,0.5);
 }
 
 @keyframes bootLineIn {
@@ -929,7 +930,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .boot-progress {
   height: 3px;
-  background: rgba(0,229,255,0.1);
+  background: rgba(0,255,65,0.1);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -937,14 +938,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .boot-progress-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #00e5ff, #bf00ff);
+  background: linear-gradient(90deg, #00ff41, #00cc33);
   border-radius: 2px;
   transition: width 0.3s ease;
   box-shadow: 0 0 10px rgba(0,229,255,0.5);
 }
 
 .boot-fade-out {
-  animation: bootFadeOut 0.6s ease forwards;
+  animation: bootFadeOut 0.8s ease forwards;
 }
 
 @keyframes bootFadeOut {

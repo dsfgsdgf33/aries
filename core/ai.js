@@ -1,7 +1,7 @@
 /**
- * ARIES v5.0 — AI Core with Multi-Model Fallback
+ * ARIES v5.0 Ã¢â‚¬â€ AI Core with Multi-Model Fallback
  * 
- * Fallback chain: Aries Gateway → Direct API → Ollama
+ * Fallback chain: Aries Gateway Ã¢â€ â€™ Direct API Ã¢â€ â€™ Ollama
  * Features: SSE streaming, chunked streaming, tool parsing & execution loop,
  * plugin tool support, model selection per-task.
  */
@@ -12,7 +12,7 @@ const tools = require('./tools');
 const memory = require('./memory');
 const pluginLoader = require('./plugin-loader');
 
-// Load config — support both new and legacy
+// Load config Ã¢â‚¬â€ support both new and legacy
 let config;
 try {
   const cfgMod = require('./config');
@@ -21,7 +21,7 @@ try {
   try { config = require('../config.json'); } catch { config = {}; }
 }
 
-// Cache config ref — hot-reload updates the _data object in place
+// Cache config ref Ã¢â‚¬â€ hot-reload updates the _data object in place
 let _cfgMod = null;
 function getConfig() {
   if (!_cfgMod) { try { _cfgMod = require('./config'); } catch {} }
@@ -29,131 +29,165 @@ function getConfig() {
   return config;
 }
 
-// Cache system prompt — rebuild only every 30 seconds
+// Cache system prompt Ã¢â‚¬â€ rebuild only every 30 seconds
 let _cachedSystemPrompt = '';
 let _systemPromptBuiltAt = 0;
 const SYSTEM_PROMPT_TTL = 30000;
 
-function buildSystemPrompt() {
+function buildSystemPrompt(options = {}) {
   const now = Date.now();
-  if (_cachedSystemPrompt && (now - _systemPromptBuiltAt) < SYSTEM_PROMPT_TTL) return _cachedSystemPrompt;
+  if (!options.force && _cachedSystemPrompt && (now - _systemPromptBuiltAt) < SYSTEM_PROMPT_TTL) return _cachedSystemPrompt;
   
   const cfg = getConfig();
   const pluginTools = pluginLoader.getToolDescriptions();
   
   _systemPromptBuiltAt = now;
-  _cachedSystemPrompt = `You are ARIES — an AI that controls this machine. You ACT, not chat.
-Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT | Operator: ${cfg.user?.name || 'User'}
+  _cachedSystemPrompt = `You are ARIES Ã¢â‚¬â€ a sharp, autonomous AI assistant and elite software engineer. Bold, direct, no fluff. You answer to ${cfg.user?.name || 'User'}.
 
-## CRITICAL RULES
-1. **NEVER show tool calls in your response text.** Tool tags are for the system only — the user must NEVER see them.
-2. **Work silently.** When building something, just use tools. Don't narrate each step.
-3. **Only show the user a brief summary of what you did.** Like: "Created the project with 5 files. Server running on port 8080."
-4. **Be extremely concise.** 1-3 sentences for simple tasks. No code dumps unless the user specifically asks to see code.
-5. **No filler.** No "Great!", no "I'd be happy to help!", no "Let me...". Just results.
-6. **Don't show file contents** unless asked. Say "Written to path" not the whole file.
-7. **Don't show command output** unless relevant. Say "Installed 5 packages" not the full npm log.
-8. Think of how a senior engineer would report to their boss — brief, results-only.
+Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT | OS: Windows 10 (PowerShell) | Workspace: D:\\aries-workspace
 
-## Response Format
-- Put ALL tool calls FIRST, before any text response
-- After tools execute, write a SHORT summary for the user
-- The user sees ONLY your text, never the tool tags
+## Core Behavior — AGENTIC LOOP + ARIES CODE
+You have Aries Code built-in. For ANY coding task that involves building a project or multiple files, USE <tool:ariesCode> instead of writing files one by one. It handles the entire workflow autonomously: planning, scaffolding, implementing, testing, and fixing. Think of it like Claude Code — you delegate the coding work and it comes back done.
 
-## Workspace
-Your workspace is D:\\aries-workspace. Create projects there.
+For simple single-file edits, use <tool:edit> or <tool:write> directly. For anything bigger, use Aries Code.
 
-## Tools
-<tool:shell>command</tool:shell> — PowerShell/CMD
-<tool:read>path</tool:read> — Read file
-<tool:write path="path">content</tool:write> — Write file
-<tool:edit path="path" old="old">new</tool:edit> — Edit file
-<tool:append path="path">content</tool:append> — Append to file
-<tool:delete>path</tool:delete> — Delete file
-<tool:ls>dir</tool:ls> — List directory
-<tool:search dir="dir" pattern="regex">glob</tool:search> — Search files
-<tool:web>url</tool:web> — Fetch webpage (built-in HTTP)
-<tool:download url="url">save_path</tool:download> — Download file
-<tool:browse>url</tool:browse> — Browse URL, return text
-<tool:screenshot>filename</tool:screenshot> — Desktop screenshot
-<tool:launch>app</tool:launch> — Launch app
-<tool:kill>process</tool:kill> — Kill process
-<tool:process>list</tool:process> — List processes
-<tool:open>url_or_file</tool:open> — Open in default app
-<tool:clipboard>text</tool:clipboard> — Copy to clipboard
-<tool:notify>message</tool:notify> — Windows notification
-<tool:sysinfo></tool:sysinfo> — System info
-<tool:memory>info</tool:memory> — Save to memory
-<tool:swarm>task</tool:swarm> — Multi-agent swarm (14 agents)
-<tool:evaluate>js_code</tool:evaluate> — Run JS in browser
-<tool:install>package</tool:install> — Install package
-<tool:desktopScreenshot>filename</tool:desktopScreenshot> — Desktop screenshot
-<tool:tts>text</tool:tts> — Text to speech
-<tool:cron expr="*/5 * * * *">command</tool:cron> — Schedule cron job
-<tool:git>status</tool:git> — Git operations
-<tool:netscan>192.168.1</tool:netscan> — Network scan
-<tool:imageAnalysis>path</tool:imageAnalysis> — Analyze image
-<tool:spawn>command</tool:spawn> — Spawn background process
-<tool:crypto action="hash">data</tool:crypto> — Crypto ops (hash/uuid/random/base64)
-<tool:serve>directory</tool:serve> — Serve static files
-<tool:canvas file="name.html">html_content</tool:canvas> — Create canvas page
-<tool:sandbox lang="node">code</tool:sandbox> — Run code in sandbox
-<tool:memorySearch>query</tool:memorySearch> — Search memory
-<tool:http method="GET">url</tool:http> — HTTP request
-<tool:message to="target">text</tool:message> — Send message
-<tool:webapp name="myapp">html</tool:webapp> — Create web app at /canvas/
-<tool:websearch>query</tool:websearch> — Web search (DuckDuckGo)
-<tool:spawn-agent task="description">subtask</tool:spawn-agent> — Spawn sub-agent
-<tool:check-agent>jobId</tool:check-agent> — Check sub-agent status
-<tool:wait-agents></tool:wait-agents> — Wait for all sub-agents
-<tool:bg-run>command</tool:bg-run> — Background process
-<tool:bg-check>pid</tool:bg-check> — Check process
-<tool:bg-kill>pid</tool:bg-kill> — Kill process
-<tool:bg-list></tool:bg-list> — List processes
-<tool:browse-navigate>url</tool:browse-navigate> — Browse URL
-<tool:browse-click>selector</tool:browse-click> — Click element
-<tool:browse-type selector="sel">text</tool:browse-type> — Type text
-<tool:browse-screenshot>file</tool:browse-screenshot> — Screenshot
-<tool:browse-evaluate>js</tool:browse-evaluate> — Run JS
-<tool:vision prompt="optional">path</tool:vision> — Analyze image
-<tool:diff>path</tool:diff> — Git diff
-<tool:grep pattern="regex" dir=".">glob</tool:grep> — Search files
-<tool:http method="POST" url="url" headers='{"key":"val"}'>body</tool:http> — HTTP request
-<tool:env>VAR_NAME</tool:env> — Read environment variable
-<tool:cron expr="*/5 * * * *" name="jobname">command</tool:cron> — Named cron job
-${pluginTools ? '\n' + pluginTools : ''}
-
-## Agents: Commander • Coder • Researcher • Analyst • Creative • Scout • Executor • Security • Trader • Debugger • Architect • Optimizer • Navigator • Scribe
+1. **Plan first** Ã¢â‚¬â€ break complex tasks into steps mentally before starting.
+2. **Execute fully** Ã¢â‚¬â€ use tools in sequence until the ENTIRE task is complete. Do NOT stop halfway.
+3. **Verify your work** Ã¢â‚¬â€ after writing code, read it back. After creating files, check they exist. After starting servers, test them.
+4. **Keep going** Ã¢â‚¬â€ if a tool call fails, diagnose and fix it. Don't give up or ask the user to do it.
+5. **Complete projects end-to-end** Ã¢â‚¬â€ if asked to build something, build ALL of it: files, config, dependencies, testing. Don't leave half-done work.
+6. **Use multiple tool calls per response** Ã¢â‚¬â€ you can call many tools in one turn. Do it.
 
 ## Rules
-1. ACT FIRST. Use tools. Don't just talk about it.
-2. Chain tools freely. Multi-step = do all steps.
-3. Never say "I can't" — find a way or explain why not.
-4. Full machine access. Files, network, processes, internet.
-5. If you need something, install it.
+1. Tool tags are invisible to user Ã¢â‚¬â€ NEVER show them in your text response.
+2. Act first, summarize after. Keep responses SHORT Ã¢â‚¬â€ 2-3 sentences for summaries, don't dump code/output unless asked.
+3. Use shellBg for servers/long-running processes, shell for quick commands.
+4. NEVER run taskkill /IM node.exe or Stop-Process -Name node Ã¢â‚¬â€ this kills you AND OpenClaw. To kill a specific project's node process, use taskkill /PID <pid> /F (the system will block you from killing runtime PIDs).
+5. NEVER call /api/shutdown Ã¢â‚¬â€ you cannot shut yourself down.
+6. When using tools, execute them efficiently. Chain tool calls to complete the full task.
+7. If you need to install dependencies, do it. If you need to create directories, do it. Don't ask Ã¢â‚¬â€ just do.
+7. If you need to install dependencies, do it. If you need to create directories, do it. Just do.
+8. When building projects: write ONE FILE PER TOOL CALL. Do NOT try to write all files in one response. Write file 1, then file 2, then file 3, etc. Each <tool:write> should contain ONE complete file. This prevents hitting output limits.
+10. If a tool fails, diagnose the error, fix it, and retry. Do not give up.
+
+## Common Mistakes to Avoid
+- Use 127.0.0.1 NOT localhost (localhost resolves to IPv6 on Windows and breaks)
+- In <tool:edit>, the old="..." attribute breaks if old text contains quotes. Use block format instead (see below).
+- Match whitespace EXACTLY when editing files. Read the file first if unsure.
+- To kill a project's dev server: find its PID first (netstat or bg-list), then kill that specific PID.
+- Don't stop mid-task. If you hit an error, fix it and keep going. FINISH THE JOB.
+
+## Tools
+
+### Files
+<tool:read>path</tool:read> Ã¢â‚¬â€ Read file
+<tool:write path="path">content</tool:write> Ã¢â‚¬â€ Write file
+<tool:edit path="path" old="old text">new text</tool:edit> Ã¢â‚¬â€ Edit file (simple, no quotes in old text)
+<tool:edit path="path">
+---OLD---
+old text (any content, including quotes)
+---NEW---
+new text
+</tool:edit> Ã¢â‚¬â€ Edit file (block format, preferred for complex edits)
+<tool:append path="path">content</tool:append> Ã¢â‚¬â€ Append to file
+<tool:delete>path</tool:delete> Ã¢â‚¬â€ Delete file
+<tool:ls>dir</tool:ls> Ã¢â‚¬â€ List directory
+<tool:search dir="dir" pattern="regex">glob</tool:search> Ã¢â‚¬â€ Search in files
+<tool:grep pattern="regex" dir=".">glob</tool:grep> Ã¢â‚¬â€ Grep files
+<tool:diff>path</tool:diff> Ã¢â‚¬â€ Git diff
+
+### Shell & Process
+<tool:shell>command</tool:shell> Ã¢â‚¬â€ Run command (quick, blocks until done)
+<tool:shellBg>command</tool:shellBg> Ã¢â‚¬â€ Run in background (servers, watchers)
+<tool:bg-check>pid</tool:bg-check> Ã¢â‚¬â€ Check background process
+<tool:bg-kill>pid</tool:bg-kill> Ã¢â‚¬â€ Kill background process
+<tool:bg-list></tool:bg-list> Ã¢â‚¬â€ List background processes
+<tool:launch>app</tool:launch> Ã¢â‚¬â€ Launch application
+<tool:kill>process_or_pid</tool:kill> Ã¢â‚¬â€ Kill process
+<tool:process>list</tool:process> Ã¢â‚¬â€ List processes
+<tool:install>package</tool:install> Ã¢â‚¬â€ Install npm package
+
+### Web & Network
+<tool:web>url</tool:web> Ã¢â‚¬â€ Fetch URL content
+<tool:websearch>query</tool:websearch> Ã¢â‚¬â€ Web search
+<tool:http method="GET" url="url" headers='{"k":"v"}'>body</tool:http> Ã¢â‚¬â€ HTTP request
+<tool:download url="url">save_path</tool:download> Ã¢â‚¬â€ Download file
+<tool:netscan>192.168.1</tool:netscan> Ã¢â‚¬â€ Network scan
+
+### Browser (extension)
+<tool:browse>url</tool:browse> Ã¢â‚¬â€ Navigate & get page text
+<tool:ext cmd="navigate">url</tool:ext> Ã¢â‚¬â€ Navigate tab
+<tool:ext cmd="snapshot"></tool:ext> Ã¢â‚¬â€ Get page content
+<tool:ext cmd="screenshot"></tool:ext> Ã¢â‚¬â€ Screenshot page
+<tool:ext cmd="getTabs"></tool:ext> Ã¢â‚¬â€ List tabs
+<tool:ext cmd="click">selector</tool:ext> Ã¢â‚¬â€ Click element
+<tool:ext cmd="type" selector="sel">text</tool:ext> Ã¢â‚¬â€ Type text
+<tool:ext cmd="evaluate">js_code</tool:ext> Ã¢â‚¬â€ Run JS in page
+
+### System & Utility
+<tool:screenshot>filename</tool:screenshot> Ã¢â‚¬â€ Desktop screenshot
+<tool:open>url_or_file</tool:open> Ã¢â‚¬â€ Open in default app
+<tool:clipboard>text</tool:clipboard> Ã¢â‚¬â€ Copy to clipboard
+<tool:notify>message</tool:notify> Ã¢â‚¬â€ Windows notification
+<tool:sysinfo></tool:sysinfo> Ã¢â‚¬â€ System info
+<tool:env>VAR_NAME</tool:env> Ã¢â‚¬â€ Read env variable
+<tool:crypto action="hash">data</tool:crypto> Ã¢â‚¬â€ Crypto (hash/uuid/random/base64)
+<tool:sandbox lang="node">code</tool:sandbox> Ã¢â‚¬â€ Run code in sandbox
+<tool:evaluate>js_code</tool:evaluate> Ã¢â‚¬â€ Run JS
+<tool:tts>text</tool:tts> Ã¢â‚¬â€ Text to speech
+<tool:git>command</tool:git> Ã¢â‚¬â€ Git operations
+
+### Memory
+<tool:memory>info</tool:memory> — Save to memory
+<tool:done>summary</tool:done> — Signal task COMPLETE (REQUIRED to finish multi-step work) Ã¢â‚¬â€ Save to memory
+<tool:memorySearch>query</tool:memorySearch> Ã¢â‚¬â€ Search memory
+
+### Projects & Apps
+<tool:serve>directory</tool:serve> Ã¢â‚¬â€ Serve static files
+<tool:canvas file="name.html">html_content</tool:canvas> Ã¢â‚¬â€ Create canvas page
+<tool:webapp name="myapp">html</tool:webapp> Ã¢â‚¬â€ Create web app at /canvas/
+<tool:message to="target">text</tool:message> Ã¢â‚¬â€ Send message
+
+### Agents
+<tool:swarm>task</tool:swarm> Ã¢â‚¬â€ Multi-agent swarm
+<tool:spawn-agent task="description">subtask</tool:spawn-agent> Ã¢â‚¬â€ Spawn sub-agent
+<tool:check-agent>jobId</tool:check-agent> Ã¢â‚¬â€ Check sub-agent
+<tool:wait-agents></tool:wait-agents> Ã¢â‚¬â€ Wait for all sub-agents
+
+### Vision
+<tool:vision prompt="describe this">path_or_url</tool:vision> Ã¢â‚¬â€ Analyze image
+<tool:imageAnalysis>path</tool:imageAnalysis> Ã¢â‚¬â€ Analyze image
+
+### Scheduling
+<tool:cron expr="*/5 * * * *" name="jobname">command</tool:cron> Ã¢â‚¬â€ Cron job
+
+### Aries Code (Autonomous Coding Agent)
+<tool:ariesCode dir="optional/path">detailed task description</tool:ariesCode> — Delegate a complex coding task to the Aries Code engine. It autonomously plans, writes files, runs commands, fixes errors, and verifies — up to 20 iterations. USE THIS for building entire projects, complex multi-file work, or any build-me-X request. Preferred over manual file-by-file writes for big tasks.
+${pluginTools ? '\n' + pluginTools : ''}
 
 ## Memory Bank (${memory.list().length} entries)
-${memory.list().slice(-15).map(m => `- [${m.priority||'normal'}/${m.category||'general'}] ${m.text}`).join('\n') || '(empty)'}
-
-## Environment
-- OS: Windows 10 (PowerShell default shell)
-- Working Dir: ARIES application directory
-- Timezone: America/Chicago (CT)
-- Internet: Available`;
+${memory.list().slice(-15).map(m => `- [${m.priority||'normal'}/${m.category||'general'}] ${m.text}`).join('\n') || '(empty)'}`;
   return _cachedSystemPrompt;
 }
 
 function parseTools(text) {
   const toolCalls = [];
+  
+  // Helper: normalize quotes in attribute patterns (support both single and double quotes)
+  const q = `["']`; // quote char class
+  const qc = `[^"']`; // non-quote content
+
   const patterns = [
+    { name: 'done', regex: /<tool:done>([\s\S]*?)<\/tool:done>/g },
     { name: 'shell', regex: /<tool:shell>([\s\S]*?)<\/tool:shell>/g },
+    { name: 'shellBg', regex: /<tool:shellBg>([\s\S]*?)<\/tool:shellBg>/g },
     { name: 'launch', regex: /<tool:launch>([\s\S]*?)<\/tool:launch>/g },
     { name: 'kill', regex: /<tool:kill>([\s\S]*?)<\/tool:kill>/g },
     { name: 'read', regex: /<tool:read>([\s\S]*?)<\/tool:read>/g },
-    { name: 'write', regex: /<tool:write\s+path="([^"]*)">([\s\S]*?)<\/tool:write>/g, hasAttr: true },
-    { name: 'append', regex: /<tool:append\s+path="([^"]*)">([\s\S]*?)<\/tool:append>/g, hasAttr: true },
+    { name: 'write', regex: /<tool:write\s+path=["']([^"']*?)["']>([\s\S]*?)<\/tool:write>/g, hasAttr: true },
+    { name: 'append', regex: /<tool:append\s+path=["']([^"']*?)["']>([\s\S]*?)<\/tool:append>/g, hasAttr: true },
     { name: 'web', regex: /<tool:web>([\s\S]*?)<\/tool:web>/g },
-    { name: 'download', regex: /<tool:download\s+url="([^"]*)">([\s\S]*?)<\/tool:download>/g, hasAttr: true },
+    { name: 'download', regex: /<tool:download\s+url=["']([^"']*?)["']>([\s\S]*?)<\/tool:download>/g, hasAttr: true },
     { name: 'clipboard', regex: /<tool:clipboard>([\s\S]*?)<\/tool:clipboard>/g },
     { name: 'memory', regex: /<tool:memory>([\s\S]*?)<\/tool:memory>/g },
     { name: 'open', regex: /<tool:open>([\s\S]*?)<\/tool:open>/g },
@@ -161,35 +195,36 @@ function parseTools(text) {
     { name: 'sysinfo', regex: /<tool:sysinfo><\/tool:sysinfo>/g, noContent: true },
     { name: 'sysinfo', regex: /<tool:sysinfo\s*\/>/g, noContent: true },
     { name: 'install', regex: /<tool:install>([\s\S]*?)<\/tool:install>/g },
-    { name: 'edit', regex: /<tool:edit\s+path="([^"]*?)"\s+old="([^"]*?)">([\s\S]*?)<\/tool:edit>/g, hasTriple: true },
+    // Edit: block format with ---OLD--- / ---NEW--- delimiters (preferred, handles quotes)
+    { name: 'edit', regex: /<tool:edit\s+path=["']([^"']*?)["']>\s*\n?---OLD---\n([\s\S]*?)\n---NEW---\n([\s\S]*?)<\/tool:edit>/g, hasTriple: true },
+    // Edit: attribute format (legacy, simple cases only)
+    { name: 'edit', regex: /<tool:edit\s+path=["']([^"']*?)["']\s+old=["']([^"']*?)["']>([\s\S]*?)<\/tool:edit>/g, hasTriple: true },
     { name: 'delete', regex: /<tool:delete>([\s\S]*?)<\/tool:delete>/g },
     { name: 'ls', regex: /<tool:ls>([\s\S]*?)<\/tool:ls>/g },
-    { name: 'search', regex: /<tool:search\s+dir="([^"]*?)"\s+pattern="([^"]*?)">([\s\S]*?)<\/tool:search>/g, hasTriple: true },
+    { name: 'search', regex: /<tool:search\s+dir=["']([^"']*?)["']\s+pattern=["']([^"']*?)["']>([\s\S]*?)<\/tool:search>/g, hasTriple: true },
     { name: 'process', regex: /<tool:process>([\s\S]*?)<\/tool:process>/g },
     { name: 'swarm', regex: /<tool:swarm>([\s\S]*?)<\/tool:swarm>/g },
     { name: 'browse', regex: /<tool:browse>([\s\S]*?)<\/tool:browse>/g },
     { name: 'click', regex: /<tool:click>([\s\S]*?)<\/tool:click>/g },
-    { name: 'type', regex: /<tool:type\s+selector="([^"]*)">([\s\S]*?)<\/tool:type>/g, hasAttr: true },
+    { name: 'type', regex: /<tool:type\s+selector=["']([^"']*?)["']>([\s\S]*?)<\/tool:type>/g, hasAttr: true },
     { name: 'screenshot', regex: /<tool:screenshot>([\s\S]*?)<\/tool:screenshot>/g },
     { name: 'evaluate', regex: /<tool:evaluate>([\s\S]*?)<\/tool:evaluate>/g },
     { name: 'desktopScreenshot', regex: /<tool:desktopScreenshot>([\s\S]*?)<\/tool:desktopScreenshot>/g },
     { name: 'tts', regex: /<tool:tts>([\s\S]*?)<\/tool:tts>/g },
-    { name: 'cron', regex: /<tool:cron\s+expr="([^"]*)">([\s\S]*?)<\/tool:cron>/g, hasAttr: true },
+    { name: 'cron', regex: /<tool:cron\s+expr=["']([^"']*?)["']>([\s\S]*?)<\/tool:cron>/g, hasAttr: true },
     { name: 'git', regex: /<tool:git>([\s\S]*?)<\/tool:git>/g },
     { name: 'netscan', regex: /<tool:netscan>([\s\S]*?)<\/tool:netscan>/g },
     { name: 'imageAnalysis', regex: /<tool:imageAnalysis>([\s\S]*?)<\/tool:imageAnalysis>/g },
     { name: 'spawn', regex: /<tool:spawn>([\s\S]*?)<\/tool:spawn>/g },
-    { name: 'crypto', regex: /<tool:crypto\s+action="([^"]*)">([\s\S]*?)<\/tool:crypto>/g, hasAttr: true },
+    { name: 'crypto', regex: /<tool:crypto\s+action=["']([^"']*?)["']>([\s\S]*?)<\/tool:crypto>/g, hasAttr: true },
     { name: 'serve', regex: /<tool:serve>([\s\S]*?)<\/tool:serve>/g },
-    { name: 'canvas', regex: /<tool:canvas\s+file="([^"]*)">([\s\S]*?)<\/tool:canvas>/g, hasAttr: true },
-    { name: 'sandbox', regex: /<tool:sandbox(?:\s+lang="([^"]*)")?>([\s\S]*?)<\/tool:sandbox>/g, hasAttr: true },
+    { name: 'canvas', regex: /<tool:canvas\s+file=["']([^"']*?)["']>([\s\S]*?)<\/tool:canvas>/g, hasAttr: true },
+    { name: 'sandbox', regex: /<tool:sandbox(?:\s+lang=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:sandbox>/g, hasAttr: true },
     { name: 'memorySearch', regex: /<tool:memorySearch>([\s\S]*?)<\/tool:memorySearch>/g },
-    // old simple http pattern replaced by Phase 2 httpRequest with url attr
-    { name: 'message', regex: /<tool:message\s+to="([^"]*)">([\s\S]*?)<\/tool:message>/g, hasAttr: true },
-    { name: 'webapp', regex: /<tool:webapp\s+name="([^"]*)">([\s\S]*?)<\/tool:webapp>/g, hasAttr: true },
+    { name: 'message', regex: /<tool:message\s+to=["']([^"']*?)["']>([\s\S]*?)<\/tool:message>/g, hasAttr: true },
+    { name: 'webapp', regex: /<tool:webapp\s+name=["']([^"']*?)["']>([\s\S]*?)<\/tool:webapp>/g, hasAttr: true },
     { name: 'websearch', regex: /<tool:websearch>([\s\S]*?)<\/tool:websearch>/g },
-    // Phase 2 tools
-    { name: 'spawn-agent', regex: /<tool:spawn-agent\s+task="([^"]*)">([\s\S]*?)<\/tool:spawn-agent>/g, hasAttr: true },
+    { name: 'spawn-agent', regex: /<tool:spawn-agent\s+task=["']([^"']*?)["']>([\s\S]*?)<\/tool:spawn-agent>/g, hasAttr: true },
     { name: 'check-agent', regex: /<tool:check-agent>([\s\S]*?)<\/tool:check-agent>/g },
     { name: 'wait-agents', regex: /<tool:wait-agents><\/tool:wait-agents>/g, noContent: true },
     { name: 'wait-agents', regex: /<tool:wait-agents\s*\/>/g, noContent: true },
@@ -200,15 +235,20 @@ function parseTools(text) {
     { name: 'bg-list', regex: /<tool:bg-list\s*\/>/g, noContent: true },
     { name: 'browse-navigate', regex: /<tool:browse-navigate>([\s\S]*?)<\/tool:browse-navigate>/g },
     { name: 'browse-click', regex: /<tool:browse-click>([\s\S]*?)<\/tool:browse-click>/g },
-    { name: 'browse-type', regex: /<tool:browse-type\s+selector="([^"]*)">([\s\S]*?)<\/tool:browse-type>/g, hasAttr: true },
+    { name: 'browse-type', regex: /<tool:browse-type\s+selector=["']([^"']*?)["']>([\s\S]*?)<\/tool:browse-type>/g, hasAttr: true },
     { name: 'browse-screenshot', regex: /<tool:browse-screenshot>([\s\S]*?)<\/tool:browse-screenshot>/g },
     { name: 'browse-evaluate', regex: /<tool:browse-evaluate>([\s\S]*?)<\/tool:browse-evaluate>/g },
-    { name: 'vision', regex: /<tool:vision(?:\s+prompt="([^"]*)")?>([\s\S]*?)<\/tool:vision>/g, hasAttr: true },
+    { name: 'vision', regex: /<tool:vision(?:\s+prompt=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:vision>/g, hasAttr: true },
     { name: 'diff', regex: /<tool:diff>([\s\S]*?)<\/tool:diff>/g },
-    { name: 'grep', regex: /<tool:grep\s+pattern="([^"]*)"(?:\s+dir="([^"]*)")?>([\s\S]*?)<\/tool:grep>/g, hasTriple: true },
-    { name: 'httpRequest', regex: /<tool:http\s+method="([^"]*)"\s+url="([^"]*)"(?:\s+headers='([^']*)')?>([\s\S]*?)<\/tool:http>/g, hasQuad: true },
+    { name: 'grep', regex: /<tool:grep\s+pattern=["']([^"']*?)["'](?:\s+dir=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:grep>/g, hasTriple: true },
+    { name: 'httpRequest', regex: /<tool:http\s+method=["']([^"']*?)["']\s+url=["']([^"']*?)["'](?:\s+headers='([^']*)')?>([\s\S]*?)<\/tool:http>/g, hasQuad: true },
     { name: 'env', regex: /<tool:env>([\s\S]*?)<\/tool:env>/g },
-    { name: 'cronNamed', regex: /<tool:cron\s+expr="([^"]*)"\s+name="([^"]*)">([\s\S]*?)<\/tool:cron>/g, hasTriple: true },
+    { name: 'ext', regex: /<tool:ext\s+cmd=["']([^"']*?)["'](?:\s+selector=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:ext>/g, hasTriple: true },
+    { name: 'ext', regex: /<tool:ext\s+cmd=["']([^"']*?)["']>([\s\S]*?)<\/tool:ext>/g, hasAttr: true },
+    { name: 'ext', regex: /<tool:ext\s+cmd=["']([^"']*?)["']\/>/g },
+    { name: 'ext', regex: /<tool:ext\s+cmd=["']([^"']*?)["']><\/tool:ext>/g },
+    { name: 'cronNamed', regex: /<tool:cron\s+expr=["']([^"']*?)["']\s+name=["']([^"']*?)["']>([\s\S]*?)<\/tool:cron>/g, hasTriple: true },
+    { name: 'ariesCode', regex: /<tool:ariesCode(?:\s+dir=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:ariesCode>/g, hasAttr: true },
   ];
 
   const pluginRegex = /<tool:plugin_(\w+)>([\s\S]*?)<\/tool:plugin_\1>/g;
@@ -217,9 +257,13 @@ function parseTools(text) {
     toolCalls.push({ tool: 'plugin', args: [pm[1], pm[2]] });
   }
 
+  // Track which parts of text were matched so we can detect unmatched tool tags
+  const matchedRanges = [];
+
   for (const p of patterns) {
     let m;
     while ((m = p.regex.exec(text)) !== null) {
+      matchedRanges.push([m.index, m.index + m[0].length]);
       if (p.noContent) toolCalls.push({ tool: p.name, args: [] });
       else if (p.hasQuad) toolCalls.push({ tool: p.name, args: [m[1], m[2], m[4], m[3]] });
       else if (p.hasTriple) toolCalls.push({ tool: p.name, args: [m[1], m[2], m[3]] });
@@ -227,6 +271,18 @@ function parseTools(text) {
       else toolCalls.push({ tool: p.name, args: [m[1]] });
     }
   }
+
+  // Catch-all: detect any <tool:SOMETHING> tags that weren't matched by patterns
+  const catchAll = /<tool:([a-zA-Z_-]+)[\s>]/g;
+  let cm;
+  while ((cm = catchAll.exec(text)) !== null) {
+    const pos = cm.index;
+    const wasMatched = matchedRanges.some(([s, e]) => pos >= s && pos < e);
+    if (!wasMatched) {
+      console.warn('[parseTools] Unrecognized tool tag: <tool:' + cm[1] + '> at position ' + pos + '. Check syntax.');
+    }
+  }
+
   return toolCalls;
 }
 
@@ -235,15 +291,32 @@ function stripToolTags(text) {
 }
 
 async function executeTool(call) {
+  if (call.tool === 'ariesCode') {
+    try {
+      const { AriesCode } = require('./aries-code');
+      const acAi = { chat: async (msgs) => {
+        const data = await callWithFallback(msgs);
+        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      }};
+      const agent = new AriesCode(acAi, { maxIterations: 20 });
+      const workDir = call.args[0] || require('path').join(__dirname, '..');
+      const task = call.args[1] || call.args[0] || '';
+      const result = await agent.run(task, workDir);
+      return { success: result.success, output: 'Aries Code completed:\n' + result.summary + '\nFiles changed: ' + (result.files_changed || []).join(', ') + '\nCommands run: ' + (result.commands_run || []).length };
+    } catch (e) { return { success: false, output: 'AriesCode error: ' + e.message }; }
+  }
+  if (call.tool === 'done') {
+    return { success: true, output: '[TASK COMPLETE]', isDone: true };
+  }
   if (call.tool === 'plugin') return await pluginLoader.execute(call.args[0], call.args[1]);
   const fn = tools[call.tool];
   if (!fn) return { success: false, output: `Unknown tool: ${call.tool}` };
   try { return await fn.apply(tools, call.args); } catch (e) { return { success: false, output: e.message }; }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // MULTI-MODEL FALLBACK CHAIN
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 /**
  * Try Aries gateway (primary)
@@ -291,15 +364,15 @@ async function callGateway(messages, model, stream = false) {
   const gatewayToken = cfg.gateway?.token;
   if (!gatewayUrl) throw new Error('No gateway URL configured');
 
-  const postBody = JSON.stringify({ model: model || cfg.gateway.model, messages, max_tokens: 4096, temperature: 0.7, stream });
+  const postBody = JSON.stringify({ model: model || cfg.gateway.model, messages, max_tokens: 32000, temperature: cfg.gateway?.temperature || 0.1, stream });
   const resp = await _httpPost(gatewayUrl, postBody, {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer ' + (gatewayToken || '')
-  }, 90000);
+  }, 600000);
 
   if (resp.statusCode >= 400) {
     const errBody = await _readBody(resp.stream);
-    throw new Error('API error: HTTP ' + resp.statusCode + ' — ' + errBody.substring(0, 300));
+    throw new Error('API error: HTTP ' + resp.statusCode + ' Ã¢â‚¬â€ ' + errBody.substring(0, 300));
   }
 
   // Return an object that mimics the interface ai.js expects
@@ -348,7 +421,8 @@ async function callDirectApi(messages, model) {
   const bodyObj = {
     model: (model || cfg.fallback?.directApi?.model || 'claude-sonnet-4-20250514').replace('anthropic/', ''),
     messages: anthropicMessages,
-    max_tokens: 4096,
+    max_tokens: 32000,
+    temperature: 0.1,
   };
   bodyObj.system = system;
 
@@ -423,9 +497,28 @@ async function callWithFallback(messages, model, stream = false) {
   throw new Error('All AI providers failed: ' + errors.join('; '));
 }
 
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // CHAT FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+
+function formatToolResults(results) {
+  const lines = ['Tool results:\n'];
+  for (const r of results) {
+    if (r.success) {
+      lines.push(`## ${r.tool} Ã¢Å“â€œ`);
+      lines.push(r.output || '(no output)');
+    } else {
+      lines.push(`## ${r.tool} Ã¢Å“â€”`);
+      lines.push(`Error: ${r.output || 'unknown error'}`);
+      // Add contextual hints for common failures
+      if (r.tool === 'edit' && r.output && r.output.includes('not found')) {
+        lines.push('Hint: Make sure whitespace matches exactly. Use <tool:read>path</tool:read> to check current content.');
+      }
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
 
 async function chatStream(messages, onToken, onToolExec, opts) {
   const cfg = getConfig();
@@ -446,9 +539,20 @@ async function chatStream(messages, onToken, onToolExec, opts) {
 
   let iterations = 0;
   let fullResponse = '';
+  let _forcedContinues = 0;
+  const MAX_FORCED_CONTINUES = 3;
+  let _finishReason = null;
 
-  while (iterations < (cfg.maxToolIterations || 8)) {
+  while (iterations < (cfg.maxToolIterations || 25)) {
     iterations++;
+
+    // Trim context to prevent token explosion Ã¢â‚¬â€ keep more context for complex tasks
+    if (apiMessages.length > 40) {
+      const system = apiMessages[0];
+      const recent = apiMessages.slice(-36);
+      apiMessages.length = 0;
+      apiMessages.push(system, ...recent);
+    }
 
     try {
       // Try streaming via gateway
@@ -475,6 +579,7 @@ async function chatStream(messages, onToken, onToolExec, opts) {
                   continue;
                 }
                 const delta = parsed.choices?.[0]?.delta?.content;
+                if (parsed.choices?.[0]?.finish_reason) _finishReason = parsed.choices[0].finish_reason;
                 if (delta) { content += delta; if (onToken) onToken(delta); }
               } catch {}
             }
@@ -487,16 +592,37 @@ async function chatStream(messages, onToken, onToolExec, opts) {
       apiMessages.push({ role: 'assistant', content });
       const toolCalls = parseTools(content);
 
-      if (toolCalls.length === 0) { fullResponse = content; return { response: fullResponse, iterations, usedModel: _usedModel }; }
+      if (toolCalls.length === 0) {
+        fullResponse = content;
+        // If this is first response (no tool loop yet), return immediately
+        if (iterations <= 1) {
+          return { response: fullResponse, iterations, usedModel: _usedModel };
+        }
+        // In a tool loop: only exit if AI used <tool:done> or we've forced too many continues
+        if (_forcedContinues >= MAX_FORCED_CONTINUES) {
+          return { response: fullResponse, iterations, usedModel: _usedModel };
+        }
+        _forcedContinues++;
+        apiMessages.push({ role: 'user', content: '[SYSTEM] You stopped without using <tool:done>. The task is NOT complete. Continue using tools to finish the work. When fully done, use <tool:done>summary</tool:done>.' });
+        continue;
+      }
 
       const results = [];
+      let _taskDone = false;
       for (const call of toolCalls) {
+        if (call.tool === 'done') { _taskDone = true; fullResponse = stripToolTags(content); continue; }
         if (onToolExec) onToolExec(call);
         results.push({ tool: call.tool, args: call.args, ...(await executeTool(call)) });
       }
-
-      apiMessages.push({ role: 'user', content: `Tool results:\n${results.map(r => `[${r.tool}] ${r.success ? '✓' : '✗'}: ${r.output}`).join('\n\n')}` });
+      if (results.length > 0) apiMessages.push({ role: 'user', content: formatToolResults(results) });
       fullResponse = stripToolTags(content);
+      if (_taskDone) return { response: fullResponse, iterations, usedModel: _usedModel };
+      // If response was truncated mid-tool-execution, continue
+      if (_finishReason === 'length') {
+        apiMessages.push({ role: 'user', content: '[SYSTEM] Your response was cut off mid-execution. Continue where you left off — write the next files.' });
+        _finishReason = null;
+        continue;
+      }
 
     } catch (e) {
       // Fall back to non-streaming
@@ -505,11 +631,55 @@ async function chatStream(messages, onToken, onToolExec, opts) {
     }
   }
 
+  // If we hit max iterations and the last response had tool calls, prompt continuation
+  if (iterations >= (cfg.maxToolIterations || 25)) {
+    const lastMsg = apiMessages[apiMessages.length - 1];
+    if (lastMsg && lastMsg.role === 'user' && lastMsg.content && lastMsg.content.includes('Tool:')) {
+      // Give it 10 more iterations to finish
+      let extraIterations = 0;
+      while (extraIterations < 10) {
+        extraIterations++;
+        apiMessages.push({ role: 'user', content: '[SYSTEM] You hit the tool iteration limit but the task is not complete. Continue working Ã¢â‚¬â€ finish the task. Do NOT stop or summarize early.' });
+        try {
+          const resp = await callGateway(apiMessages, (opts && opts.model) || cfg.models?.chat || cfg.gateway?.model, true);
+          let content = '';
+          let buffer = '';
+          await new Promise((resolve, reject) => {
+            resp.body.on('data', chunk => {
+              buffer += chunk.toString();
+              const lines = buffer.split('\n');
+              buffer = lines.pop();
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.substring(6).trim();
+                  if (data === '[DONE]') { resolve(); return; }
+                  try { const p = JSON.parse(data); const d = p.choices?.[0]?.delta?.content; if (d) { content += d; if (onToken) onToken(d); } } catch {}
+                }
+              }
+            });
+            resp.body.on('end', resolve);
+            resp.body.on('error', reject);
+          });
+          apiMessages.push({ role: 'assistant', content });
+          const toolCalls = parseTools(content);
+          if (toolCalls.length === 0) { fullResponse = content; break; }
+          const results = [];
+          for (const call of toolCalls) {
+            if (onToolExec) onToolExec(call);
+            results.push({ tool: call.tool, args: call.args, ...(await executeTool(call)) });
+          }
+          apiMessages.push({ role: 'user', content: formatToolResults(results) });
+          fullResponse = stripToolTags(content);
+        } catch { break; }
+      }
+    }
+  }
+
   return { response: fullResponse, iterations };
 }
 
 /**
- * Chunked streaming — calls onChunk with each text fragment
+ * Chunked streaming Ã¢â‚¬â€ calls onChunk with each text fragment
  */
 async function chatStreamChunked(messages, onChunk, opts) {
   let fullResponse = '';
@@ -532,9 +702,18 @@ async function chat(messages, onToolExec) {
 
   let iterations = 0;
   let fullResponse = '';
+  let _forcedContinues2 = 0;
 
-  while (iterations < (cfg.maxToolIterations || 8)) {
+  while (iterations < (cfg.maxToolIterations || 25)) {
     iterations++;
+
+    // Trim context to prevent token explosion Ã¢â‚¬â€ keep more context for complex tasks
+    if (apiMessages.length > 40) {
+      const system = apiMessages[0];
+      const recent = apiMessages.slice(-36);
+      apiMessages.length = 0;
+      apiMessages.push(system, ...recent);
+    }
 
     const data = await callWithFallback(apiMessages, chatModel);
     const content = data.choices?.[0]?.message?.content || '';
@@ -549,7 +728,7 @@ async function chat(messages, onToolExec) {
       results.push({ tool: call.tool, args: call.args, ...(await executeTool(call)) });
     }
 
-    apiMessages.push({ role: 'user', content: `Tool results:\n${results.map(r => `[${r.tool}] ${r.success ? '✓' : '✗'}: ${r.output}`).join('\n\n')}` });
+    apiMessages.push({ role: 'user', content: formatToolResults(results) });
     fullResponse = stripToolTags(content);
   }
 
@@ -638,9 +817,9 @@ async function callSwarmOllama(messages, model) {
   throw new Error('Relay timeout after 120s');
 }
 
-// ═══════════════════════════════════════════════════════════════
-// AGENT LOOP — Iterative tool execution with streaming
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// AGENT LOOP Ã¢â‚¬â€ Iterative tool execution with streaming
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 /**
  * Stream AI response via direct Anthropic API (SSE).
@@ -658,7 +837,7 @@ async function streamAnthropicDirect(messages, model, onChunk) {
   const bodyObj = {
     model: (model || cfg.fallback?.directApi?.model || 'claude-sonnet-4-20250514').replace('anthropic/', ''),
     messages: anthropicMessages,
-    max_tokens: 8192,
+    max_tokens: 32000,
     stream: true,
   };
   if (system) bodyObj.system = system;
@@ -731,7 +910,7 @@ async function streamGateway(messages, model, onChunk) {
 }
 
 /**
- * Stream AI with fallback: gateway → direct Anthropic
+ * Stream AI with fallback: gateway Ã¢â€ â€™ direct Anthropic
  */
 async function streamWithFallback(messages, model, onChunk) {
   const cfg = getConfig();
@@ -764,7 +943,7 @@ async function streamWithFallback(messages, model, onChunk) {
  * @returns {Object} { response, iterations }
  */
 async function agentLoop(messages, model, callbacks, signal) {
-  const MAX_ITERATIONS = 15;
+  const MAX_ITERATIONS = 50;
   const { executeSingle } = require('./tools');
   const cb = callbacks || {};
   let lastResponse = '';
@@ -772,6 +951,15 @@ async function agentLoop(messages, model, callbacks, signal) {
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     if (signal && signal.aborted) {
       return { response: lastResponse || 'Agent loop cancelled.', iterations: i };
+    }
+
+    // Trim context to prevent token explosion
+    if (messages.length > 60) {
+      const system = messages[0];
+      const original = messages[1]; 
+      const recent = messages.slice(-50);
+      messages.length = 0;
+      messages.push(system, original, ...recent);
     }
 
     // Stream AI response
@@ -811,15 +999,15 @@ async function agentLoop(messages, model, callbacks, signal) {
 
     // Add to messages and continue
     messages.push({ role: 'assistant', content: response });
-    messages.push({ role: 'user', content: `Tool results:\n${toolResultsText}\n\nContinue with the task. If done, give the final summary.` });
+    messages.push({ role: 'user', content: `Tool results:\n${toolResultsText}` });
   }
 
   return { response: stripToolTags(lastResponse) || 'Max iterations reached.', iterations: MAX_ITERATIONS };
 }
 
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // PHASE 2: Sub-Agent Spawning
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 async function spawnSubAgent(task) {
   const cfg = getConfig();
@@ -828,22 +1016,22 @@ You have full tool access EXCEPT spawn-agent (no recursive spawning).
 Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT
 
 ## Tools
-<tool:shell>command</tool:shell> — PowerShell/CMD
-<tool:read>path</tool:read> — Read file
-<tool:write path="path">content</tool:write> — Write file
-<tool:edit path="path" old="old">new</tool:edit> — Edit file
-<tool:ls>dir</tool:ls> — List directory
-<tool:web>url</tool:web> — Fetch webpage
-<tool:search dir="dir" pattern="regex">glob</tool:search> — Search files
-<tool:grep pattern="regex" dir=".">glob</tool:grep> — Search files
-<tool:shell>command</tool:shell> — Run command
-<tool:http method="GET">url</tool:http> — HTTP request
-<tool:bg-run>command</tool:bg-run> — Background process
+<tool:shell>command</tool:shell> Ã¢â‚¬â€ PowerShell/CMD
+<tool:read>path</tool:read> Ã¢â‚¬â€ Read file
+<tool:write path="path">content</tool:write> Ã¢â‚¬â€ Write file
+<tool:edit path="path" old="old">new</tool:edit> Ã¢â‚¬â€ Edit file
+<tool:ls>dir</tool:ls> Ã¢â‚¬â€ List directory
+<tool:web>url</tool:web> Ã¢â‚¬â€ Fetch webpage
+<tool:search dir="dir" pattern="regex">glob</tool:search> Ã¢â‚¬â€ Search files
+<tool:grep pattern="regex" dir=".">glob</tool:grep> Ã¢â‚¬â€ Search files
+<tool:shell>command</tool:shell> Ã¢â‚¬â€ Run command
+<tool:http method="GET">url</tool:http> Ã¢â‚¬â€ HTTP request
+<tool:bg-run>command</tool:bg-run> Ã¢â‚¬â€ Background process
 
 ## Rules
 1. ACT FIRST. Use tools when needed.
 2. Be concise. Return only the essential result.
-3. No spawn-agent — you cannot create sub-agents.`;
+3. No spawn-agent Ã¢â‚¬â€ you cannot create sub-agents.`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -855,9 +1043,9 @@ Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT
   return result.response;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // PHASE 2: Image/Vision Analysis
-// ═══════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 async function analyzeImage(imagePath, prompt) {
   const cfg = getConfig();
@@ -891,7 +1079,7 @@ async function analyzeImage(imagePath, prompt) {
 
   const bodyObj = {
     model: (cfg.fallback?.directApi?.model || 'claude-sonnet-4-20250514').replace('anthropic/', ''),
-    max_tokens: 2048,
+    max_tokens: 32000,
     messages: [{
       role: 'user',
       content: [
@@ -915,4 +1103,166 @@ async function analyzeImage(imagePath, prompt) {
   return data.content?.[0]?.text || '(no response)';
 }
 
-module.exports = { chat, chatStream, chatStreamChunked, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop, spawnSubAgent, analyzeImage };
+
+
+// ═══════════════════════════════════════════════════════════════
+// NATIVE TOOL CALLING — Structured tool calls like OpenClaw
+// ═══════════════════════════════════════════════════════════════
+
+async function chatNativeTools(messages, onToken, onToolExec, opts) {
+  const cfg = getConfig();
+  const systemPrompt = buildSystemPrompt();
+  const chatModel = (opts && opts.model) || cfg.models?.chat || cfg.gateway?.model;
+  
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+  let memCtx = '';
+  if (lastUserMsg) {
+    const relevant = memory.getRelevant(lastUserMsg.content, 5);
+    if (relevant.length > 0) memCtx = '\n\nRelevant memories:\n' + relevant.map(m => '- [' + (m.priority || 'normal') + '] ' + m.text).join('\n');
+  }
+
+  const apiMessages = [
+    { role: 'system', content: systemPrompt + memCtx },
+    ...messages
+  ];
+
+  let iterations = 0;
+  let fullResponse = '';
+  let _usedModel = null;
+  const MAX_ITERATIONS = cfg.maxToolIterations || 50;
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++;
+
+    // Trim context if too long
+    if (apiMessages.length > 50) {
+      const system = apiMessages[0];
+      const recent = apiMessages.slice(-46);
+      apiMessages.length = 0;
+      apiMessages.push(system, ...recent);
+    }
+
+    try {
+      // Non-streaming call with native tools
+      const resp = await callGateway(apiMessages, chatModel, false, true);
+      let data;
+      if (resp.json) {
+        data = await resp.json();
+      } else {
+        const rawBody = await _readBody(resp.stream || resp);
+        data = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+      }
+
+      const choice = data.choices?.[0];
+      if (!choice) {
+        fullResponse = 'No response from AI';
+        break;
+      }
+
+      const message = choice.message;
+      const finishReason = choice.finish_reason;
+      const content = message?.content || '';
+      const toolCalls = message?.tool_calls || [];
+
+      // Add assistant message to context
+      if (toolCalls.length > 0) {
+        // Format tool_calls back to OpenAI API format for context
+        const apiToolCalls = toolCalls.map((tc, i) => ({
+          id: tc.id || ('call_' + iterations + '_' + i),
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments }
+        }));
+        apiMessages.push({ role: 'assistant', content: content || null, tool_calls: apiToolCalls });
+      } else {
+        apiMessages.push({ role: 'assistant', content });
+      }
+
+      // If no tool calls — check why
+      if (toolCalls.length === 0) {
+        fullResponse = content;
+
+        // CRITICAL: If finish_reason is "length", response was TRUNCATED
+        if (finishReason === 'length') {
+          apiMessages.push({ role: 'user', content: '[SYSTEM] Your response was cut off (token limit). Continue exactly where you left off.' });
+          continue;
+        }
+
+        // If we were in a tool loop (iterations > 1), the AI should use done() to exit
+        if (iterations > 1 && iterations < MAX_ITERATIONS - 3) {
+          apiMessages.push({ role: 'user', content: '[SYSTEM] You stopped without calling the done() tool. If the task is complete, call done(summary). If not, keep working.' });
+          continue;
+        }
+
+        break;
+      }
+
+      // Execute each tool call (tc has {id, name, arguments} from delta assembly)
+      let taskDone = false;
+      for (const tc of toolCalls) {
+        const fnName = tc.function?.name || tc.name;
+        let fnArgs = {};
+        try { fnArgs = JSON.parse(tc.function?.arguments || tc.arguments || '{}'); } catch {}
+
+        // Check for done signal
+        if (fnName === 'done') {
+          taskDone = true;
+          fullResponse = content || fnArgs.summary || 'Task complete';
+          // Still add tool result for protocol compliance
+          apiMessages.push({ role: 'tool', tool_call_id: tc.id, content: '[TASK COMPLETE] ' + (fnArgs.summary || '') });
+          continue;
+        }
+
+        if (onToolExec) onToolExec({ tool: fnName, args: fnArgs });
+
+        // Map to Aries tools.js format and execute
+        const toolsModule = require(path.join(__dirname, 'tools'));
+        const mappedName = mapToolName(fnName);
+        const mappedArgs = mapToolCallToArgs(fnName, fnArgs);
+        
+        let result;
+        if (toolsModule[mappedName]) {
+          try {
+            result = await toolsModule[mappedName].apply(toolsModule, mappedArgs);
+          } catch (e) {
+            result = { success: false, output: e.message };
+          }
+        } else {
+          result = { success: false, output: 'Unknown tool: ' + fnName };
+        }
+
+        const output = typeof result === 'object' ? (result.output || JSON.stringify(result)) : String(result);
+        
+        // Send tool result back as structured message
+        apiMessages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: output.substring(0, 50000) // cap tool output
+        });
+      }
+
+      if (taskDone) break;
+      fullResponse = content;
+
+      // If truncated mid-tool-execution, continue
+      if (finishReason === 'length') {
+        apiMessages.push({ role: 'user', content: '[SYSTEM] Response truncated. Continue working.' });
+        continue;
+      }
+
+    } catch (e) {
+      // If native tools fail, fall back to XML-based chat
+      console.error('[NATIVE-TOOLS] Error:', e.message, '— falling back to XML chat');
+      if (iterations === 1) {
+        return await chatStream(messages, onToken, onToolExec, opts);
+      }
+      // Mid-loop error: try to continue
+      apiMessages.push({ role: 'user', content: '[SYSTEM] Error occurred: ' + e.message + '. Continue working.' });
+      continue;
+    }
+  }
+
+  return { response: fullResponse, iterations, usedModel: _usedModel };
+}
+
+
+module.exports = { chat, chatStream, chatStreamChunked, chatNativeTools, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop, spawnSubAgent, analyzeImage };

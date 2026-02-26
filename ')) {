@@ -1,0 +1,6 @@
+// Save previous file if exists
+                if (currentFile && fileContent.length > 0) {
+                    await tools.write(currentFile, fileContent.join('\n'));
+                }
+                
+                currentFile = line.replace('

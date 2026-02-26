@@ -13,9 +13,18 @@
   <meta name="apple-mobile-web-app-title" content="ARIES">
 </head>
 <body>
+  <script>
+  // Auth check — redirect to login if no token
+  (function() {
+    var token = localStorage.getItem('aries-auth-token');
+    if (!token && !window.location.pathname.includes('login')) {
+      window.location.href = '/login.html';
+    }
+  })();
+  </script>
   <!-- Tron Boot Screen -->
   <div id="bootScreen" class="boot-screen" style="display:none">
-    <div class="boot-grid"></div>
+    <canvas id="matrixCanvas"></canvas>
     <div class="boot-content">
       <div class="boot-logo">&#x25B2; ARIES</div>
       <div class="boot-terminal"></div>
@@ -84,6 +93,8 @@
         <a class="nav-item" data-panel="search">&#x1F50D; Search</a>
         <a class="nav-item" data-panel="toolgen">&#x1F6E0; Tool Gen</a>
         <a class="nav-item" data-panel="agentfactory">&#x1F3ED; Agent Factory</a>
+        <a class="nav-item" data-panel="projects">&#x1F3D7; Projects</a>
+        <a class="nav-item" data-panel="aries-code">⌨️ Aries Code</a>
         <a class="nav-item" data-panel="free-keys">&#x1F511; Free Keys</a>
       </div>
       <div class="nav-group" data-admin="true" style="display:none">
@@ -118,9 +129,12 @@
         <a class="nav-item" data-panel="terminal">&#x1F4BB; Terminal</a>
         <a class="nav-item" data-panel="logs">&#x1F4CB; Logs</a>
         <a class="nav-item" data-panel="backup">&#x1F4BE; Backup</a>
+        <a class="nav-item" data-panel="users">&#x1F465; Users</a>
       </div>
       <div class="sidebar-footer">
-        Aries <span class="version-footer">v8.1</span> &#x26A1;<br>
+        <span id="loggedInUser" style="color:#00ffc8;font-size:11px"></span><br>
+        Aries <span class="version-footer">v8.1</span> &#x26A1;
+        <a href="#" onclick="window.aries.logout();return false" style="color:#f44;font-size:11px;margin-left:6px">Logout</a><br>
         <span id="sidebarUptime" class="uptime-counter"></span>
       </div>
     </nav>
@@ -370,6 +384,63 @@
           <div id="agentFactoryResult" style="margin-top:16px;"></div>
           <h3 style="color:var(--accent2);margin:24px 0 8px;font-size:14px;">Custom Agents</h3>
           <div id="customAgentsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+        </div>
+      </section>
+
+      <!-- Projects Panel -->
+      <section id="panel-projects" class="panel">
+        <div class="panel-header"><h2>&#x1F3D7; Project Builder</h2><button class="btn-sm" onclick="window.aries.loadProjects()" title="Refresh">&#x1F504; Refresh</button></div>
+        <div style="padding:16px;">
+          <p style="color:#888;font-size:13px;margin:0 0 12px;">Describe an app and Aries will build it with AI — plan, scaffold, implement, fix, and serve.</p>
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <input id="projectPromptInput" placeholder="Build a todo app with React and Tailwind..." style="flex:1;padding:10px 14px;background:#0a0a12;color:#e0e0e0;border:1px solid #2a2a3e;border-radius:6px;font-family:inherit;font-size:14px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='#2a2a3e'" />
+            <button class="btn-primary" id="projectBuildBtn" onclick="window.aries.startProjectBuild()" style="padding:8px 20px;white-space:nowrap;">&#x26A1; BUILD</button>
+          </div>
+          <div id="projectsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;"></div>
+          <div id="projectsEmpty" style="text-align:center;padding:40px;color:#444;display:none;">
+            <div style="font-size:2.5em;margin-bottom:8px;">&#x1F3D7;</div>
+            <p>No projects yet. Describe an app above to get started!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Aries Code Panel -->
+      <section id="panel-aries-code" class="panel">
+        <h2 style="margin:0 0 16px">⌨️ Aries Code</h2>
+        <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;height:calc(100vh - 200px)">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <textarea id="ariesCodeTask" rows="4" placeholder="Describe your coding task..." style="width:100%;padding:12px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="ariesCodeDir" type="text" value="D:\\openclaw\\workspace" placeholder="Working directory" style="flex:1;min-width:200px;padding:8px 12px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:12px" />
+              <select id="ariesCodeModel" style="padding:8px 12px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:12px">
+                <option value="">Default Model</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="claude-sonnet-4-20250514">Claude Sonnet</option>
+                <option value="claude-opus-4-20250514">Claude Opus</option>
+              </select>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888"><input type="checkbox" id="ariesCodeSwarm" /> Swarm</label>
+              <button onclick="window.aries.startAriesCode()" style="padding:8px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">▶ Run</button>
+              <button onclick="window.aries.stopAriesCode()" style="padding:8px 16px;background:#333;color:#f44;border:1px solid #f4444;border-radius:8px;font-weight:600;cursor:pointer;font-size:12px">⏹ Stop</button>
+            </div>
+            <div id="ariesCodeOutput" style="flex:1;background:#080810;border:1px solid #1a1a2e;border-radius:8px;padding:12px;font-family:'Cascadia Code','Fira Code',monospace;font-size:12px;color:#aaa;overflow-y:auto;line-height:1.6;white-space:pre-wrap">
+              <span style="color:#555">Ready. Enter a task and click Run.</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:#0a0a12;border:1px solid #1a1a2e;border-radius:8px;padding:12px">
+              <h3 style="margin:0 0 8px;font-size:13px;color:#888">📁 Files Changed</h3>
+              <div id="ariesCodeFiles" style="font-size:11px;color:#666;max-height:300px;overflow-y:auto">None yet</div>
+            </div>
+            <div style="background:#0a0a12;border:1px solid #1a1a2e;border-radius:8px;padding:12px">
+              <h3 style="margin:0 0 8px;font-size:13px;color:#888">📊 Status</h3>
+              <div id="ariesCodeStatus" style="font-size:11px;color:#666">Idle</div>
+            </div>
+            <div style="background:#0a0a12;border:1px solid #1a1a2e;border-radius:8px;padding:12px;flex:1;overflow-y:auto">
+              <h3 style="margin:0 0 8px;font-size:13px;color:#888">🔄 History</h3>
+              <div id="ariesCodeHistory" style="font-size:11px;color:#666">No runs yet</div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -969,6 +1040,23 @@
           </div>
         </div>
         <div id="gitContent" class="info-content" style="font-family:monospace;white-space:pre-wrap;font-size:12px"></div>
+      </section>
+
+      <!-- Users Panel -->
+      <section id="panel-users" class="panel">
+        <div class="panel-header"><h2>&#x1F465; User Management</h2><button class="btn-sm" onclick="window.aries.loadUsers()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div class="card" style="margin:0 0 16px;">
+            <h3 style="color:var(--accent);margin:0 0 12px;">Add User</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+              <div><label class="setting-label">Username</label><input id="newUsername" type="text" class="input-field" placeholder="username" style="width:100%" /></div>
+              <div><label class="setting-label">Password</label><input id="newPassword" type="password" class="input-field" placeholder="password" style="width:100%" /></div>
+              <div><label class="setting-label">Role</label><select id="newRole" class="input-field" style="width:100%;padding:8px"><option value="user">user</option><option value="admin">admin</option></select></div>
+              <button class="btn-primary" onclick="window.aries.createUser()" style="padding:8px 16px">Create</button>
+            </div>
+          </div>
+          <table class="data-table"><thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Last Login</th><th>Actions</th></tr></thead><tbody id="usersTableBody"></tbody></table>
+        </div>
       </section>
 
       <!-- Notification Panel (overlay) -->

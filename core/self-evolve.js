@@ -150,9 +150,11 @@ class SelfEvolve extends EventEmitter {
       const queries = [
         'best AI agent frameworks 2026',
         'AI tools trending new releases',
-        'RAG improvements embeddings 2026',
-        'autonomous AI agent systems',
+        'OpenClaw AI assistant features capabilities',
+        'Claude Code CLI features tools 2026',
+        'autonomous AI agent self-improvement systems',
         'AI code generation tools latest',
+        'browser automation AI agent tools 2026',
       ];
 
       // Use WebIntelligence if available
@@ -507,8 +509,9 @@ class SelfEvolve extends EventEmitter {
             }
           }
 
-          // Auto-apply if safe and all syntax checks pass
-          if (isSafe && implementation.code.files) {
+          // Auto-apply DISABLED — self-evolve was crashing Aries by writing broken code
+          // All implementations must be manually approved via the dashboard
+          if (false && isSafe && implementation.code.files) {
             const allValid = implementation.code.files.every(function(f) {
               return f.syntaxValid !== false;
             });
@@ -552,12 +555,45 @@ class SelfEvolve extends EventEmitter {
    * @returns {Promise<object>}
    */
   async getCompetitiveAnalysis() {
-    if (this._lastCompetitive) return this._lastCompetitive;
-    if (this.webIntelligence) {
-      this._lastCompetitive = await this.webIntelligence.compareWithCompetitors();
-      return this._lastCompetitive;
+    if (this._lastCompetitive && (Date.now() - new Date(this._lastCompetitive.timestamp).getTime()) < 3600000) return this._lastCompetitive;
+
+    // Build Aries capability inventory
+    const ariesCapabilities = {
+      core: ['multi-agent swarm (14 agents)', 'self-evolution system', 'browser extension control', 'web search', 'code sandbox', 'file system ops', 'shell/shellBg', 'desktop screenshots', 'TTS', 'memory system', 'RAG/knowledge base', 'canvas/webapp builder', 'process management', 'cron scheduling'],
+      ai: ['Anthropic API direct', 'Ollama local fallback', 'multi-model selection', 'streaming responses', 'tool execution loop', 'agent personas'],
+      network: ['swarm P2P workers', 'network scanning', 'USB deployment', 'remote worker management'],
+      web: ['built-in HTTP client', 'webpage extraction', 'extension bridge for Chrome', 'static file server'],
+      security: ['sentinel monitoring', 'audit logging', 'API key auth'],
+    };
+
+    const openclawCapabilities = {
+      core: ['multi-channel messaging (Telegram/Discord/Signal/Slack/iMessage)', 'cron scheduler', 'sub-agent spawning', 'heartbeat system', 'memory search/recall', 'web search (Brave)', 'web fetch', 'browser automation (Playwright)', 'canvas system', 'file read/write/edit', 'shell exec with PTY', 'TTS', 'image analysis', 'node pairing (camera/screen/location)'],
+      ai: ['Anthropic/OpenAI/Google multi-provider', 'thinking/reasoning modes', 'model aliases', 'per-session model override', 'token tracking/cost'],
+      deployment: ['npm global install', 'gateway daemon', 'self-update system', 'config hot-reload'],
+      integrations: ['GitHub CLI', 'weather skill', 'health check skill', 'skill marketplace (clawhub.com)'],
+    };
+
+    let aiAnalysis = '';
+    if (this.ai && this.ai.callWithFallback) {
+      try {
+        const resp = await this.ai.callWithFallback([
+          { role: 'system', content: 'You are comparing two AI assistant platforms. Be specific about gaps and advantages. Return JSON: { "ariesAdvantages": ["..."], "openclawAdvantages": ["..."], "gapsToClose": ["..."], "recommendations": ["..."] }' },
+          { role: 'user', content: 'Compare ARIES capabilities:\n' + JSON.stringify(ariesCapabilities, null, 2) + '\n\nvs OpenClaw capabilities:\n' + JSON.stringify(openclawCapabilities, null, 2) }
+        ]);
+        aiAnalysis = resp.content || resp;
+      } catch {}
     }
-    return { competitors: [], analysis: 'WebIntelligence not available', timestamp: new Date().toISOString() };
+
+    let parsed = {};
+    try { parsed = JSON.parse(typeof aiAnalysis === 'string' ? aiAnalysis : JSON.stringify(aiAnalysis)); } catch { parsed = { raw: String(aiAnalysis).substring(0, 2000) }; }
+
+    this._lastCompetitive = {
+      aries: ariesCapabilities,
+      openclaw: openclawCapabilities,
+      analysis: parsed,
+      timestamp: new Date().toISOString()
+    };
+    return this._lastCompetitive;
   }
 
   /**
@@ -687,7 +723,8 @@ class SelfEvolve extends EventEmitter {
       // Apply config changes if applicable
       if (suggestion.type === 'config' && suggestion.changes) {
         try {
-          const configPath = path.join(__dirname, '..', 'config.json');
+          const configDir = path.join(__dirname, '..', 'config');
+          const configPath = fs.existsSync(path.join(configDir, 'aries.json')) ? path.join(configDir, 'aries.json') : path.join(__dirname, '..', 'config.json');
           const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
           for (const [key, value] of Object.entries(suggestion.changes)) {
             const keys = key.split('.');
@@ -705,10 +742,71 @@ class SelfEvolve extends EventEmitter {
         }
       }
 
+      // Apply code/agent/workflow changes via AI-generated implementation
+      if (['code', 'agent', 'workflow'].includes(suggestion.type)) {
+        try {
+          const impl = await this._generateImplementation(suggestion);
+          if (impl && impl.files) {
+            entry.filesWritten = [];
+            // Backup all files before modifying
+            const backupDir = path.join(DATA_DIR, 'evolution-backups', new Date().toISOString().replace(/[:.]/g, '-'));
+            try { fs.mkdirSync(backupDir, { recursive: true }); } catch {}
+            for (const file of impl.files) {
+              const filePath = path.join(__dirname, '..', file.path);
+              if (fs.existsSync(filePath)) {
+                const backupPath = path.join(backupDir, file.path.replace(/[/\\]/g, '__'));
+                try { fs.copyFileSync(filePath, backupPath); } catch {}
+              }
+            }
+            entry.backupDir = backupDir;
+
+            for (const file of impl.files) {
+              const filePath = path.join(__dirname, '..', file.path);
+              const dir = path.dirname(filePath);
+              if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+              // If file exists and has a patch target, do surgical edit
+              if (file.mode === 'patch' && fs.existsSync(filePath)) {
+                let content = fs.readFileSync(filePath, 'utf8');
+                if (file.find && file.replace !== undefined) {
+                  if (content.includes(file.find)) {
+                    content = content.replace(file.find, file.replace);
+                    fs.writeFileSync(filePath, content);
+                    entry.filesWritten.push({ path: file.path, mode: 'patched' });
+                  } else {
+                    entry.filesWritten.push({ path: file.path, mode: 'patch-target-not-found', skipped: true });
+                  }
+                }
+              } else if (file.mode === 'append' && fs.existsSync(filePath)) {
+                fs.appendFileSync(filePath, '\n' + file.content);
+                entry.filesWritten.push({ path: file.path, mode: 'appended' });
+              } else {
+                // Create new file or overwrite
+                fs.writeFileSync(filePath, file.content);
+                entry.filesWritten.push({ path: file.path, mode: file.mode || 'created' });
+              }
+            }
+            entry.codeApplied = true;
+            entry.implementationSummary = impl.summary || '';
+          }
+          // Also apply any config changes from code suggestions
+          if (impl && impl.configChanges) {
+            const configDir2 = path.join(__dirname, '..', 'config');
+            const configPath = fs.existsSync(path.join(configDir2, 'aries.json')) ? path.join(configDir2, 'aries.json') : path.join(__dirname, '..', 'config.json');
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            this._deepMerge(config, impl.configChanges);
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+            entry.configUpdated = true;
+          }
+        } catch (e) {
+          entry.codeError = e.message;
+        }
+      }
+
       // Apply threshold changes
       if (suggestion.type === 'threshold' && suggestion.changes) {
         try {
-          const configPath = path.join(__dirname, '..', 'config.json');
+          const configDir3 = path.join(__dirname, '..', 'config');
+          const configPath = fs.existsSync(path.join(configDir3, 'aries.json')) ? path.join(configDir3, 'aries.json') : path.join(__dirname, '..', 'config.json');
           const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
           if (suggestion.changes.smartRouter) {
             Object.assign(config.smartRouter || {}, suggestion.changes.smartRouter);
@@ -758,6 +856,151 @@ class SelfEvolve extends EventEmitter {
     } catch (e) {
       this.emit('error', e);
       return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Deep merge objects (used for config patching)
+   */
+  _deepMerge(target, source) {
+    for (const key of Object.keys(source)) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) && target[key] && typeof target[key] === 'object') {
+        this._deepMerge(target[key], source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    }
+    return target;
+  }
+
+  /**
+   * Use AI to generate real implementation code for a suggestion
+   */
+  async _generateImplementation(suggestion) {
+    // Read existing relevant files for context
+    const coreFiles = fs.readdirSync(path.join(__dirname)).filter(f => f.endsWith('.js')).slice(0, 15);
+    const fileList = coreFiles.map(f => `core/${f}`).join(', ');
+    
+    // Read tools.js for code-type suggestions (most code changes touch tools)
+    let toolsSnippet = '';
+    try {
+      const toolsContent = fs.readFileSync(path.join(__dirname, 'tools.js'), 'utf8');
+      toolsSnippet = toolsContent.substring(0, 3000);
+    } catch {}
+
+    // Read config for context
+    let configSnippet = '';
+    try {
+      const configContent = fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8');
+      configSnippet = configContent.substring(0, 2000);
+    } catch {}
+
+    const prompt = [
+      { role: 'system', content: `You are ARIES code generator. Generate REAL, working implementation code for the requested feature.
+
+ARIES is a Node.js AI assistant with these core files: ${fileList}
+Key files:
+- core/tools.js — all tool implementations (shell, read, write, http, etc.)
+- core/ai.js — AI API calls
+- core/headless.js — main server
+- core/api-server.js — HTTP API routes
+- core/self-evolve.js — self-evolution system
+- config.json — configuration
+
+Use this EXACT format (not JSON — use markers):
+
+SUMMARY: one-line description
+
+===FILE: relative/path/from/aries/root
+===MODE: create
+(file content here, raw code)
+===END_FILE
+
+===FILE: another/path.js
+===MODE: create
+(file content here)
+===END_FILE
+
+Modes: create (new file), append (add to end of existing file)
+
+RULES:
+- Create new modules in core/ directory
+- Keep changes small and focused
+- Code must be production-ready, no TODOs or placeholders
+- Include error handling
+- Never break existing functionality
+- One feature = one new file when possible` },
+      { role: 'user', content: `Implement this suggestion:
+
+Title: ${suggestion.title}
+Type: ${suggestion.type}
+Description: ${suggestion.description}
+Impact: ${suggestion.impact}
+Requested changes: ${JSON.stringify(suggestion.changes, null, 2)}
+
+Current tools.js (first 3000 chars):
+${toolsSnippet}
+
+Current config.json (first 2000 chars):
+${configSnippet}` }
+    ];
+
+    const data = await this.ai.callWithFallback(prompt, null, false);
+    const content = data.choices?.[0]?.message?.content || '{}';
+    
+    // Log raw AI response for debugging
+    try { fs.writeFileSync(path.join(DATA_DIR, 'last-evolve-impl.txt'), content); } catch {}
+    
+    // Parse structured text format (===FILE markers)
+    const summaryMatch = content.match(/SUMMARY:\s*(.+)/);
+    const summary = summaryMatch ? summaryMatch[1].trim() : suggestion.title;
+    
+    const fileBlocks = content.split(/===FILE:\s*/);
+    const files = [];
+    for (let i = 1; i < fileBlocks.length; i++) {
+      const block = fileBlocks[i];
+      const pathLine = block.split('\n')[0].trim();
+      const modeMatch = block.match(/===MODE:\s*(\w+)/);
+      const mode = modeMatch ? modeMatch[1].trim() : 'create';
+      // Content is everything after ===MODE line until ===END_FILE
+      const endIdx = block.indexOf('===END_FILE');
+      let contentStart = block.indexOf('\n', block.indexOf('===MODE'));
+      if (contentStart < 0) contentStart = block.indexOf('\n');
+      const fileContent = endIdx > 0 ? block.substring(contentStart + 1, endIdx).trim() : block.substring(contentStart + 1).trim();
+      
+      if (pathLine && fileContent) {
+        files.push({ path: pathLine, mode, content: fileContent });
+      }
+    }
+    
+    if (files.length === 0) return null;
+    
+    try {
+      // Safety checks
+      const PROTECTED_FILES = [
+        'core/tools.js', 'core/ai.js', 'core/headless.js', 'core/api-server.js',
+        'core/websocket.js', 'core/self-evolve.js', 'core/memory.js', 'core/events.js',
+        'core/system.js', 'core/swarm.js', 'core/extension-bridge.js', 'core/auto-setup.js',
+        'web/app.js', 'web/index.html', 'web/styles.css',
+        'config.json', 'config/aries.json', 'launcher.js', 'aries.js', 'package.json'
+      ];
+      const safeFiles = [];
+      for (const file of files) {
+        if (file.path.includes('..') || path.isAbsolute(file.path)) {
+          continue; // Skip unsafe paths
+        }
+        const normalized = file.path.replace(/\\/g, '/');
+        if (PROTECTED_FILES.includes(normalized)) {
+          // Don't allow modifying core files at all — only new files
+          continue;
+        }
+        safeFiles.push(file);
+      }
+      if (safeFiles.length === 0) return null;
+      return { summary, files: safeFiles };
+    } catch (e) {
+      this.emit('error', new Error('Failed to parse AI implementation: ' + e.message));
+      return null;
     }
   }
 

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIES — Project Builder</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #c0c0c0; font-family: 'Courier New', monospace; min-height: 100vh; }
+  
+  .header { background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border-bottom: 1px solid #00ffc8; padding: 20px 30px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { color: #00ffc8; font-size: 1.5em; text-shadow: 0 0 10px rgba(0,255,200,0.3); }
+  .header a { color: #666; text-decoration: none; font-size: 0.85em; }
+  .header a:hover { color: #00ffc8; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+  .build-section { background: #111118; border: 1px solid #1a1a2e; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .build-section h2 { color: #00ffc8; font-size: 1.1em; margin-bottom: 12px; }
+  .build-row { display: flex; gap: 10px; }
+  .build-input { flex: 1; background: #0a0a12; border: 1px solid #2a2a3e; border-radius: 6px; padding: 12px 16px; color: #e0e0e0; font-family: inherit; font-size: 0.95em; outline: none; }
+  .build-input:focus { border-color: #00ffc8; box-shadow: 0 0 8px rgba(0,255,200,0.15); }
+  .build-btn { background: linear-gradient(135deg, #00ffc8, #00c89b); color: #0a0a0f; border: none; border-radius: 6px; padding: 12px 24px; font-family: inherit; font-weight: bold; cursor: pointer; font-size: 0.95em; white-space: nowrap; }
+  .build-btn:hover { box-shadow: 0 0 15px rgba(0,255,200,0.4); }
+  .build-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
+
+  .project-card { background: #111118; border: 1px solid #1a1a2e; border-radius: 8px; padding: 16px; transition: border-color 0.2s; }
+  .project-card:hover { border-color: #333; }
+  .project-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .project-name { color: #00ffc8; font-size: 1.05em; }
+  .project-id { color: #555; font-size: 0.8em; }
+
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: bold; text-transform: uppercase; }
+  .status-building { background: #1a1a00; color: #ffcc00; border: 1px solid #ffcc0044; }
+  .status-running { background: #001a00; color: #00ff66; border: 1px solid #00ff6644; }
+  .status-stopped { background: #1a1a1a; color: #888; border: 1px solid #88888844; }
+  .status-failed { background: #1a0000; color: #ff4444; border: 1px solid #ff444444; }
+  .status-plan, .status-scaffold, .status-implement, .status-fix, .status-serve, .status-starting {
+    background: #0a0a1a; color: #6688ff; border: 1px solid #6688ff44;
+  }
+
+  .project-meta { color: #666; font-size: 0.8em; margin: 8px 0; }
+  .project-files { color: #555; font-size: 0.75em; max-height: 60px; overflow: hidden; }
+
+  .log-section { background: #080810; border: 1px solid #1a1a2e; border-radius: 6px; margin-top: 10px; max-height: 200px; overflow-y: auto; padding: 8px 12px; font-size: 0.8em; line-height: 1.4; }
+  .log-line { color: #6a6a7a; }
+  .log-line.error { color: #ff6666; }
+
+  .project-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .action-btn { background: #1a1a2e; color: #c0c0c0; border: 1px solid #2a2a3e; border-radius: 4px; padding: 5px 12px; font-family: inherit; font-size: 0.8em; cursor: pointer; }
+  .action-btn:hover { border-color: #00ffc8; color: #00ffc8; }
+  .action-btn.danger { border-color: #ff444444; }
+  .action-btn.danger:hover { border-color: #ff4444; color: #ff4444; }
+
+  .preview-frame { width: 100%; height: 300px; border: 1px solid #2a2a3e; border-radius: 6px; margin-top: 10px; background: #fff; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #444; }
+  .empty-state .icon { font-size: 3em; margin-bottom: 10px; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .building { animation: pulse 1.5s infinite; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⚡ ARIES Project Builder</h1>
+  <a href="/">← Dashboard</a>
+</div>
+
+<div class="container">
+  <div class="build-section">
+    <h2>Build New App</h2>
+    <div class="build-row">
+      <input class="build-input" id="promptInput" placeholder="Describe the app you want to build... (e.g. 'A todo app with React and Tailwind')" />
+      <button class="build-btn" id="buildBtn" onclick="startBuild()">⚡ BUILD</button>
+    </div>
+  </div>
+
+  <div id="projectsList" class="projects-grid"></div>
+  <div id="emptyState" class="empty-state" style="display:none;">
+    <div class="icon">🏗️</div>
+    <p>No projects yet. Describe an app above to get started!</p>
+  </div>
+</div>
+
+<script>
+const API_KEY = localStorage.getItem('aries-api-key') || 'aries-api-2026';
+const headers = { 'Content-Type': 'application/json', 'X-Aries-Key': API_KEY };
+
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects', { headers });
+    const projects = await res.json();
+    renderProjects(Array.isArray(projects) ? projects : []);
+  } catch (e) {
+    console.error('Failed to load projects:', e);
+  }
+}
+
+function renderProjects(projects) {
+  const el = document.getElementById('projectsList');
+  const empty = document.getElementById('emptyState');
+  if (!projects.length) { el.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  el.innerHTML = projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(p => `
+    <div class="project-card" id="project-${p.id}">
+      <div class="project-header">
+        <span class="project-name">${p.plan?.name || p.prompt?.substring(0, 30) || p.id}</span>
+        <span class="status-badge status-${p.status} ${p.status === 'building' ? 'building' : ''}">${p.status}</span>
+      </div>
+      <div class="project-id">${p.id} · ${new Date(p.createdAt).toLocaleString()}</div>
+      <div class="project-meta">${p.plan?.description || p.prompt || ''}</div>
+      <div class="project-files">${(p.files || []).join(', ')}</div>
+      <div class="log-section" id="logs-${p.id}">${(p.logs || []).slice(-10).map(l => `<div class="log-line">${escHtml(l)}</div>`).join('')}</div>
+      <div class="project-actions">
+        ${p.url ? `<a class="action-btn" href="${p.url}" target="_blank">🌐 Open</a>` : ''}
+        ${p.status === 'running' ? `<button class="action-btn" onclick="togglePreview('${p.id}', '${p.url}')">👁️ Preview</button>` : ''}
+        ${p.status === 'running' ? `<button class="action-btn danger" onclick="stopPreview('${p.id}')">⏹ Stop</button>` : ''}
+        <button class="action-btn" onclick="streamLogs('${p.id}')">📋 Logs</button>
+      </div>
+      <div id="preview-container-${p.id}"></div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function startBuild() {
+  const input = document.getElementById('promptInput');
+  const btn = document.getElementById('buildBtn');
+  const prompt = input.value.trim();
+  if (!prompt) return;
+
+  btn.disabled = true; btn.textContent = '⏳ Building...';
+  try {
+    const res = await fetch('/api/projects/build', { method: 'POST', headers, body: JSON.stringify({ prompt }) });
+    const data = await res.json();
+    input.value = '';
+    // Start polling
+    if (data.projectId) {
+      setTimeout(() => pollProject(data.projectId), 2000);
+    }
+    setTimeout(loadProjects, 1000);
+  } catch (e) { alert('Build failed: ' + e.message); }
+  btn.disabled = false; btn.textContent = '⚡ BUILD';
+}
+
+function pollProject(id) {
+  const es = new EventSource(`/api/projects/${id}/logs`);
+  es.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.log) {
+        const logEl = document.getElementById('logs-' + id);
+        if (logEl) logEl.innerHTML += `<div class="log-line">${escHtml(data.log)}</div>`;
+      }
+      if (data.done) { es.close(); loadProjects(); }
+    } catch {}
+  };
+  es.onerror = () => { es.close(); setTimeout(loadProjects, 2000); };
+}
+
+function streamLogs(id) {
+  const es = new EventSource(`/api/projects/${id}/logs`);
+  const logEl = document.getElementById('logs-' + id);
+  if (logEl) logEl.innerHTML = '';
+  es.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.log && logEl) logEl.innerHTML += `<div class="log-line">${escHtml(data.log)}</div>`;
+      if (data.done) es.close();
+    } catch {}
+  };
+  es.onerror = () => es.close();
+}
+
+function togglePreview(id, url) {
+  const container = document.getElementById('preview-container-' + id);
+  if (!container) return;
+  if (container.querySelector('iframe')) { container.innerHTML = ''; return; }
+  container.innerHTML = `<iframe class="preview-frame" src="${url}" sandbox="allow-scripts allow-same-origin"></iframe>`;
+}
+
+async function stopPreview(id) {
+  try {
+    await fetch(`/api/projects/${id}/preview`, { method: 'POST', headers, body: JSON.stringify({ action: 'stop' }) });
+    loadProjects();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+// Initial load + auto-refresh
+loadProjects();
+setInterval(loadProjects, 10000);
+</script>
+</body>
+</html>

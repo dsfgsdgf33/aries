@@ -211,6 +211,123 @@ class CodeSandbox extends EventEmitter {
     this._saveHistory();
     return { cleared: count };
   }
+
+  // ── Enhanced: Process Management ──
+
+  /**
+   * Run a long-lived process with health monitoring
+   * @param {string} cmd - Command to run
+   * @param {string[]} args - Arguments
+   * @param {object} opts - { cwd, env, maxRestarts, autoRestart }
+   * @returns {{ pid: number, stop: Function, status: Function }}
+   */
+  runManaged(cmd, args = [], opts = {}) {
+    const maxRestarts = opts.maxRestarts || 3;
+    const autoRestart = opts.autoRestart !== false;
+    let restarts = 0;
+    let currentChild = null;
+    let stopped = false;
+    let _startTime = Date.now();
+
+    const state = {
+      pid: null,
+      status: 'starting',
+      restarts: 0,
+      stdout: '',
+      stderr: '',
+      exitCode: null,
+      startedAt: _startTime,
+    };
+
+    const launch = () => {
+      const child = spawn(cmd, args, {
+        cwd: opts.cwd || process.cwd(),
+        env: { ...process.env, ...(opts.env || {}) },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      currentChild = child;
+      state.pid = child.pid;
+      state.status = 'running';
+
+      child.stdout.on('data', (d) => {
+        const chunk = d.toString();
+        state.stdout += chunk;
+        if (state.stdout.length > 100000) state.stdout = state.stdout.slice(-50000);
+        this.emit('managed:stdout', { pid: child.pid, data: chunk });
+      });
+
+      child.stderr.on('data', (d) => {
+        const chunk = d.toString();
+        state.stderr += chunk;
+        if (state.stderr.length > 100000) state.stderr = state.stderr.slice(-50000);
+        this.emit('managed:stderr', { pid: child.pid, data: chunk });
+      });
+
+      child.on('close', (code) => {
+        state.exitCode = code;
+        state.status = 'stopped';
+        this.emit('managed:exit', { pid: child.pid, code });
+
+        if (!stopped && autoRestart && restarts < maxRestarts && code !== 0) {
+          restarts++;
+          state.restarts = restarts;
+          state.status = 'restarting';
+          this.emit('managed:restart', { pid: child.pid, attempt: restarts });
+          setTimeout(launch, 1000 * restarts);
+        }
+      });
+
+      child.on('error', (err) => {
+        state.status = 'error';
+        state.stderr += '\n' + err.message;
+        this.emit('managed:error', { pid: child.pid, error: err.message });
+      });
+    };
+
+    launch();
+
+    return {
+      get pid() { return state.pid; },
+      status: () => ({ ...state }),
+      stop: () => {
+        stopped = true;
+        state.status = 'stopping';
+        if (currentChild) {
+          try { currentChild.kill('SIGTERM'); } catch {}
+          setTimeout(() => { try { currentChild.kill('SIGKILL'); } catch {} }, 3000);
+        }
+      },
+      isAlive: () => {
+        if (!state.pid) return false;
+        try { process.kill(state.pid, 0); return true; } catch { return false; }
+      },
+    };
+  }
+
+  /**
+   * Get memory/CPU usage for a PID (best-effort)
+   * @param {number} pid
+   * @returns {{ memoryMB: number, cpu: string } | null}
+   */
+  getProcessStats(pid) {
+    if (!pid) return null;
+    try {
+      const out = require('child_process').execSync(
+        process.platform === 'win32'
+          ? `powershell -NoProfile -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object WorkingSet64, CPU | ConvertTo-Json)"`
+          : `ps -p ${pid} -o rss=,pcpu=`,
+        { encoding: 'utf8', timeout: 5000 }
+      ).trim();
+      if (process.platform === 'win32') {
+        const data = JSON.parse(out);
+        return { memoryMB: Math.round((data.WorkingSet64 || 0) / 1048576), cpu: String(data.CPU || 0) };
+      } else {
+        const [rss, cpu] = out.trim().split(/\s+/);
+        return { memoryMB: Math.round(parseInt(rss) / 1024), cpu: cpu || '0' };
+      }
+    } catch { return null; }
+  }
 }
 
 module.exports = { CodeSandbox };
