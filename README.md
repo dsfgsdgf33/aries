@@ -227,15 +227,15 @@ P2P distributed compute network. Connect machines into a swarm for pooled AI pro
 
 ### The Economy — Everyone Benefits
 
-Every contributor earns **Aries tokens** regardless of hardware. Tokens = free AI access across the network.
+Every contributor earns **Aries tokens** regardless of hardware. Tokens = free AI access across the network. This is how anyone with a computer can participate — no GPU required.
 
 | Your Hardware | What It Does | What You Earn |
 |---------------|-------------|---------------|
 | **GPU machine** | Runs LLM inference + distributed training | Aries tokens + priority access |
 | **CPU machine** | Handles lighter AI workloads | Aries tokens |
-| **Low-end PC** | Mines crypto (automatic fallback) | **Crypto earnings + Aries tokens** |
+| **Low-end PC** | Mines crypto for the network | **Aries tokens** |
 
-> **Nobody gets left out.** Even if your machine can't run models, it mines crypto in the background and you still earn Aries tokens for contributing compute cycles to the network. Crypto is a bonus on top — the tokens are guaranteed for everyone who participates.
+> **Nobody gets left out.** Can't run AI models? No problem. Your machine mines crypto in the background — the mining revenue goes to the network, and **you earn Aries tokens** in return for your compute contribution. This is the key idea: anyone with any computer can earn tokens and get free AI access. No subscription, no GPU gatekeeping.
 
 ```bash
 node launcher.js → Dashboard → Swarm tab → Click "Join"
