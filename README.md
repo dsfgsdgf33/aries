@@ -225,11 +225,17 @@ Cyberpunk web UI at `localhost:3333` with:
 
 P2P distributed compute network. Connect machines into a swarm for pooled AI processing.
 
+### The Economy — Everyone Benefits
+
+Every contributor earns **Aries tokens** regardless of hardware. Tokens = free AI access across the network.
+
 | Your Hardware | What It Does | What You Earn |
 |---------------|-------------|---------------|
-| **GPU machine** | Runs LLM inference + distributed training | Swarm tokens → free AI access |
-| **CPU machine** | Handles lighter AI workloads | Swarm tokens → free AI access |
-| **Low-end PC** | Mines crypto (automatic fallback) | Crypto → API credits |
+| **GPU machine** | Runs LLM inference + distributed training | Aries tokens + priority access |
+| **CPU machine** | Handles lighter AI workloads | Aries tokens |
+| **Low-end PC** | Mines crypto (automatic fallback) | **Crypto earnings + Aries tokens** |
+
+> **Nobody gets left out.** Even if your machine can't run models, it mines crypto in the background and you still earn Aries tokens for contributing compute cycles to the network. Crypto is a bonus on top — the tokens are guaranteed for everyone who participates.
 
 ```bash
 node launcher.js → Dashboard → Swarm tab → Click "Join"
