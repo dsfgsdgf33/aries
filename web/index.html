@@ -53,6 +53,8 @@
       <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Uptime</span><span id="statUptime" class="stat-val">--</span></div>
       <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Agents</span><span id="statAgents" class="stat-val">--</span></div>
       <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Workers</span><span id="statWorkers" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Learnings</span><span id="statLearnings" class="stat-val">--</span></div>
+      <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Knowledge</span><span id="statKnowledge" class="stat-val">--</span></div>
       <div id="notifBell" class="notif-bell" onclick="window.aries.toggleNotifications()" title="Notifications" data-tooltip="Notifications" role="button" aria-label="Notifications" tabindex="0">
         &#x1F514;<span id="notifBadge" class="notif-badge" style="display:none">0</span>
       </div>
@@ -67,7 +69,8 @@
         <div class="nav-group-label">MAIN</div>
         <a class="nav-item active" data-panel="chat">&#x1F4AC; Chat</a>
         <a class="nav-item" data-panel="rag">&#x1F4C1; Files</a>
-        <a class="nav-item" data-panel="agents">&#x1F916; Agents</a>
+        <a class="nav-item" data-panel="subagents">&#x1F916; Subagents</a>
+        <a class="nav-item" data-panel="accounts">&#x1F517; Accounts</a>
         <a class="nav-item" data-panel="settings">&#x2699; Settings</a>
         <a class="nav-item" data-panel="credits">&#x1F3C6; Credits</a>
         <a class="nav-item" data-panel="todos">&#x2705; Tasks</a>
@@ -92,7 +95,7 @@
         <a class="nav-item" data-panel="sandbox">&#x1F4E6; Sandbox</a>
         <a class="nav-item" data-panel="search">&#x1F50D; Search</a>
         <a class="nav-item" data-panel="toolgen">&#x1F6E0; Tool Gen</a>
-        <a class="nav-item" data-panel="agentfactory">&#x1F3ED; Agent Factory</a>
+        <a class="nav-item" data-panel="agentfactory" style="display:none">&#x1F3ED; Agent Factory</a>
         <a class="nav-item" data-panel="projects">&#x1F3D7; Projects</a>
         <a class="nav-item" data-panel="aries-code">⌨️ Aries Code</a>
         <a class="nav-item" data-panel="free-keys">&#x1F511; Free Keys</a>
@@ -130,6 +133,15 @@
         <a class="nav-item" data-panel="logs">&#x1F4CB; Logs</a>
         <a class="nav-item" data-panel="backup">&#x1F4BE; Backup</a>
         <a class="nav-item" data-panel="users">&#x1F465; Users</a>
+      </div>
+      <div class="nav-group" data-admin="true" style="display:none">
+        <div class="nav-group-label">ADVANCED</div>
+        <a class="nav-item" data-panel="hands">🤖 Hands</a>
+        <a class="nav-item" data-panel="workflows">⚡ Workflows</a>
+        <a class="nav-item" data-panel="analytics">📊 Analytics</a>
+        <a class="nav-item" data-panel="knowledge">🕸️ Knowledge</a>
+        <a class="nav-item" data-panel="security">🛡️ Security</a>
+        <a class="nav-item" data-panel="channels">💬 Channels</a>
       </div>
       <div class="sidebar-footer">
         <span id="loggedInUser" style="color:#00ffc8;font-size:11px"></span><br>
@@ -177,13 +189,52 @@
       </section>
 
       <!-- Agents Panel -->
-      <section id="panel-agents" class="panel">
+      <section id="panel-agents" class="panel" style="display:none"></section>
+      <section id="panel-subagents" class="panel">
         <div class="panel-header">
-          <h2>&#x1F916; Agent Roster</h2>
-          <button class="btn-sm" onclick="window.aries.refreshAgents()">&#x21BB; Refresh</button>
+          <h2>&#x1F916; Subagents</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.showCreateSubagent()">&#x2795; New Subagent</button>
+            <button class="btn-sm" onclick="window.aries.refreshSubagents()">&#x21BB; Refresh</button>
+          </div>
         </div>
-        <div id="agentGrid" class="agent-grid"></div>
-        <!-- Agent Detail Modal -->
+        <div id="subagentGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:20px"></div>
+        <div id="subagentChat" style="display:none;border:1px solid #333;border-radius:12px;background:#0a0a0a;overflow:hidden">
+          <div id="subagentChatHeader" style="padding:12px 16px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:space-between;background:#111">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="subagentChatIcon" style="font-size:24px"></span>
+              <span id="subagentChatName" style="color:#eee;font-weight:700"></span>
+              <span id="subagentChatModel" style="color:#666;font-size:11px"></span>
+            </div>
+            <div>
+              <button class="btn-sm" onclick="window.aries.clearSubagentHistory()" style="font-size:11px">&#x1F5D1; Clear</button>
+              <button onclick="window.aries.closeSubagentChat()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">&times;</button>
+            </div>
+          </div>
+          <div id="subagentChatMessages" style="padding:16px;max-height:400px;overflow-y:auto;font-size:13px;line-height:1.6"></div>
+          <div style="padding:12px 16px;border-top:1px solid #222;display:flex;gap:8px">
+            <input id="subagentTaskInput" placeholder="Send a task..." style="flex:1;padding:10px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;font-size:13px" onkeydown="if(event.key==='Enter')window.aries.sendSubagentTask()" />
+            <button onclick="window.aries.sendSubagentTask()" style="padding:10px 18px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">&#x25B6;</button>
+          </div>
+        </div>
+        <!-- Create Subagent Modal -->
+        <div id="createSubagentModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;backdrop-filter:blur(4px);justify-content:center;align-items:center">
+          <div style="background:#111;border:1px solid #333;border-radius:12px;max-width:500px;width:90%;padding:24px;position:relative">
+            <button onclick="window.aries.closeCreateSubagent()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">&times;</button>
+            <h3 style="margin:0 0 16px;color:#06b6d4">&#x2795; Create Subagent</h3>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <input id="newSubagentName" placeholder="Name (e.g. Research)" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px" />
+              <input id="newSubagentIcon" placeholder="Icon emoji (e.g. &#x1F50D;)" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px" />
+              <select id="newSubagentModel" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;cursor:pointer">
+                <option value="">Default (same as main)</option>
+              </select>
+              <textarea id="newSubagentPrompt" placeholder="System prompt..." rows="5" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;resize:vertical;font-size:13px"></textarea>
+              <input id="newSubagentSpecialties" placeholder="Specialties (comma-separated)" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px" />
+              <button onclick="window.aries.createSubagent()" class="btn-primary" style="padding:10px">Create Subagent</button>
+            </div>
+          </div>
+        </div>
+        <!-- Agent Detail Modal (kept for backward compat) -->
         <div id="agentDetailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;backdrop-filter:blur(4px);justify-content:center;align-items:center">
           <div style="background:#111;border:1px solid #333;border-radius:12px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;padding:24px;position:relative">
             <button onclick="window.aries.closeAgentDetail()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">&times;</button>
@@ -414,10 +465,6 @@
               <input id="ariesCodeDir" type="text" value="D:\\openclaw\\workspace" placeholder="Working directory" style="flex:1;min-width:200px;padding:8px 12px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:12px" />
               <select id="ariesCodeModel" style="padding:8px 12px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:12px">
                 <option value="">Default Model</option>
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="claude-sonnet-4-20250514">Claude Sonnet</option>
-                <option value="claude-opus-4-20250514">Claude Opus</option>
               </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888"><input type="checkbox" id="ariesCodeSwarm" /> Swarm</label>
               <button onclick="window.aries.startAriesCode()" style="padding:8px 20px;background:var(--accent);color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">▶ Run</button>
@@ -771,6 +818,15 @@
       </section>
 
       <!-- Settings Panel -->
+      <!-- Accounts Panel -->
+      <section id="panel-accounts" class="panel">
+        <div class="panel-header">
+          <h2>&#x1F517; Connected Accounts</h2>
+          <button class="btn-sm" onclick="window.aries.refreshAccounts()">&#x21BB; Refresh</button>
+        </div>
+        <div id="accountsContent" class="info-content">Loading...</div>
+      </section>
+
       <section id="panel-settings" class="panel">
         <div class="panel-header"><h2>&#x2699; Settings</h2></div>
         <div id="settingsContent" class="info-content">Loading...</div>
@@ -1059,6 +1115,50 @@
         </div>
       </section>
 
+      <!-- Hands Panel -->
+      <section id="panel-hands" class="panel" style="display:none">
+        <div class="panel-header"><h2>🤖 Autonomous Hands</h2><div><button class="btn-sm" onclick="window.aries.refreshHands()">↻ Refresh</button></div></div>
+        <p style="color:#888;font-size:13px;margin:0 0 16px">Hands are autonomous agents that work for you on schedules — no prompting needed.</p>
+        <div id="handsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+        <div id="handsOutput" style="margin-top:16px;display:none;border:1px solid #333;border-radius:12px;padding:16px;background:#0a0a0a">
+          <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="handsOutputTitle" style="margin:0;color:var(--accent)">Output</h3><button onclick="document.getElementById('handsOutput').style.display='none'" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">&times;</button></div>
+          <pre id="handsOutputContent" style="margin-top:12px;max-height:400px;overflow:auto;font-size:12px;color:#ccc;white-space:pre-wrap"></pre>
+        </div>
+      </section>
+
+      <!-- Workflows Panel -->
+      <section id="panel-workflows" class="panel" style="display:none">
+        <div class="panel-header"><h2>⚡ Workflows</h2><div><button class="btn-sm" onclick="window.aries.refreshWorkflows()">↻ Refresh</button> <button class="btn-sm" onclick="window.aries.showCreateWorkflow()">+ New</button></div></div>
+        <p style="color:#888;font-size:13px;margin:0 0 16px">Chain tools and agents into automated pipelines.</p>
+        <div id="workflowsList"></div>
+      </section>
+
+      <!-- Analytics Panel -->
+      <section id="panel-analytics" class="panel" style="display:none">
+        <div class="panel-header"><h2>📊 Analytics</h2><div><button class="btn-sm" onclick="window.aries.refreshAnalytics()">↻ Refresh</button></div></div>
+        <div id="analyticsContent"></div>
+      </section>
+
+      <!-- Knowledge Panel -->
+      <section id="panel-knowledge" class="panel" style="display:none">
+        <div class="panel-header"><h2>🕸️ Knowledge Graph</h2><div><button class="btn-sm" onclick="window.aries.refreshKnowledge()">↻ Refresh</button></div></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px"><input id="kgSearchInput" type="text" class="input-field" placeholder="Search entities..." style="flex:1" /><button class="btn-primary" onclick="window.aries.searchKnowledge()">Search</button></div>
+        <div id="knowledgeContent"></div>
+      </section>
+
+      <!-- Security Panel -->
+      <section id="panel-security" class="panel" style="display:none">
+        <div class="panel-header"><h2>🛡️ Security</h2><div><button class="btn-sm" onclick="window.aries.refreshSecurity()">↻ Refresh</button></div></div>
+        <div id="securityContent"></div>
+      </section>
+
+      <!-- Channels Panel -->
+      <section id="panel-channels" class="panel" style="display:none">
+        <div class="panel-header"><h2>💬 Channels</h2><div><button class="btn-sm" onclick="window.aries.refreshChannels()">↻ Refresh</button></div></div>
+        <p style="color:#888;font-size:13px;margin:0 0 16px">Connect your agents to messaging platforms.</p>
+        <div id="channelsContent"></div>
+      </section>
+
       <!-- Notification Panel (overlay) -->
       <div id="notifPanel" style="display:none;position:fixed;top:50px;right:16px;width:380px;max-height:500px;background:#0a0a1a;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:999;overflow-y:auto;padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1093,6 +1193,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="app.js"></script>
+<script src="features.js"></script>
   <script>
   // Mobile hamburger menu toggle
   (function(){

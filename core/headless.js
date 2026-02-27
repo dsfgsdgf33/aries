@@ -817,6 +817,81 @@ async function startHeadless(configPath) {
     log.info('Swarm worker reconnected: ' + (config.swarm?.workerId || 'unknown'));
   }
 
+  // ── v5.0 New Module Initialization ──
+  console.log('[BOOT] Starting v5.0 new module init...');
+
+  // 1. Hands System
+  let handsManager = null;
+  try {
+    handsManager = require(path.join(baseDir, 'core', 'hands')).getInstance();
+    handsManager.ai = ai;
+    console.log('  ✓ Hands System');
+  } catch (e) { console.warn('  ✗ Hands System:', e.message); }
+
+  // 2. MCP Server (singleton boot)
+  let mcpServerInstance = null;
+  try {
+    if (config.mcp?.enabled !== false) {
+      const mcpMod = require(path.join(baseDir, 'core', 'mcp-server'));
+      mcpServerInstance = mcpMod.getInstance ? mcpMod.getInstance() : mcpMod;
+      if (mcpServerInstance && mcpServerInstance.start) mcpServerInstance.start({ port: config.mcp?.port || 3334 });
+      console.log('  ✓ MCP Server');
+    }
+  } catch (e) { console.warn('  ✗ MCP Server:', e.message); }
+
+  // 3. Prompt Guard
+  let promptGuard = null;
+  try {
+    promptGuard = require(path.join(baseDir, 'core', 'prompt-guard'));
+    promptGuard.configure(config.security?.promptGuard || 'medium');
+    console.log('  ✓ Prompt Guard');
+  } catch (e) { console.warn('  ✗ Prompt Guard:', e.message); }
+
+  // 4. Audit Trail
+  let audit = null;
+  try {
+    audit = require(path.join(baseDir, 'core', 'audit-trail')).getInstance();
+    audit.log('system.boot', 'aries', 'Aries v5.0 started');
+    console.log('  ✓ Audit Trail');
+  } catch (e) { console.warn('  ✗ Audit Trail:', e.message); }
+
+  // 5. SQLite Memory
+  let sqliteMemory = null;
+  try {
+    const sqlMod = require(path.join(baseDir, 'core', 'sqlite-memory'));
+    sqliteMemory = sqlMod.getInstance ? sqlMod.getInstance() : new sqlMod.MemoryDB();
+    const memDataDir = path.join(baseDir, 'data');
+    if (fs.existsSync(memDataDir) && !sqliteMemory._imported && sqliteMemory.importFromFiles) {
+      Promise.resolve(sqliteMemory.importFromFiles(memDataDir)).then(() => { sqliteMemory._imported = true; }).catch(e => console.warn('[SQLiteMemory] Import:', e.message));
+    }
+    console.log('  ✓ SQLite Memory');
+  } catch (e) { console.warn('  ✗ SQLite Memory:', e.message); }
+
+  // 6. Workflow Engine — already initialized above as workflowEngine
+  let workflowEngineSingleton = workflowEngine || null;
+  console.log('  ✓ Workflow Engine (existing)');
+
+  // 7. Knowledge Graph — already initialized above as knowledgeGraph
+  let knowledgeGraphSingleton = knowledgeGraph || null;
+  console.log('  ✓ Knowledge Graph (existing)');
+
+  // 8. Analytics
+  let agentAnalytics = null;
+  try {
+    agentAnalytics = require(path.join(baseDir, 'core', 'agent-analytics')).getInstance();
+    console.log('  ✓ Analytics');
+  } catch (e) { console.warn('  ✗ Analytics:', e.message); }
+
+  // 9. Desktop Launcher
+  let desktopLauncher = null;
+  try {
+    desktopLauncher = require(path.join(baseDir, 'core', 'desktop-launcher')).getInstance();
+    if (config.desktop?.enabled) {
+      desktopLauncher.launch();
+    }
+    console.log('  ✓ Desktop Launcher');
+  } catch (e) { console.warn('  ✗ Desktop Launcher:', e.message); }
+
   // Build refs for API server
   const refs = {
     config,
@@ -916,6 +991,15 @@ async function startHeadless(configPath) {
     ollamaFallback: null,
     mcpServer: null,
     swarmJoin,
+    handsManager,
+    mcpServerInstance,
+    promptGuard,
+    audit,
+    sqliteMemory,
+    workflowEngineSingleton,
+    knowledgeGraphSingleton,
+    agentAnalytics,
+    desktopLauncher,
   };
 
   // Now that refs is built, start deferred modules that need refs

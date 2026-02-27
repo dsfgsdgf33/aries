@@ -201,4 +201,10 @@ class AgentMarketplace extends EventEmitter {
   }
 }
 
-module.exports = { AgentMarketplace };
+let _mpInstance = null;
+function getInstance() {
+  if (!_mpInstance) _mpInstance = new AgentMarketplace();
+  return _mpInstance;
+}
+
+module.exports = { AgentMarketplace, getInstance };

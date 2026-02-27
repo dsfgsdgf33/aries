@@ -494,6 +494,52 @@ async function handleRequest(req, res) {
     return json(res, 200, user);
   }
 
+  // ── Google Auth API routes ──
+  if (reqPath === '/api/auth/google/status' && method === 'GET') {
+    try {
+      const { getInstance: getGoogleAuth } = require('./google-auth');
+      return json(res, 200, getGoogleAuth().getStatus());
+    } catch (e) { return json(res, 200, { authenticated: false, method: null, error: e.message }); }
+  }
+  if (reqPath === '/api/auth/google/start-oauth' && method === 'POST') {
+    try {
+      const { getInstance: getGoogleAuth } = require('./google-auth');
+      const tokens = await getGoogleAuth().startOAuthFlow();
+      return json(res, 200, { success: true, profile: tokens.profile });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+  if (reqPath === '/api/auth/google/api-key' && method === 'POST') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      if (!body.apiKey) return json(res, 400, { error: 'Missing apiKey' });
+      const { getInstance: getGoogleAuth } = require('./google-auth');
+      const tokens = await getGoogleAuth().setApiKey(body.apiKey);
+      return json(res, 200, { success: true, profile: tokens.profile });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+  if (reqPath === '/api/auth/google/logout' && method === 'POST') {
+    try {
+      const { getInstance: getGoogleAuth } = require('./google-auth');
+      getGoogleAuth().logout();
+      return json(res, 200, { success: true });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+  if (reqPath === '/api/auth/accounts' && method === 'GET') {
+    const accounts = [];
+    try {
+      const { getInstance: getGoogleAuth } = require('./google-auth');
+      const gs = getGoogleAuth().getStatus();
+      accounts.push({ provider: 'google', ...gs });
+    } catch {}
+    return json(res, 200, { accounts });
+  }
+  if (reqPath === '/api/gemini/models' && method === 'GET') {
+    try {
+      const { getModels } = require('./gemini-provider');
+      return json(res, 200, { models: getModels() });
+    } catch (e) { return json(res, 500, { error: e.message }); }
+  }
+
   // ── Token-based auth for all /api/* routes ──
   if (reqPath.startsWith('/api/')) {
     const token = req.headers['authorization']?.replace('Bearer ', '') || req.headers['x-aries-token'];
@@ -598,15 +644,21 @@ async function handleRequest(req, res) {
       try { builtInAgents = refs.swarm?.getRoster?.()?.getCount?.() || refs.swarm?.getRoster?.()?.getAll?.()?.length || 14; } catch {}
       let customAgentCount = 0;
       try { customAgentCount = refs.agentFactory?.listCustomAgents?.()?.length || 0; } catch {}
-      const localWorkers = cfg.swarm?.maxWorkers || 14;
-      const gcpWorkers = cfg.gcpWorkers || 0;
-      const vultrWorkers = cfg.vultrWorkers || 6;
-      const oracleWorkers = cfg.oracleWorkers || 0;
-      const awsWorkers = cfg.awsWorkers || 0;
-      const azureWorkers = cfg.azureWorkers || 0;
-      const flyWorkers = cfg.flyWorkers || 0;
-      const totalWorkers = localWorkers + gcpWorkers + vultrWorkers + oracleWorkers + awsWorkers + azureWorkers + flyWorkers;
-      const totalAgents = builtInAgents + customAgentCount + totalWorkers;
+      // Show ACTIVE workers only (not configured max)
+      const activeWorkers = refs.coordinator?.workerCount || 0;
+      const connectedSwarmNodes = refs.swarm?.getConnectedNodes?.()?.length || 0;
+      const localWorkers = activeWorkers;
+      const gcpWorkers = 0; // Only count if actually connected
+      const vultrWorkers = 0;
+      const oracleWorkers = 0;
+      const awsWorkers = 0;
+      const azureWorkers = 0;
+      const flyWorkers = 0;
+      const totalWorkers = activeWorkers + connectedSwarmNodes;
+      // Subagent count
+      let subagentCount = 0;
+      try { const { getInstance } = require('./subagents'); subagentCount = getInstance().list().length; } catch {}
+      const totalAgents = builtInAgents + customAgentCount + subagentCount;
 
       return json(res, 200, {
         version: refs.bootVersion || '5.0',
@@ -617,6 +669,7 @@ async function handleRequest(req, res) {
         totalAgents,
         agentTypes: builtInAgents + customAgentCount,
         customAgents: customAgentCount,
+        subagents: subagentCount,
         totalWorkers,
         localWorkers,
         gcpWorkers,
@@ -1013,6 +1066,96 @@ async function handleRequest(req, res) {
       return json(res, 200, { workers, relay, agents, agentCount: agents.length });
     }
 
+    // ━━━ Subagent API Routes ━━━
+    if (reqPath === '/api/subagents' || reqPath.startsWith('/api/subagents/')) {
+      try {
+        const { getInstance } = require('./subagents');
+        const ai = require('./ai');
+        const mgr = getInstance();
+        if (!mgr.ai) mgr.setAI({ callWithFallback: ai.callWithFallback, parseTools: ai.parseTools, stripToolTags: ai.stripToolTags });
+
+        // GET /api/subagents — list all
+        if (method === 'GET' && reqPath === '/api/subagents') {
+          return json(res, 200, { subagents: mgr.list() });
+        }
+
+        // POST /api/subagents — create custom subagent
+        if (method === 'POST' && reqPath === '/api/subagents') {
+          const body = JSON.parse(await readBody(req));
+          const agent = mgr.register(body);
+          return json(res, 201, { subagent: agent });
+        }
+
+        // Extract subagent ID from path
+        const subPathMatch = reqPath.match(/^\/api\/subagents\/([^/]+)(\/.*)?$/);
+        if (subPathMatch) {
+          const subId = decodeURIComponent(subPathMatch[1]);
+          const subAction = subPathMatch[2] || '';
+
+          // GET /api/subagents/:id — get details
+          if (method === 'GET' && subAction === '') {
+            const agent = mgr.getAgent(subId);
+            if (!agent) return json(res, 404, { error: 'Subagent not found' });
+            const history = mgr.getHistory(subId, 50);
+            return json(res, 200, { subagent: agent, history });
+          }
+
+          // POST /api/subagents/:id/task — send task
+          if (method === 'POST' && subAction === '/task') {
+            const body = JSON.parse(await readBody(req));
+            const task = body.task || body.message;
+            if (!task) return json(res, 400, { error: 'Missing task' });
+            const result = await mgr.spawn(subId, task);
+            return json(res, 200, { result, agentId: subId, modelUsed: mgr._lastUsedModel || 'unknown' });
+          }
+
+          // GET /api/subagents/:id/stream — SSE stream for task
+          if (method === 'GET' && subAction === '/stream') {
+            const task = parsed.query.task;
+            if (!task) return json(res, 400, { error: 'Missing task query param' });
+            res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*' });
+            res.write('data: {"type":"start","agentId":"' + subId + '"}\n\n');
+            try {
+              const result = await mgr.spawn(subId, task, {
+                onStream: (evt) => { res.write('data: ' + JSON.stringify(evt) + '\n\n'); }
+              });
+              res.write('data: ' + JSON.stringify({ type: 'done', result }) + '\n\n');
+            } catch (e) {
+              res.write('data: ' + JSON.stringify({ type: 'error', error: e.message }) + '\n\n');
+            }
+            res.end();
+            return;
+          }
+
+          // PATCH /api/subagents/:id — update subagent (model, name, icon, etc.)
+          if ((method === 'PATCH' || method === 'PUT') && subAction === '') {
+            const body = JSON.parse(await readBody(req));
+            if (!mgr._agents[subId]) return json(res, 404, { error: 'Subagent not found' });
+            if (body.model !== undefined) mgr._agents[subId].model = body.model;
+            if (body.name !== undefined) mgr._agents[subId].name = body.name;
+            if (body.icon !== undefined) mgr._agents[subId].icon = body.icon;
+            if (body.systemPrompt !== undefined) mgr._agents[subId].systemPrompt = body.systemPrompt;
+            if (mgr._save) mgr._save();
+            return json(res, 200, { status: 'updated', subagent: mgr.getAgent(subId) });
+          }
+
+          // DELETE /api/subagents/:id/history — clear history
+          if (method === 'DELETE' && subAction === '/history') {
+            mgr.clearHistory(subId);
+            return json(res, 200, { status: 'ok' });
+          }
+
+          // DELETE /api/subagents/:id — remove custom subagent
+          if (method === 'DELETE' && subAction === '') {
+            mgr.remove(subId);
+            return json(res, 200, { status: 'removed' });
+          }
+        }
+      } catch (e) {
+        return json(res, 500, { error: e.message });
+      }
+    }
+
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â GET /api/history ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
     if (method === 'GET' && reqPath === '/api/history') {
       const chatHistory = refs.getChatHistory?.() || [];
@@ -1073,6 +1216,62 @@ async function handleRequest(req, res) {
     }
 
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â GET /api/tools ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+    // *** Self-Improvement & Proactive API ***
+    if (method === 'GET' && reqPath === '/api/learnings') {
+      try {
+        const si = require('./self-improvement').getInstance();
+        const url = new (require('url').URL)('http://x' + req.url);
+        const type = url.searchParams.get('type');
+        const priority = url.searchParams.get('priority');
+        const status = url.searchParams.get('status');
+        let entries = si._allEntries();
+        if (type) entries = entries.filter(e => { const t = e.id.startsWith('LRN') ? 'learning' : e.id.startsWith('ERR') ? 'error' : 'feature'; return t === type; });
+        if (priority) entries = entries.filter(e => e.priority === priority);
+        if (status) entries = entries.filter(e => e.status === status);
+        return json(res, 200, { entries, total: entries.length });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/learnings/stats') {
+      try {
+        const si = require('./self-improvement').getInstance();
+        return json(res, 200, si.stats());
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'POST' && reqPath.match(/^\/api\/learnings\/([^/]+)\/resolve$/)) {
+      try {
+        const si = require('./self-improvement').getInstance();
+        const id = reqPath.match(/^\/api\/learnings\/([^/]+)\/resolve$/)[1];
+        const body = JSON.parse(await readBody(req));
+        return json(res, 200, si.resolve(id, body.notes));
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'POST' && reqPath.match(/^\/api\/learnings\/([^/]+)\/promote$/)) {
+      try {
+        const si = require('./self-improvement').getInstance();
+        const id = reqPath.match(/^\/api\/learnings\/([^/]+)\/promote$/)[1];
+        const body = JSON.parse(await readBody(req));
+        return json(res, 200, si.promote(id, body.target));
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/proactive/state') {
+      try {
+        const pe = require('./proactive-engine').getInstance();
+        return json(res, 200, pe.loadState());
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/proactive/buffer') {
+      try {
+        const pe = require('./proactive-engine').getInstance();
+        return json(res, 200, { buffer: pe.getBuffer() });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/proactive/suggestions') {
+      try {
+        const pe = require('./proactive-engine').getInstance();
+        return json(res, 200, { suggestions: pe.suggestActions(), patterns: pe.analyzePatterns() });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
     if (method === 'GET' && reqPath === '/api/tools') {
       const t = require('./tools');
       return json(res, 200, { tools: t.list(), log: t.getLog().slice(-20) });
@@ -1136,6 +1335,47 @@ async function handleRequest(req, res) {
       if (!arb) return json(res, 500, { error: 'Arbitrage scanner not available' });
       const body = JSON.parse(await readBody(req));
       return json(res, 200, { config: arb.updateConfig(body) });
+    }
+
+    // ══ Knowledge Graph API ══
+    if (method === 'GET' && reqPath === '/api/knowledge/entities') {
+      try {
+        const kg = require('./knowledge-graph').getInstance();
+        const params = new (require('url').URL)('http://x' + req.url).searchParams;
+        const type = params.get('type') || undefined;
+        const where = {};
+        for (const [k, v] of params.entries()) { if (k !== 'type') where[k] = v; }
+        return json(res, 200, { entities: kg.query(type, where) });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'POST' && reqPath === '/api/knowledge/entities') {
+      try {
+        const kg = require('./knowledge-graph').getInstance();
+        const body = JSON.parse(await readBody(req));
+        const result = kg.create(body.type, body.properties || body);
+        return json(res, 201, result);
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'POST' && reqPath === '/api/knowledge/relations') {
+      try {
+        const kg = require('./knowledge-graph').getInstance();
+        const body = JSON.parse(await readBody(req));
+        const result = kg.relate(body.from, body.rel, body.to, body.properties || {});
+        return json(res, 201, result);
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/knowledge/search') {
+      try {
+        const kg = require('./knowledge-graph').getInstance();
+        const params = new (require('url').URL)('http://x' + req.url).searchParams;
+        return json(res, 200, { results: kg.search(params.get('q') || '') });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    if (method === 'GET' && reqPath === '/api/knowledge/stats') {
+      try {
+        const kg = require('./knowledge-graph').getInstance();
+        return json(res, 200, kg.stats());
+      } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â POST /api/shutdown ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
@@ -5471,6 +5711,54 @@ undefined
           }
         }
       }
+      // Add Google Gemini models — fetch live from API
+      var googleKey = (refs.config.google && refs.config.google.apiKey) ||
+                      process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+      if (!googleKey) {
+        try { var rawCfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); googleKey = rawCfg.google && rawCfg.google.apiKey; } catch(e) {}
+      }
+      if (googleKey && googleKey.length > 10) {
+        try {
+          var httpsMod = require('https');
+          var gModels = await new Promise(function(resolve) {
+            var req3 = httpsMod.request('https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(googleKey), { timeout: 5000 }, function(res3) {
+              var d = ''; res3.on('data', function(c) { d += c; }); res3.on('end', function() {
+                try {
+                  var parsed = JSON.parse(d).models || [];
+                  // Filter to generative gemini models (skip embedding, robotics, TTS, audio-only, image-gen-only)
+                  var filtered = parsed.filter(function(m) {
+                    var n = m.name || '';
+                    if (!n.includes('gemini')) return false;
+                    if (n.includes('embedding') || n.includes('robotics') || n.includes('tts') || n.includes('native-audio')) return false;
+                    return true;
+                  });
+                  resolve(filtered);
+                } catch(e) { resolve([]); }
+              });
+            });
+            req3.on('error', function() { resolve([]); });
+            req3.on('timeout', function() { req3.destroy(); resolve([]); });
+            req3.end();
+          });
+          for (var gmi = 0; gmi < gModels.length; gmi++) {
+            var gName = (gModels[gmi].name || '').replace('models/', '');
+            var gDisplay = gModels[gmi].displayName || gName;
+            if (gName && !existingNames[gName]) {
+              models.push({ name: gName, displayName: gDisplay, source: 'google', configured: true });
+              existingNames[gName] = true;
+            }
+          }
+        } catch(e) {
+          // Fallback to static list if API call fails
+          var fallbackModels = ['gemini-3.1-pro-preview','gemini-3-pro-preview','gemini-3-flash-preview','gemini-2.5-pro','gemini-2.5-flash','gemini-2.0-flash'];
+          for (var fmi = 0; fmi < fallbackModels.length; fmi++) {
+            if (!existingNames[fallbackModels[fmi]]) {
+              models.push({ name: fallbackModels[fmi], source: 'google', configured: true });
+              existingNames[fallbackModels[fmi]] = true;
+            }
+          }
+        }
+      }
       // Add models from config.models
       if (refs.config.models) {
         var cfgModelKeys = Object.keys(refs.config.models);
@@ -6413,6 +6701,75 @@ undefined
     }
 
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â POST /api/settings/test-token ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+    // POST /api/settings/api-keys — save provider API keys to config.json
+    if (method === 'POST' && reqPath === '/api/settings/api-keys') {
+      const body = JSON.parse(await readBody(req));
+      const configPath2 = path.join(__dirname, '..', 'config.json');
+      let cfg2;
+      try { cfg2 = JSON.parse(fs.readFileSync(configPath2, 'utf8')); } catch { return json(res, 500, { error: 'Cannot read config.json' }); }
+
+      if (body.anthropic) {
+        if (!cfg2.fallback) cfg2.fallback = {};
+        if (!cfg2.fallback.directApi) cfg2.fallback.directApi = {};
+        cfg2.fallback.directApi.key = body.anthropic;
+        cfg2.fallback.directApi.apiKey = body.anthropic;
+        if (!cfg2.ariesGateway) cfg2.ariesGateway = {};
+        if (!cfg2.ariesGateway.providers) cfg2.ariesGateway.providers = {};
+        if (!cfg2.ariesGateway.providers.anthropic) cfg2.ariesGateway.providers.anthropic = {};
+        cfg2.ariesGateway.providers.anthropic.apiKey = body.anthropic;
+      }
+      if (body.openai) {
+        if (!cfg2.ariesGateway) cfg2.ariesGateway = {};
+        if (!cfg2.ariesGateway.providers) cfg2.ariesGateway.providers = {};
+        if (!cfg2.ariesGateway.providers.openai) cfg2.ariesGateway.providers.openai = {};
+        cfg2.ariesGateway.providers.openai.apiKey = body.openai;
+      }
+      if (body.groq) {
+        if (!cfg2.ariesGateway) cfg2.ariesGateway = {};
+        if (!cfg2.ariesGateway.providers) cfg2.ariesGateway.providers = {};
+        if (!cfg2.ariesGateway.providers.groq) cfg2.ariesGateway.providers.groq = {};
+        cfg2.ariesGateway.providers.groq.apiKey = body.groq;
+      }
+      if (body.google) {
+        if (!cfg2.google) cfg2.google = {};
+        cfg2.google.apiKey = body.google;
+      }
+
+      try {
+        fs.writeFileSync(configPath2, JSON.stringify(cfg2, null, 2));
+        if (refs.configManager && refs.configManager.reload) refs.configManager.reload();
+        return json(res, 200, { status: 'saved' });
+      } catch (e) { return json(res, 500, { error: 'Failed to write config: ' + e.message }); }
+    }
+
+    // POST /api/settings/agent-link — save external agent connection
+    if (method === 'POST' && reqPath === '/api/settings/agent-link') {
+      const body = JSON.parse(await readBody(req));
+      const configPath3 = path.join(__dirname, '..', 'config.json');
+      let cfg3;
+      try { cfg3 = JSON.parse(fs.readFileSync(configPath3, 'utf8')); } catch { return json(res, 500, { error: 'Cannot read config.json' }); }
+
+      if (!cfg3.agentLink) cfg3.agentLink = {};
+      if (body.url !== undefined) cfg3.agentLink.url = body.url;
+      if (body.token !== undefined) cfg3.agentLink.token = body.token;
+      if (body.enabled !== undefined) cfg3.agentLink.enabled = body.enabled;
+
+      try {
+        fs.writeFileSync(configPath3, JSON.stringify(cfg3, null, 2));
+        if (refs.configManager && refs.configManager.reload) refs.configManager.reload();
+        return json(res, 200, { status: 'saved' });
+      } catch (e) { return json(res, 500, { error: 'Failed to write config: ' + e.message }); }
+    }
+
+    // GET /api/settings/agent-link
+    if (method === 'GET' && reqPath === '/api/settings/agent-link') {
+      const configPath4 = path.join(__dirname, '..', 'config.json');
+      let cfg4;
+      try { cfg4 = JSON.parse(fs.readFileSync(configPath4, 'utf8')); } catch { cfg4 = {}; }
+      var al = cfg4.agentLink || {};
+      return json(res, 200, { url: al.url || '', enabled: !!al.enabled, tokenSet: !!(al.token) });
+    }
+
     if (method === 'POST' && reqPath === '/api/settings/test-token') {
       const body = JSON.parse(await readBody(req));
       const tokenToTest = body.token;
@@ -7659,6 +8016,365 @@ undefined
       return;
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // ██ HANDS SYSTEM ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath === '/api/hands' || reqPath.startsWith('/api/hands/')) {
+      try {
+        const { getInstance: getHands } = require('./hands');
+        const hm = getHands();
+
+        if (method === 'GET' && reqPath === '/api/hands') {
+          return json(res, 200, { hands: hm.listAll ? hm.listAll() : hm.list() });
+        }
+        if (method === 'POST' && reqPath === '/api/hands') {
+          const body = JSON.parse(await readBody(req));
+          const hand = hm.create ? hm.create(body) : hm.add(body);
+          return json(res, 201, { hand });
+        }
+        const handsMatch = reqPath.match(/^\/api\/hands\/([^/]+)(\/.*)?$/);
+        if (handsMatch) {
+          const handId = decodeURIComponent(handsMatch[1]);
+          const handAction = handsMatch[2] || '';
+
+          if (method === 'GET' && handAction === '') {
+            const hand = hm.status ? hm.status(handId) : hm.get ? hm.get(handId) : null;
+            if (!hand) return json(res, 404, { error: 'Hand not found' });
+            return json(res, 200, { hand });
+          }
+          if (method === 'GET' && handAction === '/output') {
+            const limit = parseInt(parsed.query.limit) || 50;
+            const output = hm.getOutput ? hm.getOutput(handId, limit) : [];
+            return json(res, 200, { output });
+          }
+          if (method === 'POST' && handAction === '/activate') {
+            const result = hm.activate ? hm.activate(handId) : hm.start(handId);
+            return json(res, 200, { status: 'activated', result });
+          }
+          if (method === 'POST' && handAction === '/pause') {
+            const result = hm.pause ? hm.pause(handId) : hm.stop(handId);
+            return json(res, 200, { status: 'paused', result });
+          }
+          if (method === 'POST' && handAction === '/run') {
+            const result = await (hm.run ? hm.run(handId) : hm.execute(handId));
+            return json(res, 200, { status: 'running', result });
+          }
+          if (method === 'DELETE' && handAction === '') {
+            hm.remove ? hm.remove(handId) : hm.delete(handId);
+            return json(res, 200, { status: 'deleted' });
+          }
+          // Clone routes
+          if (method === 'POST' && handAction === '/clone') {
+            try {
+              const cloning = require('./agent-cloning').getInstance();
+              const body = JSON.parse(await readBody(req));
+              return json(res, 201, await cloning.clone(handId, body.overrides || body));
+            } catch (ce) { return json(res, 500, { error: ce.message }); }
+          }
+          if (method === 'POST' && handAction === '/clone-multiple') {
+            try {
+              const cloning = require('./agent-cloning').getInstance();
+              const body = JSON.parse(await readBody(req));
+              return json(res, 201, await cloning.cloneMultiple(handId, body.count || 2, body.overrides));
+            } catch (ce) { return json(res, 500, { error: ce.message }); }
+          }
+          if (method === 'GET' && handAction === '/lineage') {
+            try {
+              const cloning = require('./agent-cloning').getInstance();
+              const lineage = await cloning.getLineage(handId);
+              return json(res, 200, lineage || { parent: handId, clones: [] });
+            } catch (ce) { return json(res, 500, { error: ce.message }); }
+          }
+        }
+        return json(res, 404, { error: 'Hands endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ WORKFLOW ENGINE ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath === '/api/workflows' || reqPath.startsWith('/api/workflows/')) {
+      try {
+        const { getInstance: getWorkflows } = require('./workflow-engine');
+        const we = getWorkflows();
+        if (method === 'GET' && (reqPath === '/api/workflows' || reqPath === '/api/workflows/list')) {
+          return json(res, 200, { workflows: we.listWorkflows() });
+        }
+        if (method === 'POST' && reqPath === '/api/workflows') {
+          const body = JSON.parse(await readBody(req));
+          const wf = we.addWorkflow(body);
+          return json(res, 201, { workflow: wf });
+        }
+        const wfMatch = reqPath.match(/^\/api\/workflows\/([^/]+)(\/.*)?$/);
+        if (wfMatch) {
+          const wfId = decodeURIComponent(wfMatch[1]);
+          const wfAction = wfMatch[2] || '';
+
+          if (method === 'GET' && wfAction === '') {
+            const allWfs = we.listWorkflows();
+            const wf = allWfs.find(w => w.id === wfId);
+            if (!wf) return json(res, 404, { error: 'Workflow not found' });
+            return json(res, 200, { workflow: wf });
+          }
+          if (method === 'GET' && wfAction === '/history') {
+            const history = we.getLog ? we.getLog(wfId) : [];
+            return json(res, 200, { history });
+          }
+          if (method === 'POST' && wfAction === '/run') {
+            const body = await readBody(req);
+            let params = {};
+            try { params = JSON.parse(body); } catch {}
+            const result = await (we.trigger ? we.trigger(wfId, params) : we.run ? we.run(wfId, params) : we.execute(wfId, params));
+            return json(res, 200, { status: 'running', result });
+          }
+          if (method === 'POST' && wfAction === '/pause') {
+            const result = we.stop ? we.stop(wfId) : we.pause(wfId);
+            return json(res, 200, { status: 'paused', result });
+          }
+          if (method === 'DELETE' && wfAction === '') {
+            we.deleteWorkflow ? we.deleteWorkflow(wfId) : we.remove ? we.remove(wfId) : we.delete(wfId);
+            return json(res, 200, { status: 'deleted' });
+          }
+        }
+        return json(res, 404, { error: 'Workflow endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ ANALYTICS ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath.startsWith('/api/analytics')) {
+      try {
+        const { getInstance: getAnalytics } = require('./agent-analytics');
+        const an = getAnalytics();
+
+        if (method === 'GET' && reqPath === '/api/analytics/report') {
+          const period = parsed.query.period || 'daily';
+          const report = an.getReport ? an.getReport(period) : an.report(period);
+          return json(res, 200, { report });
+        }
+        if (method === 'GET' && reqPath === '/api/analytics/models') {
+          const models = an.getModelComparison ? an.getModelComparison() : an.modelStats();
+          return json(res, 200, { models });
+        }
+        if (method === 'GET' && reqPath === '/api/analytics/suggestions') {
+          const suggestions = an.getSuggestions ? an.getSuggestions() : an.suggestions();
+          return json(res, 200, { suggestions });
+        }
+        if (method === 'GET' && reqPath === '/api/analytics/forecast') {
+          const days = parseInt(parsed.query.days) || 30;
+          const forecast = an.getForecast ? an.getForecast(days) : an.forecast(days);
+          return json(res, 200, { forecast });
+        }
+        if (method === 'POST' && reqPath === '/api/analytics/record') {
+          const body = JSON.parse(await readBody(req));
+          an.record ? an.record(body) : an.trackEvent(body);
+          return json(res, 200, { status: 'recorded' });
+        }
+        return json(res, 404, { error: 'Analytics endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ KNOWLEDGE GRAPH EXTENDED ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath.startsWith('/api/knowledge/')) {
+      try {
+        const { getInstance: getKG } = require('./knowledge-graph');
+        const kg = getKG();
+
+        if (method === 'POST' && reqPath === '/api/knowledge/entity') {
+          const body = JSON.parse(await readBody(req));
+          const entity = kg.addNode ? kg.addNode(body) : kg.addEntity ? kg.addEntity(body) : kg.add(body);
+          return json(res, 201, { entity });
+        }
+        if (method === 'POST' && reqPath === '/api/knowledge/relation') {
+          const body = JSON.parse(await readBody(req));
+          const relation = kg.addEdge ? kg.addEdge(body) : kg.addRelation ? kg.addRelation(body) : kg.relate(body);
+          return json(res, 201, { relation });
+        }
+        if (method === 'GET' && reqPath === '/api/knowledge/export') {
+          const format = parsed.query.format || 'json';
+          const data = kg.getVisualizationData ? kg.getVisualizationData() : kg.export ? kg.export(format) : { nodes: [...kg.nodes.values()], edges: [...kg.edges.values()] };
+          if (format === 'dot') {
+            res.writeHead(200, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+            res.end(typeof data === 'string' ? data : JSON.stringify(data));
+            return;
+          }
+          return json(res, 200, { data });
+        }
+        const kgEntityMatch = reqPath.match(/^\/api\/knowledge\/entity\/([^/]+)$/);
+        if (kgEntityMatch && method === 'GET') {
+          const entityId = decodeURIComponent(kgEntityMatch[1]);
+          const entity = kg.getEntity ? kg.getEntity(entityId) : kg.nodes ? kg.nodes.get(entityId) : null;
+          if (!entity) return json(res, 404, { error: 'Entity not found' });
+          return json(res, 200, { entity });
+        }
+        const kgTraverseMatch = reqPath.match(/^\/api\/knowledge\/traverse\/([^/]+)$/);
+        if (kgTraverseMatch && method === 'GET') {
+          const nodeId = decodeURIComponent(kgTraverseMatch[1]);
+          const depth = parseInt(parsed.query.depth) || 2;
+          const graph = kg.query ? kg.query(nodeId) : kg.traverse ? kg.traverse(nodeId, depth) : kg.getNeighbors(nodeId, depth);
+          return json(res, 200, { graph });
+        }
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ AUDIT TRAIL EXTENDED ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath.startsWith('/api/audit/')) {
+      try {
+        const { getInstance: getAudit } = require('./audit-trail');
+        const at = getAudit();
+
+        if (method === 'GET' && reqPath === '/api/audit/verify') {
+          const result = at.verify ? at.verify() : at.verifyChain();
+          return json(res, 200, { result });
+        }
+        if (method === 'GET' && reqPath === '/api/audit/export') {
+          const format = parsed.query.format || 'json';
+          const data = at.export ? at.export(format) : at.getAll();
+          if (format === 'csv') {
+            res.writeHead(200, { 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="audit.csv"', 'Access-Control-Allow-Origin': '*' });
+            res.end(typeof data === 'string' ? data : JSON.stringify(data));
+            return;
+          }
+          return json(res, 200, { data });
+        }
+        return json(res, 404, { error: 'Audit endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ SQLITE MEMORY DB ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath.startsWith('/api/memory/db')) {
+      try {
+        const { getInstance: getMemDB } = require('./sqlite-memory');
+        const mdb = await getMemDB();
+
+        if (method === 'GET' && reqPath === '/api/memory/db/search') {
+          const q = parsed.query.q || '';
+          const limit = parseInt(parsed.query.limit) || 10;
+          const results = mdb.search ? await mdb.search(q, limit) : [];
+          return json(res, 200, { results });
+        }
+        if (method === 'POST' && reqPath === '/api/memory/db/add') {
+          const body = JSON.parse(await readBody(req));
+          const result = mdb.addMemory ? await mdb.addMemory(body.text, body) : mdb.add ? await mdb.add(body) : await mdb.store(body);
+          return json(res, 201, { result });
+        }
+        if (method === 'GET' && reqPath === '/api/memory/db/stats') {
+          const stats = mdb.getStats ? mdb.getStats() : mdb.stats();
+          return json(res, 200, { stats });
+        }
+        if (method === 'GET' && reqPath === '/api/memory/db/entities') {
+          const entities = mdb.getEntities ? mdb.getEntities() : mdb.entities();
+          return json(res, 200, { entities });
+        }
+        if (method === 'POST' && reqPath === '/api/memory/db/entity') {
+          const body = JSON.parse(await readBody(req));
+          const result = mdb.addEntity ? mdb.addEntity(body) : mdb.storeEntity(body);
+          return json(res, 201, { result });
+        }
+        if (method === 'POST' && reqPath === '/api/memory/db/import') {
+          const body = JSON.parse(await readBody(req));
+          const result = await (mdb.import ? mdb.import(body) : mdb.importFiles(body));
+          return json(res, 200, { result });
+        }
+        return json(res, 404, { error: 'Memory DB endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ MIGRATION ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (method === 'POST' && reqPath === '/api/migrate') {
+      try {
+        const { migrate } = require('./migration-engine');
+        const body = JSON.parse(await readBody(req));
+        const result = await migrate(body.source || 'openclaw', {
+          path: body.path,
+          dryRun: body.dryRun !== false
+        });
+        return json(res, 200, { result });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ PROMPT GUARD / SECURITY ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath.startsWith('/api/security')) {
+      try {
+        const promptGuard = require('./prompt-guard');
+
+        if (method === 'POST' && reqPath === '/api/security/scan') {
+          const body = JSON.parse(await readBody(req));
+          if (!body.text) return json(res, 400, { error: 'Missing text field' });
+          const result = promptGuard.scan ? promptGuard.scan(body.text) : promptGuard.analyze(body.text);
+          return json(res, 200, { result });
+        }
+        if (method === 'GET' && reqPath === '/api/security/config') {
+          const config = promptGuard.getConfig ? promptGuard.getConfig() : promptGuard.config || {};
+          return json(res, 200, { config });
+        }
+        if (method === 'POST' && reqPath === '/api/security/config') {
+          const body = JSON.parse(await readBody(req));
+          const result = promptGuard.setConfig ? promptGuard.setConfig(body) : promptGuard.configure(body);
+          return json(res, 200, { status: 'updated', config: result });
+        }
+        return json(res, 404, { error: 'Security endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ██ CHANNELS ROUTES ██
+    // ══════════════════════════════════════════════════════════════
+    if (reqPath === '/api/channels' || reqPath.startsWith('/api/channels/')) {
+      try {
+        if (method === 'GET' && reqPath === '/api/channels') {
+          const cfg = _refs.config || {};
+          const channels = cfg.channels || {};
+          const status = {};
+          for (const [type, conf] of Object.entries(channels)) {
+            status[type] = { configured: true, enabled: conf.enabled !== false };
+          }
+          return json(res, 200, { channels: status });
+        }
+        const chMatch = reqPath.match(/^\/api\/channels\/([^/]+)\/(connect|disconnect)$/);
+        if (chMatch) {
+          const chType = chMatch[1];
+          const chAction = chMatch[2];
+          if (method === 'POST' && chAction === 'connect') {
+            const body = JSON.parse(await readBody(req));
+            const cfg = _refs.config || {};
+            if (!cfg.channels) cfg.channels = {};
+            cfg.channels[chType] = { ...body.config, enabled: true };
+            return json(res, 200, { status: 'connected', type: chType });
+          }
+          if (method === 'POST' && chAction === 'disconnect') {
+            const cfg = _refs.config || {};
+            if (cfg.channels && cfg.channels[chType]) {
+              cfg.channels[chType].enabled = false;
+            }
+            return json(res, 200, { status: 'disconnected', type: chType });
+          }
+        }
+        return json(res, 404, { error: 'Channels endpoint not found' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+
+    // Try feature routes (pipelines, arena, voice, reflection, plugins, cloning, PWA)
+    try {
+      const { registerFeatureRoutes } = require('./feature-routes');
+      if (registerFeatureRoutes._tryHandle) {
+        const parsed = new (require('url').URL)(req.url, 'http://localhost');
+        const handled = await registerFeatureRoutes._tryHandle(req, res, method, reqPath, parsed);
+        if (handled) return;
+      }
+    } catch (_feErr) { /* feature routes not available */ }
+
     return json(res, 404, { error: 'Not found', path: reqPath });
   } catch (e) {
     audit.request(req, 500, Date.now() - startMs);
@@ -7933,7 +8649,16 @@ function start(refs) {
 
   const server = http.createServer(handleRequest);
   // NOTE: WebSocket upgrade is handled by websocket.js (attached in headless.js)
-  // Do NOT add server.on('upgrade', handleUpgrade) here ÃƒÂ¢Ã¢â€šÂ¬" it conflicts.
+  // Do NOT add server.on('upgrade', handleUpgrade) here — it conflicts.
+
+  // Register feature routes (WebSocket, pipelines, arena, voice, reflection, plugins, cloning, PWA)
+  try {
+    const { registerFeatureRoutes } = require('./feature-routes');
+    registerFeatureRoutes(server, { config: cfg, ai: null, subagents: null });
+    console.log('[API] Feature routes registered (WebSocket, pipelines, arena, voice, etc.)');
+  } catch (e) {
+    console.error('[API] Feature routes init error:', e.message);
+  }
 
   server.listen(port, host, () => {
     startStatsBroadcast();

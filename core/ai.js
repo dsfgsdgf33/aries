@@ -23,6 +23,7 @@ try {
 
 // Cache config ref Ã¢â‚¬â€ hot-reload updates the _data object in place
 let _cfgMod = null;
+let _activeModel = null; // Track active model so AriesCode/tools use the same model
 function getConfig() {
   if (!_cfgMod) { try { _cfgMod = require('./config'); } catch {} }
   if (_cfgMod && _cfgMod._data && Object.keys(_cfgMod._data).length > 0) return _cfgMod._data;
@@ -148,6 +149,27 @@ new text
 <tool:webapp name="myapp">html</tool:webapp> Ã¢â‚¬â€ Create web app at /canvas/
 <tool:message to="target">text</tool:message> Ã¢â‚¬â€ Send message
 
+### Browser Agent (Ref-Based)
+<tool:browser-snapshot>url</tool:browser-snapshot> — Snapshot page, get interactive elements with @e1, @e2 refs
+<tool:browser-click>@e1</tool:browser-click> — Click element by ref
+<tool:browser-fill ref="@e2">text</tool:browser-fill> — Fill input by ref
+<tool:browser-get>text @e1</tool:browser-get> — Get element text/attribute by ref
+
+Browser Agent workflow: 1) Snapshot a URL to get refs, 2) Use refs to interact. No CSS selectors needed.
+
+### Knowledge Graph
+<tool:kg-create type="Person">{"name":"Alice"}</tool:kg-create> — Create entity
+<tool:kg-query type="Task">{"status":"open"}</tool:kg-query> — Query entities
+<tool:kg-relate from="id1" rel="has_task" to="id2"></tool:kg-relate> — Create relation
+<tool:kg-search>query text</tool:kg-search> — Search knowledge graph
+<tool:kg-stats></tool:kg-stats> — Knowledge graph stats
+
+### Code Review
+<tool:code-review>file1.js,file2.js</tool:code-review> — Static analysis (security, performance, maintainability)
+
+### Context Management
+<tool:compress-context></tool:compress-context> — Compress conversation context when it gets large
+
 ### Agents
 <tool:swarm>task</tool:swarm> Ã¢â‚¬â€ Multi-agent swarm
 <tool:spawn-agent task="description">subtask</tool:spawn-agent> Ã¢â‚¬â€ Spawn sub-agent
@@ -161,8 +183,44 @@ new text
 ### Scheduling
 <tool:cron expr="*/5 * * * *" name="jobname">command</tool:cron> Ã¢â‚¬â€ Cron job
 
+### Self-Improvement & Proactive
+<tool:log-learning category="correction">details</tool:log-learning> — Log a learning (categories: correction, knowledge_gap, best_practice, preference)
+<tool:log-error>details</tool:log-error> — Log an error for pattern tracking
+<tool:log-feature>details</tool:log-feature> — Log a feature request
+<tool:search-learnings>query</tool:search-learnings> — Search across all learnings/errors/features
+<tool:save-state>JSON state</tool:save-state> — Save key-value state (WAL protocol)
+<tool:load-state></tool:load-state> — Load current session state
+
+## Self-Improvement Protocol
+When you encounter:
+- A command/operation failure → use <tool:log-error> to record it
+- A user correction ("actually...", "no, that's wrong...") → use <tool:log-learning category="correction"> to record it
+- A feature request ("can you...", "I wish...") → use <tool:log-feature> to record it
+- A knowledge gap → use <tool:log-learning category="knowledge_gap"> to record it
+- A better approach → use <tool:log-learning category="best_practice"> to record it
+Before major tasks, check recent learnings: <tool:search-learnings>relevant query</tool:search-learnings>
+
+## Proactive Protocol
+- WAL: When user gives corrections, decisions, or preferences — WRITE to session state BEFORE responding
+- Resourcefulness: Try at least 5 different approaches before saying you can't do something
+- Verify Before Done: Actually test/verify outcomes before reporting completion
+- Proactive Surprise: Occasionally suggest improvements the user didn't ask for
+- Pattern Detection: Notice repeated requests and suggest automation
+
 ### Aries Code (Autonomous Coding Agent)
 <tool:ariesCode dir="optional/path">detailed task description</tool:ariesCode> — Delegate a complex coding task to the Aries Code engine. It autonomously plans, writes files, runs commands, fixes errors, and verifies — up to 20 iterations. USE THIS for building entire projects, complex multi-file work, or any build-me-X request. Preferred over manual file-by-file writes for big tasks.
+
+### Subagents (Persistent AI Assistants)
+<tool:subagent agent="codex">task description</tool:subagent> — Delegate a task to a named subagent. Each subagent has its own model, system prompt, and persistent conversation history. For coding tasks, prefer delegating to Codex.
+<tool:subagent-list /> — List all available subagents and their status.
+<tool:subagent-history agent="name" /> — View recent conversation history for a subagent.
+When spawning subagent tasks, be specific:
+BAD: "Research vector databases"
+GOOD: "Compare Pinecone, Weaviate, and Qdrant. For each: pricing, free tier limits, Node.js SDK quality, self-hosting option. Output as a comparison table. Max 200 words."
+
+When context gets large, use <tool:compress-context></tool:compress-context> to save a summary and keep working efficiently.
+
+Available subagents: Codex (⌨️ coding expert, model: gpt-4.1).
 ${pluginTools ? '\n' + pluginTools : ''}
 
 ## Memory Bank (${memory.list().length} entries)
@@ -249,6 +307,37 @@ function parseTools(text) {
     { name: 'ext', regex: /<tool:ext\s+cmd=["']([^"']*?)["']><\/tool:ext>/g },
     { name: 'cronNamed', regex: /<tool:cron\s+expr=["']([^"']*?)["']\s+name=["']([^"']*?)["']>([\s\S]*?)<\/tool:cron>/g, hasTriple: true },
     { name: 'ariesCode', regex: /<tool:ariesCode(?:\s+dir=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:ariesCode>/g, hasAttr: true },
+    { name: 'subagent', regex: /<tool:subagent\s+agent=["']([^"']*?)["']>([\s\S]*?)<\/tool:subagent>/g, hasAttr: true },
+    { name: 'subagent-history', regex: /<tool:subagent-history\s+agent=["']([^"']*?)["']>([\s\S]*?)<\/tool:subagent-history>/g, hasAttr: true },
+    { name: 'subagent-history', regex: /<tool:subagent-history\s+agent=["']([^"']*?)["']\s*\/>/g },
+    { name: 'subagent-history', regex: /<tool:subagent-history\s+agent=["']([^"']*?)["']><\/tool:subagent-history>/g },
+    { name: 'subagent-list', regex: /<tool:subagent-list><\/tool:subagent-list>/g, noContent: true },
+    { name: 'subagent-list', regex: /<tool:subagent-list\s*\/>/g, noContent: true },
+    // Self-Improvement & Proactive tools
+    { name: 'log-learning', regex: /<tool:log-learning(?:\s+category=["']([^"']*?)["'])?>([\s\S]*?)<\/tool:log-learning>/g, hasAttr: true },
+    { name: 'log-error', regex: /<tool:log-error>([\s\S]*?)<\/tool:log-error>/g },
+    { name: 'log-feature', regex: /<tool:log-feature>([\s\S]*?)<\/tool:log-feature>/g },
+    { name: 'search-learnings', regex: /<tool:search-learnings>([\s\S]*?)<\/tool:search-learnings>/g },
+    { name: 'save-state', regex: /<tool:save-state>([\s\S]*?)<\/tool:save-state>/g },
+    { name: 'load-state', regex: /<tool:load-state><\/tool:load-state>/g, noContent: true },
+    { name: 'load-state', regex: /<tool:load-state\s*\/>/g, noContent: true },
+    // Browser Agent tools
+    { name: 'browser-snapshot', regex: /<tool:browser-snapshot>([\s\S]*?)<\/tool:browser-snapshot>/g },
+    { name: 'browser-click', regex: /<tool:browser-click>([\s\S]*?)<\/tool:browser-click>/g },
+    { name: 'browser-fill', regex: /<tool:browser-fill\s+ref=["']([^"']*?)["']>([\s\S]*?)<\/tool:browser-fill>/g, hasAttr: true },
+    { name: 'browser-get', regex: /<tool:browser-get>([\s\S]*?)<\/tool:browser-get>/g },
+    // Knowledge Graph tools
+    { name: 'kg-create', regex: /<tool:kg-create\s+type=["']([^"']*?)["']>([\s\S]*?)<\/tool:kg-create>/g, hasAttr: true },
+    { name: 'kg-query', regex: /<tool:kg-query\s+type=["']([^"']*?)["']>([\s\S]*?)<\/tool:kg-query>/g, hasAttr: true },
+    { name: 'kg-relate', regex: /<tool:kg-relate\s+from=["']([^"']*?)["']\s+rel=["']([^"']*?)["']\s+to=["']([^"']*?)["']>([\s\S]*?)<\/tool:kg-relate>/g, hasQuad: true },
+    { name: 'kg-search', regex: /<tool:kg-search>([\s\S]*?)<\/tool:kg-search>/g },
+    { name: 'kg-stats', regex: /<tool:kg-stats><\/tool:kg-stats>/g, noContent: true },
+    { name: 'kg-stats', regex: /<tool:kg-stats\s*\/>/g, noContent: true },
+    // Code Review
+    { name: 'code-review', regex: /<tool:code-review>([\s\S]*?)<\/tool:code-review>/g },
+    // Context Compression
+    { name: 'compress-context', regex: /<tool:compress-context><\/tool:compress-context>/g, noContent: true },
+    { name: 'compress-context', regex: /<tool:compress-context\s*\/>/g, noContent: true },
   ];
 
   const pluginRegex = /<tool:plugin_(\w+)>([\s\S]*?)<\/tool:plugin_\1>/g;
@@ -294,8 +383,9 @@ async function executeTool(call) {
   if (call.tool === 'ariesCode') {
     try {
       const { AriesCode } = require('./aries-code');
+      const codeModel = _activeModel || null;
       const acAi = { chat: async (msgs) => {
-        const data = await callWithFallback(msgs);
+        const data = await callWithFallback(msgs, codeModel);
         return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       }};
       const agent = new AriesCode(acAi, { maxIterations: 20 });
@@ -307,6 +397,176 @@ async function executeTool(call) {
   }
   if (call.tool === 'done') {
     return { success: true, output: '[TASK COMPLETE]', isDone: true };
+  }
+  if (call.tool === 'subagent') {
+    try {
+      const { getInstance } = require('./subagents');
+      const mgr = getInstance();
+      if (!mgr.ai) mgr.setAI({ callWithFallback, parseTools, stripToolTags });
+      const agentId = call.args[0];
+      const task = call.args[1];
+      const result = await mgr.spawn(agentId, task);
+      return { success: true, output: `[Subagent ${agentId}] ${result}` };
+    } catch (e) { return { success: false, output: 'Subagent error: ' + e.message }; }
+  }
+  if (call.tool === 'subagent-list') {
+    try {
+      const { getInstance } = require('./subagents');
+      const mgr = getInstance();
+      const agents = mgr.list();
+      const summary = agents.map(a => `${a.icon || '🤖'} ${a.name} (${a.id}) — model: ${a.model || 'default'}, tasks: ${a.taskCount || 0}, status: ${a.status || 'idle'}`).join('\n');
+      return { success: true, output: summary || 'No subagents registered.' };
+    } catch (e) { return { success: false, output: 'Error: ' + e.message }; }
+  }
+  if (call.tool === 'subagent-history') {
+    try {
+      const { getInstance } = require('./subagents');
+      const mgr = getInstance();
+      const agentId = call.args[0];
+      const history = mgr.getHistory(agentId, 20);
+      const summary = history.map(h => `[${h.role}] ${(h.content || '').substring(0, 200)}`).join('\n');
+      return { success: true, output: summary || 'No history for this subagent.' };
+    } catch (e) { return { success: false, output: 'Error: ' + e.message }; }
+  }
+  // Self-Improvement tools
+  if (call.tool === 'log-learning') {
+    try {
+      const si = require('./self-improvement').getInstance();
+      const category = call.args[0] || 'general';
+      const details = call.args[1] || call.args[0] || '';
+      return { success: true, output: JSON.stringify(si.logLearning({ category, summary: details.substring(0,100), details, area: category })) };
+    } catch (e) { return { success: false, output: 'log-learning error: ' + e.message }; }
+  }
+  if (call.tool === 'log-error') {
+    try {
+      const si = require('./self-improvement').getInstance();
+      const details = call.args[0] || '';
+      return { success: true, output: JSON.stringify(si.logError({ error: details.substring(0,100), context: details })) };
+    } catch (e) { return { success: false, output: 'log-error error: ' + e.message }; }
+  }
+  if (call.tool === 'log-feature') {
+    try {
+      const si = require('./self-improvement').getInstance();
+      const details = call.args[0] || '';
+      return { success: true, output: JSON.stringify(si.logFeature({ capability: details.substring(0,100), userContext: details })) };
+    } catch (e) { return { success: false, output: 'log-feature error: ' + e.message }; }
+  }
+  if (call.tool === 'search-learnings') {
+    try {
+      const si = require('./self-improvement').getInstance();
+      const results = si.search(call.args[0] || '');
+      return { success: true, output: results.length ? results.map(r => `[${r.id}] ${r.summary} (${r.priority}/${r.status})`).join('\n') : 'No matching learnings found.' };
+    } catch (e) { return { success: false, output: 'search-learnings error: ' + e.message }; }
+  }
+  if (call.tool === 'save-state') {
+    try {
+      const pe = require('./proactive-engine').getInstance();
+      let state;
+      try { state = JSON.parse(call.args[0]); } catch { state = { note: call.args[0] }; }
+      return { success: true, output: JSON.stringify(pe.saveState(state)) };
+    } catch (e) { return { success: false, output: 'save-state error: ' + e.message }; }
+  }
+  if (call.tool === 'load-state') {
+    try {
+      const pe = require('./proactive-engine').getInstance();
+      const state = pe.loadState();
+      return { success: true, output: JSON.stringify(state) };
+    } catch (e) { return { success: false, output: 'load-state error: ' + e.message }; }
+  }
+  // Browser Agent tools
+  if (call.tool === 'browser-snapshot') {
+    try {
+      const { getInstance } = require('./browser-agent');
+      const agent = getInstance();
+      const snap = await agent.snapshot(call.args[0]);
+      return { success: true, output: agent.formatSnapshot(snap) };
+    } catch (e) { return { success: false, output: 'Browser snapshot error: ' + e.message }; }
+  }
+  if (call.tool === 'browser-click') {
+    try {
+      const { getInstance } = require('./browser-agent');
+      const result = await getInstance().click(call.args[0]?.trim());
+      return { success: true, output: result };
+    } catch (e) { return { success: false, output: 'Browser click error: ' + e.message }; }
+  }
+  if (call.tool === 'browser-fill') {
+    try {
+      const { getInstance } = require('./browser-agent');
+      const result = await getInstance().fill(call.args[0]?.trim(), call.args[1]);
+      return { success: true, output: result };
+    } catch (e) { return { success: false, output: 'Browser fill error: ' + e.message }; }
+  }
+  if (call.tool === 'browser-get') {
+    try {
+      const { getInstance } = require('./browser-agent');
+      const parts = (call.args[0] || '').trim().split(/\s+/);
+      const cmd = parts[0]; // 'text' or attr name
+      const ref = parts[1]; // @e1
+      if (cmd === 'text') {
+        const text = await getInstance().getText(ref);
+        return { success: true, output: text || '(empty)' };
+      } else {
+        const val = await getInstance().getAttr(ref, cmd);
+        return { success: true, output: val || '(null)' };
+      }
+    } catch (e) { return { success: false, output: 'Browser get error: ' + e.message }; }
+  }
+  // Knowledge Graph tools
+  if (call.tool === 'kg-create') {
+    try {
+      const kg = require('./knowledge-graph').getInstance();
+      let props = {}; try { props = JSON.parse(call.args[1] || '{}'); } catch {}
+      const result = kg.create(call.args[0], props);
+      return { success: true, output: JSON.stringify(result) };
+    } catch (e) { return { success: false, output: 'KG create error: ' + e.message }; }
+  }
+  if (call.tool === 'kg-query') {
+    try {
+      const kg = require('./knowledge-graph').getInstance();
+      let where = {}; try { where = JSON.parse(call.args[1] || '{}'); } catch {}
+      const results = kg.query(call.args[0], where);
+      return { success: true, output: results.length ? JSON.stringify(results, null, 2) : 'No entities found.' };
+    } catch (e) { return { success: false, output: 'KG query error: ' + e.message }; }
+  }
+  if (call.tool === 'kg-relate') {
+    try {
+      const kg = require('./knowledge-graph').getInstance();
+      const result = kg.relate(call.args[0], call.args[1], call.args[2]);
+      return { success: true, output: JSON.stringify(result) };
+    } catch (e) { return { success: false, output: 'KG relate error: ' + e.message }; }
+  }
+  if (call.tool === 'kg-search') {
+    try {
+      const kg = require('./knowledge-graph').getInstance();
+      const results = kg.search(call.args[0]);
+      return { success: true, output: results.length ? JSON.stringify(results, null, 2) : 'No results found.' };
+    } catch (e) { return { success: false, output: 'KG search error: ' + e.message }; }
+  }
+  if (call.tool === 'kg-stats') {
+    try {
+      const kg = require('./knowledge-graph').getInstance();
+      return { success: true, output: JSON.stringify(kg.stats(), null, 2) };
+    } catch (e) { return { success: false, output: 'KG stats error: ' + e.message }; }
+  }
+  // Code Review
+  if (call.tool === 'code-review') {
+    try {
+      const cr = require('./code-review').getInstance();
+      const files = (call.args[0] || '').split(',').map(f => f.trim()).filter(Boolean);
+      const result = cr.review(files);
+      return { success: true, output: result.summary };
+    } catch (e) { return { success: false, output: 'Code review error: ' + e.message }; }
+  }
+  // Context Compression
+  if (call.tool === 'compress-context') {
+    try {
+      const cm = require('./context-manager').getInstance();
+      // Get current chat history from refs
+      const chatHistory = _refs?.getChatHistory?.() || [];
+      const summary = cm.compress(chatHistory);
+      cm.saveCompression(summary);
+      return { success: true, output: 'Context compressed and saved.\n' + summary };
+    } catch (e) { return { success: false, output: 'Compress error: ' + e.message }; }
   }
   if (call.tool === 'plugin') return await pluginLoader.execute(call.args[0], call.args[1]);
   const fn = tools[call.tool];
@@ -469,6 +729,82 @@ async function callWithFallback(messages, model, stream = false) {
   const cfg = getConfig();
   const errors = [];
 
+  // Route google/ and gemini- models through Gemini provider
+  if (model && (model.startsWith('google/') || model.startsWith('gemini-'))) {
+    try {
+      const { callGemini } = require('./gemini-provider');
+      return await callGemini(messages, model, {});
+    } catch (e) {
+      errors.push('Gemini: ' + e.message);
+      // Fall through to other providers
+    }
+  }
+
+  // Detect if model is non-Anthropic (openai/, groq/, openrouter/, etc.)
+  const isNonAnthropic = model && (model.startsWith('openai/') || model.startsWith('groq/') || model.startsWith('google/') || model.startsWith('mistral/') || model.startsWith('deepseek/') || model.startsWith('meta/'));
+
+  // For non-Anthropic models, route through OpenRouter or direct OpenAI-compatible APIs
+  if (isNonAnthropic) {
+    // Try OpenRouter (supports all models with one key)
+    const orKey = cfg.openrouter?.apiKey || process.env.OPENROUTER_API_KEY;
+    if (orKey) {
+      try {
+        const postBody = JSON.stringify({ model, messages, max_tokens: 32000, temperature: 0.1 });
+        const resp = await _httpPost('https://openrouter.ai/api/v1/chat/completions', postBody, {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + orKey,
+          'HTTP-Referer': 'https://aries.local',
+          'X-Title': 'Aries'
+        }, 600000);
+        if (resp.statusCode < 400) {
+          const body = await _readBody(resp.stream);
+          return JSON.parse(body);
+        }
+      } catch (e) {
+        errors.push('OpenRouter: ' + e.message);
+      }
+    }
+
+    // Try direct OpenAI API if model starts with openai/
+    const oaiKey = cfg.openai?.apiKey || process.env.OPENAI_API_KEY;
+    if (oaiKey && model.startsWith('openai/')) {
+      try {
+        const oaiModel = model.replace('openai/', '');
+        const postBody = JSON.stringify({ model: oaiModel, messages, max_tokens: 32000, temperature: 0.1 });
+        const resp = await _httpPost('https://api.openai.com/v1/chat/completions', postBody, {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + oaiKey
+        }, 600000);
+        if (resp.statusCode < 400) {
+          const body = await _readBody(resp.stream);
+          return JSON.parse(body);
+        }
+      } catch (e) {
+        errors.push('OpenAI: ' + e.message);
+      }
+    }
+
+    // Try Groq if model starts with groq/
+    const groqKey = cfg.groq?.apiKey || process.env.GROQ_API_KEY;
+    if (groqKey && model.startsWith('groq/')) {
+      try {
+        const groqModel = model.replace('groq/', '');
+        const postBody = JSON.stringify({ model: groqModel, messages, max_tokens: 32000, temperature: 0.1 });
+        const resp = await _httpPost('https://api.groq.com/openai/v1/chat/completions', postBody, {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + groqKey
+        }, 600000);
+        if (resp.statusCode < 400) {
+          const body = await _readBody(resp.stream);
+          return JSON.parse(body);
+        }
+      } catch (e) {
+        errors.push('Groq: ' + e.message);
+      }
+    }
+    // Fall through to Anthropic/Gateway/Ollama as last resort
+  }
+
   // 1. Direct Anthropic API first (fastest, no gateway dependency)
   const hasDirectKey = cfg.anthropic?.apiKey || cfg.fallback?.directApi?.apiKey || cfg.fallback?.directApi?.key || process.env.ANTHROPIC_API_KEY;
   if (hasDirectKey) {
@@ -524,6 +860,7 @@ async function chatStream(messages, onToken, onToolExec, opts) {
   const cfg = getConfig();
   const systemPrompt = buildSystemPrompt();
   const chatModel = (opts && opts.model) || cfg.models?.chat || cfg.gateway?.model;
+  _activeModel = chatModel; // Expose to tool executors (AriesCode, subagents, etc.)
 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
   let memCtx = '';
@@ -694,6 +1031,7 @@ async function chat(messages, onToolExec) {
   const cfg = getConfig();
   const systemPrompt = buildSystemPrompt();
   const chatModel = cfg.models?.chat || cfg.gateway?.model;
+  _activeModel = chatModel;
 
   const apiMessages = [
     { role: 'system', content: systemPrompt },
@@ -1009,35 +1347,25 @@ async function agentLoop(messages, model, callbacks, signal) {
 // PHASE 2: Sub-Agent Spawning
 // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-async function spawnSubAgent(task) {
+async function spawnSubAgent(task, agentId) {
+  // Route through SubagentManager
+  try {
+    const { getInstance } = require('./subagents');
+    const mgr = getInstance();
+    if (!mgr.ai) mgr.setAI({ callWithFallback, parseTools, stripToolTags });
+    const targetAgent = agentId || 'codex';
+    if (mgr.getAgent(targetAgent)) {
+      return await mgr.spawn(targetAgent, task);
+    }
+  } catch (e) {
+    console.error('[spawnSubAgent] SubagentManager fallback:', e.message);
+  }
+  // Legacy fallback
   const cfg = getConfig();
-  const systemPrompt = `You are a sub-agent of Aries. Complete this specific task and return a concise result.
-You have full tool access EXCEPT spawn-agent (no recursive spawning).
-Time: ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT
-
-## Tools
-<tool:shell>command</tool:shell> Ã¢â‚¬â€ PowerShell/CMD
-<tool:read>path</tool:read> Ã¢â‚¬â€ Read file
-<tool:write path="path">content</tool:write> Ã¢â‚¬â€ Write file
-<tool:edit path="path" old="old">new</tool:edit> Ã¢â‚¬â€ Edit file
-<tool:ls>dir</tool:ls> Ã¢â‚¬â€ List directory
-<tool:web>url</tool:web> Ã¢â‚¬â€ Fetch webpage
-<tool:search dir="dir" pattern="regex">glob</tool:search> Ã¢â‚¬â€ Search files
-<tool:grep pattern="regex" dir=".">glob</tool:grep> Ã¢â‚¬â€ Search files
-<tool:shell>command</tool:shell> Ã¢â‚¬â€ Run command
-<tool:http method="GET">url</tool:http> Ã¢â‚¬â€ HTTP request
-<tool:bg-run>command</tool:bg-run> Ã¢â‚¬â€ Background process
-
-## Rules
-1. ACT FIRST. Use tools when needed.
-2. Be concise. Return only the essential result.
-3. No spawn-agent Ã¢â‚¬â€ you cannot create sub-agents.`;
-
   const messages = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: 'You are a sub-agent of Aries. Complete this task concisely.' },
     { role: 'user', content: task }
   ];
-
   const model = cfg.models?.chat || cfg.gateway?.model;
   const result = await agentLoop(messages, model, {}, null);
   return result.response;
@@ -1113,6 +1441,7 @@ async function chatNativeTools(messages, onToken, onToolExec, opts) {
   const cfg = getConfig();
   const systemPrompt = buildSystemPrompt();
   const chatModel = (opts && opts.model) || cfg.models?.chat || cfg.gateway?.model;
+  _activeModel = chatModel;
   
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
   let memCtx = '';

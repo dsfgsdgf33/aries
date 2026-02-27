@@ -289,4 +289,10 @@ class WorkflowEngine extends EventEmitter {
   }
 }
 
-module.exports = { WorkflowEngine };
+let _instance = null;
+function getInstance() {
+  if (!_instance) _instance = new WorkflowEngine();
+  return _instance;
+}
+
+module.exports = { WorkflowEngine, getInstance };

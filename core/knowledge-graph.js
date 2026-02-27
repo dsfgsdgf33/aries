@@ -329,4 +329,10 @@ Be precise. Only extract clearly stated entities and relationships.`
   }
 }
 
-module.exports = { KnowledgeGraph };
+let _kgInstance = null;
+function getInstance(opts) {
+  if (!_kgInstance) _kgInstance = new KnowledgeGraph(opts);
+  return _kgInstance;
+}
+
+module.exports = { KnowledgeGraph, getInstance };

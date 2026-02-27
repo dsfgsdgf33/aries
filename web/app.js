@@ -207,6 +207,16 @@
   function updateStats(data) {
     setText('statCpu', (data.cpu || 0).toFixed(0) + '%');
     setText('statRam', (data.memPct || 0) + '%');
+    // Fetch learning stats periodically
+    if (!window._lastLearningFetch || Date.now() - window._lastLearningFetch > 30000) {
+      window._lastLearningFetch = Date.now();
+      fetch('/api/learnings/stats').then(function(r){return r.json()}).then(function(s){
+        setText('statLearnings', (s.total || 0) + '');
+      }).catch(function(){});
+      fetch('/api/knowledge/stats').then(function(r){return r.json()}).then(function(s){
+        setText('statKnowledge', (s.totalEntities || 0) + '/' + (s.totalRelations || 0));
+      }).catch(function(){});
+    }
   }
   function setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
 
@@ -234,7 +244,7 @@
     if (agentRefreshInterval) { clearInterval(agentRefreshInterval); agentRefreshInterval = null; }
     if (logAutoRefresh) { clearInterval(logAutoRefresh); logAutoRefresh = null; }
     if (_workerRefreshTimer) { clearInterval(_workerRefreshTimer); _workerRefreshTimer = null; }
-    if (name === 'agents') agentRefreshInterval = setInterval(refreshAgents, 15000);
+    if (name === 'agents' || name === 'subagents') agentRefreshInterval = setInterval(name === 'subagents' ? refreshSubagents : refreshAgents, 15000);
   }
 
   function loadPanelData(name) {
@@ -243,6 +253,7 @@
       case 'chat': break;
       case 'search': break;
       case 'agents': refreshAgents(); break;
+      case 'subagents': refreshSubagents(); break;
       case 'swarm': refreshSwarm(); loadWorkerChat(); if (typeof refreshWorkerDashboard === 'function') refreshWorkerDashboard(); if (typeof hookSwarmPanelRefresh === 'function') hookSwarmPanelRefresh(); break;
       case 'memory': loadMemory(); break;
       case 'rag': loadRag(); break;
@@ -253,6 +264,7 @@
       case 'evolve': loadEvolve(); break;
       case 'sentinel': loadSentinel(); break;
       case 'backup': loadBackup(); break;
+      case 'accounts': loadAccounts(); break;
       case 'settings': loadSettings(); break;
       case 'browser': loadBrowser(); break;
       case 'sandbox': loadSandboxStatus(); break;
@@ -303,6 +315,12 @@
       case 'projects': loadProjects(); break;
       case 'users': loadUsers(); break;
       case 'terminal': break;
+      case 'hands': refreshHands(); break;
+      case 'workflows': refreshWorkflows(); break;
+      case 'analytics': refreshAnalytics(); break;
+      case 'knowledge': refreshKnowledge(); break;
+      case 'security': refreshSecurity(); break;
+      case 'channels': refreshChannels(); break;
     }
   }
 
@@ -994,6 +1012,229 @@
       resultDiv.innerHTML = '<div style="color:#ef4444;font-size:12px">❌ ' + escapeHtml(err.message || 'Failed to send task') + '</div>';
       inp.disabled = false;
     });
+  }
+
+  // ═══════════════════════════════
+  //  SUBAGENTS
+  // ═══════════════════════════════
+  var _currentSubagentId = null;
+
+  function refreshSubagents() {
+    api('GET', 'subagents').then(function(data) {
+      var grid = document.getElementById('subagentGrid');
+      var subagents = data.subagents || [];
+      if (subagents.length === 0) { grid.innerHTML = '<div class="info-content">No subagents registered.</div>'; return; }
+      var colors = ['#06b6d4','#22c55e','#f59e0b','#3b82f6','#a855f7','#ef4444','#f97316','#ec4899'];
+      var html = '';
+      for (var i = 0; i < subagents.length; i++) {
+        var s = subagents[i];
+        var color = colors[i % colors.length];
+        var statusDot = s.status === 'working' ? '&#x1F7E2;' : '&#x26AA;';
+        var statusText = s.status === 'working' ? 'Working' : 'Online';
+        var lastActive = s.lastActive ? new Date(s.lastActive).toLocaleString() : 'Never';
+        html += '<div class="agent-card" style="border-left:3px solid ' + color + ';cursor:pointer;transition:transform 0.15s" onclick="window.aries.openSubagentChat(\'' + escapeHtml(s.id) + '\')" onmouseenter="this.style.transform=\'scale(1.03)\'" onmouseleave="this.style.transform=\'scale(1)\'">';
+        html += '<div style="font-size:28px;background:linear-gradient(135deg,' + color + '22,' + color + '08);border-radius:8px;padding:8px;width:48px;height:48px;display:flex;align-items:center;justify-content:center">' + (s.icon || '&#x1F916;') + '</div>';
+        html += '<div style="color:' + color + ';font-weight:700;margin-top:6px">' + escapeHtml(s.name || s.id) + '</div>';
+        html += '<div style="color:#666;font-size:11px;cursor:pointer" onclick="event.stopPropagation();window.aries.editSubagentModel(\'' + escapeHtml(s.id) + '\')" title="Click to change model">&#x1F9E0; ' + escapeHtml(s.model || 'default') + ' ✎</div>';
+        html += '<div style="margin-top:4px;font-size:12px">' + statusDot + ' ' + statusText + '</div>';
+        html += '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">';
+        html += '<span style="background:' + color + '22;color:' + color + ';padding:2px 8px;border-radius:12px;font-size:11px">&#x2705; ' + (s.taskCount || 0) + ' tasks</span>';
+        if (s.builtin) html += '<span style="background:#333;color:#888;padding:2px 6px;border-radius:12px;font-size:10px">built-in</span>';
+        html += '</div>';
+        html += '<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">';
+        html += '<button onclick="event.stopPropagation();window.aries.editSubagentModel(\'' + escapeHtml(s.id) + '\')" style="background:#3b82f622;color:#3b82f6;border:1px solid #3b82f644;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">&#x1F9E0; Model</button>';
+        if (!s.builtin) {
+          html += '<button onclick="event.stopPropagation();window.aries.removeSubagent(\'' + escapeHtml(s.id) + '\')" style="background:#ef444422;color:#ef4444;border:1px solid #ef444444;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">&#x1F5D1; Remove</button>';
+        }
+        html += '</div>';
+        html += '</div>';
+      }
+      grid.innerHTML = html;
+    }).catch(function(e) { console.error('refreshSubagents error:', e); });
+  }
+
+  function openSubagentChat(id) {
+    _currentSubagentId = id;
+    api('GET', 'subagents/' + encodeURIComponent(id)).then(function(data) {
+      var s = data.subagent || {};
+      var history = data.history || [];
+      document.getElementById('subagentChatIcon').textContent = s.icon || '🤖';
+      document.getElementById('subagentChatName').textContent = s.name || id;
+      document.getElementById('subagentChatModel').textContent = s.model || 'default';
+      var msgsDiv = document.getElementById('subagentChatMessages');
+      var html = '';
+      if (history.length === 0) {
+        html = '<div style="color:#666;text-align:center;padding:20px">No conversation history yet. Send a task below.</div>';
+      } else {
+        for (var i = 0; i < history.length; i++) {
+          var m = history[i];
+          var isUser = m.role === 'user';
+          var align = isUser ? 'flex-end' : 'flex-start';
+          var bg = isUser ? '#06b6d422' : '#1a1a2e';
+          var border = isUser ? '#06b6d444' : '#333';
+          var label = isUser ? '&#x1F464; You' : (s.icon || '&#x1F916;') + ' ' + escapeHtml(s.name || id);
+          var time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
+          html += '<div style="display:flex;justify-content:' + align + ';margin-bottom:8px">';
+          html += '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:10px;padding:10px 14px;max-width:80%">';
+          html += '<div style="font-size:11px;color:#888;margin-bottom:4px">' + label + ' <span style="color:#555">' + time + '</span></div>';
+          html += '<div style="color:#ddd;white-space:pre-wrap;word-break:break-word">' + escapeHtml((m.content || '').substring(0, 2000)) + '</div>';
+          html += '</div></div>';
+        }
+      }
+      msgsDiv.innerHTML = html;
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+      document.getElementById('subagentChat').style.display = 'block';
+      document.getElementById('subagentTaskInput').focus();
+    }).catch(function(e) { toast('Failed to load subagent: ' + e.message, 'error'); });
+  }
+
+  function closeSubagentChat() {
+    document.getElementById('subagentChat').style.display = 'none';
+    _currentSubagentId = null;
+  }
+
+  function sendSubagentTask() {
+    if (!_currentSubagentId) return;
+    var inp = document.getElementById('subagentTaskInput');
+    var task = inp.value.trim();
+    if (!task) return;
+    inp.disabled = true;
+    inp.value = '';
+    // Add user message immediately
+    var msgsDiv = document.getElementById('subagentChatMessages');
+    msgsDiv.innerHTML += '<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div style="background:#06b6d422;border:1px solid #06b6d444;border-radius:10px;padding:10px 14px;max-width:80%"><div style="font-size:11px;color:#888;margin-bottom:4px">&#x1F464; You</div><div style="color:#ddd;white-space:pre-wrap">' + escapeHtml(task) + '</div></div></div>';
+    msgsDiv.innerHTML += '<div id="subagentThinking" style="display:flex;justify-content:flex-start;margin-bottom:8px"><div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px 14px"><div style="color:#06b6d4;font-size:12px">&#x23F3; Working...</div></div></div>';
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+    api('POST', 'subagents/' + encodeURIComponent(_currentSubagentId) + '/task', { task: task }).then(function(data) {
+      var thinking = document.getElementById('subagentThinking');
+      if (thinking) thinking.remove();
+      var result = data.result || 'No response';
+      msgsDiv.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:8px"><div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px 14px;max-width:80%"><div style="font-size:11px;color:#888;margin-bottom:4px">&#x1F916; Response</div><div style="color:#ddd;white-space:pre-wrap;word-break:break-word">' + escapeHtml(result.substring(0, 5000)) + '</div></div></div>';
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+      inp.disabled = false;
+      inp.focus();
+      refreshSubagents();
+    }).catch(function(e) {
+      var thinking = document.getElementById('subagentThinking');
+      if (thinking) thinking.remove();
+      msgsDiv.innerHTML += '<div style="color:#ef4444;padding:8px;font-size:12px">&#x274C; ' + escapeHtml(e.message || 'Failed') + '</div>';
+      inp.disabled = false;
+    });
+  }
+
+  function clearSubagentHistory() {
+    if (!_currentSubagentId) return;
+    if (!confirm('Clear conversation history for this subagent?')) return;
+    api('DELETE', 'subagents/' + encodeURIComponent(_currentSubagentId) + '/history').then(function() {
+      document.getElementById('subagentChatMessages').innerHTML = '<div style="color:#666;text-align:center;padding:20px">History cleared.</div>';
+      toast('History cleared', 'success');
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function showCreateSubagent() {
+    var modal = document.getElementById('createSubagentModal');
+    modal.style.display = 'flex';
+    modal.onclick = function(e) { if (e.target === modal) closeCreateSubagent(); };
+    // Populate model dropdown
+    var select = document.getElementById('newSubagentModel');
+    if (select && select.options.length <= 1) {
+      // Known models (always available)
+      var knownModels = [
+        { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (fast coding)' },
+        { value: 'claude-opus-4-20250514', label: 'Claude Opus 4 (deep reasoning)' },
+        { value: 'claude-haiku-3-20240307', label: 'Claude Haiku 3 (fastest, cheap)' },
+        { value: 'openai/gpt-4.1', label: 'GPT-4.1 (requires OpenAI key)' },
+        { value: 'openai/gpt-4.1-mini', label: 'GPT-4.1 Mini (requires OpenAI key)' },
+        { value: 'openai/o3-mini', label: 'O3 Mini (requires OpenAI key)' },
+        { value: 'groq/llama-3.3-70b-versatile', label: 'Llama 3.3 70B via Groq (free)' },
+        { value: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B via Groq (free, fast)' },
+        { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat (requires key)' },
+        { value: 'deepseek/deepseek-coder', label: 'DeepSeek Coder (requires key)' },
+        { value: 'mistral/mistral-large-latest', label: 'Mistral Large (requires key)' },
+        { value: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview' },
+        { value: 'google/gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+        { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+        { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+        { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      ];
+      knownModels.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.value;
+        opt.textContent = m.label;
+        select.appendChild(opt);
+      });
+      // Also fetch configured models from API
+      api('GET', 'models').then(function(data) {
+        if (data && data.models) {
+          var existing = {};
+          for (var i = 0; i < select.options.length; i++) existing[select.options[i].value] = true;
+          data.models.forEach(function(m) {
+            if (!existing[m.name]) {
+              var opt = document.createElement('option');
+              opt.value = m.name;
+              opt.textContent = m.name + (m.source ? ' (' + m.source + ')' : '');
+              select.appendChild(opt);
+            }
+          });
+        }
+      }).catch(function() {});
+    }
+  }
+
+  function closeCreateSubagent() {
+    document.getElementById('createSubagentModal').style.display = 'none';
+  }
+
+  function createSubagentFromModal() {
+    var name = document.getElementById('newSubagentName').value.trim();
+    if (!name) { toast('Name is required', 'error'); return; }
+    var id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    var body = {
+      id: id,
+      name: name,
+      icon: document.getElementById('newSubagentIcon').value.trim() || '🤖',
+      model: document.getElementById('newSubagentModel').value || null,
+      systemPrompt: document.getElementById('newSubagentPrompt').value.trim() || 'You are a helpful subagent.',
+      specialties: document.getElementById('newSubagentSpecialties').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
+    };
+    api('POST', 'subagents', body).then(function() {
+      toast('Subagent created: ' + name, 'success');
+      closeCreateSubagent();
+      refreshSubagents();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function editSubagentModel(id) {
+    // Fetch available models then show a prompt
+    api('GET', 'models').then(function(d) {
+      var ms = d.models || [];
+      var options = ['default'];
+      for (var i = 0; i < ms.length; i++) {
+        var prefix = ms[i].source === 'google' ? 'google/' : '';
+        options.push(prefix + ms[i].name);
+      }
+      var current = '';
+      api('GET', 'subagents/' + encodeURIComponent(id)).then(function(data) {
+        current = (data.subagent && data.subagent.model) || 'default';
+        var choice = prompt('Select model for "' + id + '":\n\nAvailable:\n' + options.join('\n') + '\n\nCurrent: ' + current, current);
+        if (choice === null) return;
+        var model = choice.trim() === 'default' ? '' : choice.trim();
+        api('PATCH', 'subagents/' + encodeURIComponent(id), { model: model }).then(function() {
+          toast('Model updated to: ' + (model || 'default'), 'success');
+          refreshSubagents();
+        }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+      });
+    }).catch(function() { toast('Failed to load models', 'error'); });
+  }
+
+  function removeSubagent(id) {
+    if (!confirm('Remove subagent "' + id + '"?')) return;
+    api('DELETE', 'subagents/' + encodeURIComponent(id)).then(function() {
+      toast('Subagent removed', 'success');
+      if (_currentSubagentId === id) closeSubagentChat();
+      refreshSubagents();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
   }
 
   // ═══════════════════════════════
@@ -1747,6 +1988,19 @@
       html += '<div><label class="setting-label">User Name</label><input id="settingUserName" type="text" class="input-field" value="' + escapeHtml(cfg.userName || '') + '" /></div>';
       if (_adminMode) html += '<div><label class="setting-label">Concurrency</label><input id="settingConcurrency" type="number" class="input-field" value="' + ((cfg.swarm && cfg.swarm.concurrency) || 10) + '" /></div>';
       html += '</div><button class="btn-primary" onclick="window.aries.saveSettings()" style="margin-top:12px">Save</button></div>';
+      // Google Account Link
+      html += '<div class="card" style="margin:0 0 16px;border:1px solid #4285f4"><h3 style="margin:0 0 8px;color:#4285f4">&#x1F310; Google Account</h3>';
+      html += '<p style="color:#888;font-size:12px;margin:0 0 12px">Link your Google account for Gemini AI models. Enter an API key or use OAuth.</p>';
+      html += '<div id="settingsGoogleStatus" style="margin-bottom:12px;font-size:12px">';
+      var gKey = (cfg.google && cfg.google.apiKey) ? true : false;
+      html += gKey ? '<span style="color:#0f0">\u2705 Google API key configured</span>' : '<span style="color:#f80">\u26A0 No Google API key set</span>';
+      html += '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr;gap:10px">';
+      html += '<div><label class="setting-label">Gemini API Key</label><div style="display:flex;gap:8px"><input id="settingGoogleApiKey" type="password" class="input-field" placeholder="AIza..." style="flex:1" />';
+      html += '<button class="btn-primary" onclick="window.aries.saveGoogleApiKey()">Save</button></div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:4px">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#4285f4">Google AI Studio</a></div></div>';
+      html += '</div></div>';
+
       // Tor .onion address
       if (torStatus.address) {
         html += '<div class="card" style="margin:0 0 12px;border:1px solid var(--accent2)"><h3 style="margin:0 0 8px;color:var(--accent2)">&#x1F9C5; Tor Hidden Service</h3>';
@@ -1769,6 +2023,22 @@
       // Refresh model list
       initModelSelector();
     }).catch(function(e) { toast('Failed to save keys: ' + e.message, 'error'); });
+  }
+
+  function saveGoogleApiKey() {
+    var keyEl = document.getElementById('settingGoogleApiKey');
+    if (!keyEl || !keyEl.value.trim()) { toast('Enter a Google API key', 'error'); return; }
+    api('POST', 'auth/google/api-key', { apiKey: keyEl.value.trim() }).then(function(d) {
+      if (d.success) {
+        toast('Google API key connected!', 'success');
+        keyEl.value = '';
+        _loadedPanels['settings'] = false;
+        loadSettings();
+        initModelSelector();
+      } else {
+        toast('Failed: ' + (d.error || 'Unknown error'), 'error');
+      }
+    }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
   }
 
   function settingsPullModel() {
@@ -6847,6 +7117,20 @@
     var _ariesCodeEvtSource = null;
 
     function loadAriesCode() {
+      // Populate AriesCode model dropdown dynamically
+      var acModelSel = document.getElementById('ariesCodeModel');
+      if (acModelSel && acModelSel.options.length <= 1) {
+        api('GET', 'models').then(function(d) {
+          var ms = d.models || [];
+          for (var i = 0; i < ms.length; i++) {
+            var opt = document.createElement('option');
+            var prefix = ms[i].source === 'google' ? 'google/' : '';
+            opt.value = prefix + ms[i].name;
+            opt.textContent = (ms[i].displayName || ms[i].name) + ' (' + (ms[i].source || 'unknown') + ')';
+            acModelSel.appendChild(opt);
+          }
+        }).catch(function() {});
+      }
       api('GET', 'aries-code/history').then(function(runs) {
         var el = document.getElementById('ariesCodeHistory');
         if (!el) return;
@@ -7014,13 +7298,457 @@
       }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
     }
 
+    // ═══════════════════════════════
+    //  ACCOUNTS
+    // ═══════════════════════════════
+    function loadAccounts() { refreshAccounts(); }
+
+    function refreshAccounts() {
+      var el = document.getElementById('accountsContent');
+      if (!el) return;
+      el.innerHTML = '<div class="spinner"></div> Loading...';
+      Promise.all([
+        api('GET', 'auth/google/status').catch(function() { return { authenticated: false }; }),
+        api('GET', 'gemini/models').catch(function() { return { models: [] }; })
+      ]).then(function(results) {
+        var gs = results[0];
+        var models = results[1].models || [];
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px">';
+
+        // Google Account Card
+        html += '<div style="background:#0a0a1a;border:1px solid ' + (gs.authenticated ? '#0f03' : '#f443') + ';border-radius:12px;padding:20px;position:relative;overflow:hidden">';
+        html += '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:' + (gs.authenticated ? 'linear-gradient(90deg,#0f0,#0ff)' : 'linear-gradient(90deg,#f44,#f80)') + '"></div>';
+
+        // Header
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+        html += '<div style="width:40px;height:40px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:20px">🔵</div>';
+        html += '<div><div style="font-size:16px;font-weight:700;color:#eee">Google Account</div>';
+        html += '<div style="font-size:12px;color:#888">Gemini AI, Google APIs</div></div>';
+        html += '<div style="margin-left:auto;display:flex;align-items:center;gap:6px">';
+        html += '<span style="width:8px;height:8px;border-radius:50%;background:' + (gs.authenticated ? '#0f0' : '#f44') + ';display:inline-block"></span>';
+        html += '<span style="font-size:12px;color:' + (gs.authenticated ? '#0f0' : '#f44') + '">' + (gs.authenticated ? 'Connected' : 'Not Connected') + '</span>';
+        html += '</div></div>';
+
+        if (gs.authenticated) {
+          // Connected state
+          var p = gs.profile || {};
+          html += '<div style="display:flex;align-items:center;gap:12px;background:#111;border-radius:8px;padding:12px;margin-bottom:12px">';
+          if (p.picture) html += '<img src="' + escapeHtml(p.picture) + '" style="width:40px;height:40px;border-radius:50%;border:2px solid #0ff3">';
+          else html += '<div style="width:40px;height:40px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;color:#0ff">👤</div>';
+          html += '<div><div style="color:#eee;font-weight:600">' + escapeHtml(p.name || 'Google User') + '</div>';
+          html += '<div style="color:#888;font-size:12px">' + escapeHtml(p.email || '') + '</div></div></div>';
+
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:12px">';
+          html += '<div style="background:#111;padding:8px;border-radius:6px"><span style="color:#888">Method:</span> <span style="color:#0ff">' + escapeHtml(gs.method === 'oauth' ? 'OAuth 2.0' : 'API Key') + '</span></div>';
+          html += '<div style="background:#111;padding:8px;border-radius:6px"><span style="color:#888">Linked:</span> <span style="color:#0ff">' + (gs.linkedAt ? new Date(gs.linkedAt).toLocaleDateString() : '—') + '</span></div>';
+          html += '</div>';
+
+          if (models.length > 0) {
+            html += '<div style="margin-bottom:12px"><div style="font-size:12px;color:#888;margin-bottom:6px">Available Models:</div>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+            for (var mi = 0; mi < models.length; mi++) {
+              html += '<span style="padding:2px 8px;background:#0ff15;color:#0ff;border:1px solid #0ff3;border-radius:10px;font-size:11px">' + escapeHtml(models[mi].id) + '</span>';
+            }
+            html += '</div></div>';
+          }
+
+          html += '<button onclick="window.aries.googleLogout()" style="padding:8px 16px;background:#f4415;color:#f44;border:1px solid #f443;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">🔌 Disconnect</button>';
+        } else {
+          // Not connected
+          html += '<div style="margin-bottom:16px">';
+
+          // OAuth button
+          html += '<button onclick="window.aries.googleStartOAuth()" ' + (gs.oauthConfigured ? '' : 'disabled title="Configure google.clientId and google.clientSecret in config.json first"') + ' style="width:100%;padding:12px;background:' + (gs.oauthConfigured ? '#1a1a2e' : '#111') + ';color:' + (gs.oauthConfigured ? '#eee' : '#555') + ';border:1px solid ' + (gs.oauthConfigured ? '#0ff3' : '#333') + ';border-radius:8px;cursor:' + (gs.oauthConfigured ? 'pointer' : 'not-allowed') + ';font-size:14px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">';
+          html += '🔐 Sign in with Google</button>';
+
+          if (!gs.oauthConfigured) {
+            html += '<div style="font-size:11px;color:#888;margin-bottom:12px;padding:8px;background:#111;border-radius:6px;border:1px solid #333">';
+            html += '💡 To enable OAuth: Create a Google Cloud project → Enable Gemini API → Create OAuth credentials (Desktop app) → Add <code>google.clientId</code> and <code>google.clientSecret</code> to config.json</div>';
+          }
+
+          // Divider
+          html += '<div style="display:flex;align-items:center;gap:12px;margin:12px 0"><div style="flex:1;height:1px;background:#333"></div><span style="color:#555;font-size:12px">OR</span><div style="flex:1;height:1px;background:#333"></div></div>';
+
+          // API Key
+          html += '<div id="googleApiKeySection">';
+          html += '<div style="display:flex;gap:8px"><input id="googleApiKeyInput" type="password" placeholder="Paste Gemini API key from aistudio.google.com/apikey" style="flex:1;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;font-size:13px" />';
+          html += '<button onclick="window.aries.googleSetApiKey()" style="padding:10px 16px;background:#0ff;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap">Connect</button></div>';
+          html += '<div style="font-size:11px;color:#666;margin-top:6px">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#0ff">aistudio.google.com/apikey</a></div>';
+          html += '</div>';
+
+          html += '</div>';
+        }
+        html += '</div>';
+
+        // GitHub placeholder card
+        html += '<div style="background:#0a0a1a;border:1px solid #333;border-radius:12px;padding:20px;position:relative;overflow:hidden;opacity:0.6">';
+        html += '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:#333"></div>';
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+        html += '<div style="width:40px;height:40px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:20px">⚫</div>';
+        html += '<div><div style="font-size:16px;font-weight:700;color:#888">GitHub</div>';
+        html += '<div style="font-size:12px;color:#555">Code, repos, actions</div></div></div>';
+        html += '<div style="text-align:center;padding:20px;color:#555;font-size:13px">🚧 Coming soon</div>';
+        html += '</div>';
+
+        html += '</div>';
+        el.innerHTML = html;
+      });
+    }
+
+    function googleStartOAuth() {
+      toast('Starting Google OAuth flow...', 'info');
+      api('POST', 'auth/google/start-oauth').then(function(d) {
+        if (d.success) { toast('Google account linked!', 'success'); refreshAccounts(); }
+        else toast('OAuth failed: ' + (d.error || 'Unknown'), 'error');
+      }).catch(function(e) { toast('OAuth error: ' + e.message, 'error'); });
+    }
+
+    function googleSetApiKey() {
+      var key = document.getElementById('googleApiKeyInput');
+      if (!key || !key.value.trim()) { toast('Enter an API key', 'error'); return; }
+      toast('Validating API key...', 'info');
+      api('POST', 'auth/google/api-key', { apiKey: key.value.trim() }).then(function(d) {
+        if (d.success) { toast('Google API key connected!', 'success'); refreshAccounts(); }
+        else toast('Failed: ' + (d.error || 'Unknown'), 'error');
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function googleLogout() {
+      if (!confirm('Disconnect Google account?')) return;
+      api('POST', 'auth/google/logout').then(function() {
+        toast('Google account disconnected', 'info');
+        refreshAccounts();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    // ═══════════════════════════════
+    //  HANDS (Autonomous Agents)
+    // ═══════════════════════════════
+    function refreshHands() {
+      var grid = document.getElementById('handsGrid');
+      if (!grid) return;
+      grid.innerHTML = '<div class="spinner"></div> Loading hands...';
+      api('GET', 'hands').then(function(data) {
+        var hands = data.hands || data || [];
+        if (!Array.isArray(hands)) hands = [];
+        if (hands.length === 0) { grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:8px">🤖</div><p>No hands configured yet.</p></div>'; return; }
+        var html = '';
+        for (var i = 0; i < hands.length; i++) {
+          var h = hands[i];
+          var statusColor = h.status === 'active' ? 'var(--green, #22c55e)' : 'var(--yellow, #eab308)';
+          var statusLabel = h.status === 'active' ? '● Active' : '◯ Paused';
+          var lastRun = h.lastRun ? new Date(h.lastRun).toLocaleString() : 'Never';
+          html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:12px;padding:16px;border-left:3px solid ' + statusColor + '">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+          html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:24px">' + escapeHtml(h.icon || '🤖') + '</span><strong style="color:var(--text, #eee);font-size:15px">' + escapeHtml(h.name || 'Hand ' + i) + '</strong></div>';
+          html += '<span style="color:' + statusColor + ';font-size:12px;font-weight:600">' + statusLabel + '</span></div>';
+          html += '<p style="color:var(--text-dim, #888);font-size:12px;margin:0 0 10px">' + escapeHtml(h.description || '') + '</p>';
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--text-dim, #888);margin-bottom:10px">';
+          html += '<div>Model: <span style="color:var(--accent, #0ff)">' + escapeHtml(h.model || 'default') + '</span></div>';
+          html += '<div>Schedule: <span style="color:var(--accent, #0ff)">' + escapeHtml(h.schedule || 'manual') + '</span></div>';
+          html += '<div>Last run: ' + lastRun + '</div>';
+          html += '<div>Runs: <span style="color:var(--accent, #0ff)">' + (h.runCount || 0) + '</span></div></div>';
+          html += '<div style="display:flex;gap:6px">';
+          if (h.status === 'active') html += '<button class="btn-sm" onclick="window.aries.handAction(\'' + escapeHtml(h.id || h.name) + '\',\'pause\')">⏸ Pause</button>';
+          else html += '<button class="btn-sm" onclick="window.aries.handAction(\'' + escapeHtml(h.id || h.name) + '\',\'activate\')" style="color:var(--green, #0f0)">▶ Activate</button>';
+          html += '<button class="btn-sm" onclick="window.aries.handAction(\'' + escapeHtml(h.id || h.name) + '\',\'run\')">⚡ Run Now</button>';
+          html += '<button class="btn-sm" onclick="window.aries.viewHandOutput(\'' + escapeHtml(h.id || h.name) + '\')">📋 Output</button>';
+          html += '</div></div>';
+        }
+        grid.innerHTML = html;
+      }).catch(function(e) { grid.innerHTML = '<div style="color:var(--red, #f44)">Failed to load hands: ' + escapeHtml(e.message) + '</div>'; });
+    }
+
+    function handAction(handId, action) {
+      api('POST', 'hands/' + encodeURIComponent(handId) + '/' + action).then(function() {
+        toast('Hand ' + action + ': ' + handId, 'success');
+        refreshHands();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function viewHandOutput(handId) {
+      var outputDiv = document.getElementById('handsOutput');
+      var titleEl = document.getElementById('handsOutputTitle');
+      var contentEl = document.getElementById('handsOutputContent');
+      if (!outputDiv) return;
+      outputDiv.style.display = 'block';
+      titleEl.textContent = 'Output: ' + handId;
+      contentEl.textContent = 'Loading...';
+      api('GET', 'hands/' + encodeURIComponent(handId) + '/output').then(function(d) {
+        contentEl.textContent = d.output || d.log || JSON.stringify(d, null, 2);
+      }).catch(function(e) { contentEl.textContent = 'Error: ' + e.message; });
+    }
+
+    // ═══════════════════════════════
+    //  WORKFLOWS
+    // ═══════════════════════════════
+    function refreshWorkflows() {
+      var el = document.getElementById('workflowsList');
+      if (!el) return;
+      el.innerHTML = '<div class="spinner"></div> Loading workflows...';
+      api('GET', 'workflows').then(function(data) {
+        var workflows = data.workflows || data || [];
+        if (!Array.isArray(workflows)) workflows = [];
+        if (workflows.length === 0) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:8px">⚡</div><p>No workflows yet. Create one to get started.</p></div>'; return; }
+        var html = '<table class="data-table"><thead><tr><th>Name</th><th>Trigger</th><th>Steps</th><th>Last Run</th><th>Actions</th></tr></thead><tbody>';
+        for (var i = 0; i < workflows.length; i++) {
+          var w = workflows[i];
+          var lastRun = w.lastRun ? new Date(w.lastRun).toLocaleString() : 'Never';
+          html += '<tr>';
+          html += '<td style="color:var(--accent, #0ff);font-weight:600">' + escapeHtml(w.name || 'Workflow ' + i) + '</td>';
+          html += '<td>' + escapeHtml(w.trigger || 'manual') + '</td>';
+          html += '<td>' + (w.steps ? w.steps.length : 0) + '</td>';
+          html += '<td style="color:var(--text-dim, #888)">' + lastRun + '</td>';
+          html += '<td><button class="btn-sm" onclick="window.aries.runWorkflow(\'' + escapeHtml(w.id || w.name) + '\')">▶ Run</button> ';
+          html += '<button class="btn-sm" style="color:var(--red, #f44)" onclick="window.aries.deleteWorkflow(\'' + escapeHtml(w.id || w.name) + '\')">🗑</button></td>';
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        el.innerHTML = html;
+      }).catch(function(e) { el.innerHTML = '<div style="color:var(--red, #f44)">Failed to load workflows: ' + escapeHtml(e.message) + '</div>'; });
+    }
+
+    function runWorkflow(id) {
+      api('POST', 'workflows/' + encodeURIComponent(id) + '/run').then(function() { toast('Workflow started', 'success'); refreshWorkflows(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function deleteWorkflow(id) {
+      if (!confirm('Delete workflow ' + id + '?')) return;
+      api('DELETE', 'workflows/' + encodeURIComponent(id)).then(function() { toast('Workflow deleted', 'success'); refreshWorkflows(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function showCreateWorkflow() {
+      var name = prompt('Workflow name:');
+      if (!name) return;
+      api('POST', 'workflows', { name: name, steps: [], trigger: 'manual' }).then(function() { toast('Workflow created', 'success'); refreshWorkflows(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    // ═══════════════════════════════
+    //  ANALYTICS
+    // ═══════════════════════════════
+    function refreshAnalytics() {
+      var el = document.getElementById('analyticsContent');
+      if (!el) return;
+      el.innerHTML = '<div class="spinner"></div> Loading analytics...';
+      Promise.all([
+        api('GET', 'analytics/report?period=daily').catch(function() { return {}; }),
+        api('GET', 'analytics/models').catch(function() { return { models: [] }; }),
+        api('GET', 'analytics/suggestions').catch(function() { return { suggestions: [] }; })
+      ]).then(function(results) {
+        var report = results[0], models = results[1], suggestions = results[2];
+        var html = '';
+        // Cost summary
+        var costs = report.costs || {};
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px">';
+        html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:10px;padding:16px;text-align:center"><div style="color:var(--text-dim, #888);font-size:11px;text-transform:uppercase">Today</div><div style="font-size:24px;font-weight:bold;color:var(--accent, #0ff);margin:6px 0">$' + (costs.today || 0).toFixed(4) + '</div></div>';
+        html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:10px;padding:16px;text-align:center"><div style="color:var(--text-dim, #888);font-size:11px;text-transform:uppercase">This Week</div><div style="font-size:24px;font-weight:bold;color:var(--green, #22c55e);margin:6px 0">$' + (costs.week || 0).toFixed(4) + '</div></div>';
+        html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:10px;padding:16px;text-align:center"><div style="color:var(--text-dim, #888);font-size:11px;text-transform:uppercase">This Month</div><div style="font-size:24px;font-weight:bold;color:var(--yellow, #eab308);margin:6px 0">$' + (costs.month || 0).toFixed(4) + '</div></div>';
+        html += '</div>';
+        // Model comparison table
+        var mList = models.models || models || [];
+        if (Array.isArray(mList) && mList.length > 0) {
+          html += '<h3 style="color:var(--accent, #0ff);margin:0 0 8px;font-size:14px">Model Comparison</h3>';
+          html += '<table class="data-table"><thead><tr><th>Model</th><th>Requests</th><th>Tokens</th><th>Avg Latency</th><th>Cost</th><th>Success Rate</th></tr></thead><tbody>';
+          for (var i = 0; i < mList.length; i++) {
+            var m = mList[i];
+            var sr = m.successRate != null ? (m.successRate * 100).toFixed(1) + '%' : '—';
+            html += '<tr><td style="color:var(--accent, #0ff)">' + escapeHtml(m.model || m.name || '?') + '</td>';
+            html += '<td>' + (m.requests || 0) + '</td><td>' + (m.tokens || 0) + '</td>';
+            html += '<td>' + (m.avgLatency ? m.avgLatency.toFixed(0) + 'ms' : '—') + '</td>';
+            html += '<td>$' + (m.cost || 0).toFixed(4) + '</td><td>' + sr + '</td></tr>';
+          }
+          html += '</tbody></table>';
+        }
+        // Suggestions
+        var sList = suggestions.suggestions || suggestions || [];
+        if (Array.isArray(sList) && sList.length > 0) {
+          html += '<h3 style="color:var(--accent2, #f0f);margin:20px 0 8px;font-size:14px">💡 Optimization Suggestions</h3>';
+          html += '<div style="display:flex;flex-direction:column;gap:8px">';
+          for (var j = 0; j < sList.length; j++) {
+            var s = sList[j];
+            html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:8px;padding:12px;font-size:13px">';
+            html += '<div style="color:var(--text, #eee);margin-bottom:4px">' + escapeHtml(s.title || s.message || s) + '</div>';
+            if (s.detail) html += '<div style="color:var(--text-dim, #888);font-size:11px">' + escapeHtml(s.detail) + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        el.innerHTML = html || '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:8px">📊</div><p>No analytics data yet.</p></div>';
+      });
+    }
+
+    // ═══════════════════════════════
+    //  KNOWLEDGE GRAPH
+    // ═══════════════════════════════
+    function refreshKnowledge() {
+      searchKnowledge('');
+    }
+
+    function searchKnowledge(query) {
+      if (query === undefined) {
+        var input = document.getElementById('kgSearchInput');
+        query = input ? input.value : '';
+      }
+      var el = document.getElementById('knowledgeContent');
+      if (!el) return;
+      el.innerHTML = '<div class="spinner"></div> Searching...';
+      var endpoint = query ? 'knowledge/search?q=' + encodeURIComponent(query) : 'knowledge/search?q=';
+      api('GET', endpoint).then(function(data) {
+        var entities = data.entities || data.results || data || [];
+        if (!Array.isArray(entities)) entities = [];
+        if (entities.length === 0) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:8px">🕸️</div><p>No entities found.</p></div>'; return; }
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+        for (var i = 0; i < entities.length; i++) {
+          var e = entities[i];
+          var typeColor = e.type === 'person' ? '#06b6d4' : e.type === 'concept' ? '#a855f7' : e.type === 'tool' ? '#f59e0b' : '#22c55e';
+          html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:10px;padding:14px;border-top:3px solid ' + typeColor + '">';
+          html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong style="color:var(--text, #eee)">' + escapeHtml(e.name || e.label || '?') + '</strong>';
+          html += '<span style="background:' + typeColor + '22;color:' + typeColor + ';padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600">' + escapeHtml(e.type || 'entity') + '</span></div>';
+          if (e.properties) {
+            var props = typeof e.properties === 'object' ? e.properties : {};
+            var keys = Object.keys(props);
+            if (keys.length > 0) {
+              html += '<div style="font-size:11px;color:var(--text-dim, #888);margin-bottom:6px">';
+              for (var k = 0; k < Math.min(keys.length, 4); k++) html += '<div>' + escapeHtml(keys[k]) + ': <span style="color:var(--text, #ccc)">' + escapeHtml(String(props[keys[k]])) + '</span></div>';
+              html += '</div>';
+            }
+          }
+          if (e.relations && e.relations.length > 0) {
+            html += '<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border, #222)">';
+            for (var r = 0; r < Math.min(e.relations.length, 3); r++) {
+              var rel = e.relations[r];
+              html += '<div style="color:var(--text-dim, #888)">→ <span style="color:var(--accent, #0ff)">' + escapeHtml(rel.type || rel.relation || '?') + '</span> ' + escapeHtml(rel.target || rel.to || '') + '</div>';
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      }).catch(function(e) { el.innerHTML = '<div style="color:var(--red, #f44)">Error: ' + escapeHtml(e.message) + '</div>'; });
+    }
+
+    // ═══════════════════════════════
+    //  SECURITY / AUDIT
+    // ═══════════════════════════════
+    function refreshSecurity() {
+      var el = document.getElementById('securityContent');
+      if (!el) return;
+      el.innerHTML = '<div class="spinner"></div> Loading security data...';
+      Promise.all([
+        api('GET', 'audit?limit=20').catch(function() { return { entries: [] }; }),
+        api('GET', 'audit/verify').catch(function() { return { valid: null }; })
+      ]).then(function(results) {
+        var audit = results[0], verify = results[1];
+        var html = '';
+        // Chain integrity
+        var valid = verify.valid;
+        if (valid === true) html += '<div style="background:#0a1a0a;border:1px solid #0f03;border-radius:10px;padding:16px;margin-bottom:16px;font-size:15px;color:#0f0">✅ Audit chain integrity: <strong>Valid</strong></div>';
+        else if (valid === false) html += '<div style="background:#1a0a0a;border:1px solid #f003;border-radius:10px;padding:16px;margin-bottom:16px;font-size:15px;color:#f44">❌ Audit chain integrity: <strong>Broken</strong> — ' + escapeHtml(verify.error || 'chain tampered') + '</div>';
+        else html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:10px;padding:16px;margin-bottom:16px;font-size:13px;color:var(--text-dim, #888)">⚠️ Chain verification unavailable</div>';
+        // Audit entries
+        var entries = audit.entries || audit || [];
+        if (Array.isArray(entries) && entries.length > 0) {
+          html += '<h3 style="color:var(--accent, #0ff);margin:0 0 8px;font-size:14px">Recent Audit Log</h3>';
+          html += '<table class="data-table"><thead><tr><th>Time</th><th>Action</th><th>User</th><th>Detail</th></tr></thead><tbody>';
+          for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            var time = e.timestamp ? new Date(e.timestamp).toLocaleString() : '—';
+            html += '<tr><td style="color:var(--text-dim, #888);white-space:nowrap">' + time + '</td>';
+            html += '<td style="color:var(--accent, #0ff)">' + escapeHtml(e.action || e.type || '?') + '</td>';
+            html += '<td>' + escapeHtml(e.user || e.actor || '—') + '</td>';
+            html += '<td style="color:var(--text-dim, #888);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(e.detail || e.description || '') + '</td></tr>';
+          }
+          html += '</tbody></table>';
+        }
+        // Scan test
+        html += '<div style="margin-top:20px;padding:16px;background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:10px">';
+        html += '<h3 style="color:var(--accent2, #f0f);margin:0 0 8px;font-size:14px">🔍 Security Scan</h3>';
+        html += '<div style="display:flex;gap:8px"><input id="secScanInput" type="text" class="input-field" placeholder="Test input for injection/XSS scan..." style="flex:1" />';
+        html += '<button class="btn-primary" onclick="window.aries.runSecurityScan()">Scan</button></div>';
+        html += '<div id="secScanResult" style="margin-top:8px;font-size:12px"></div></div>';
+        el.innerHTML = html;
+      });
+    }
+
+    function runSecurityScan() {
+      var input = document.getElementById('secScanInput');
+      var result = document.getElementById('secScanResult');
+      if (!input || !result) return;
+      var text = input.value;
+      if (!text) { result.innerHTML = '<span style="color:var(--text-dim)">Enter text to scan.</span>'; return; }
+      result.innerHTML = '<span style="color:var(--text-dim)">Scanning...</span>';
+      api('POST', 'audit/scan', { input: text }).then(function(d) {
+        if (d.safe) result.innerHTML = '<span style="color:var(--green, #0f0)">✅ Input appears safe.</span>';
+        else result.innerHTML = '<span style="color:var(--red, #f44)">⚠️ Threats detected: ' + escapeHtml((d.threats || []).join(', ')) + '</span>';
+      }).catch(function(e) { result.innerHTML = '<span style="color:var(--red, #f44)">Scan error: ' + escapeHtml(e.message) + '</span>'; });
+    }
+
+    // ═══════════════════════════════
+    //  CHANNELS
+    // ═══════════════════════════════
+    function refreshChannels() {
+      var el = document.getElementById('channelsContent');
+      if (!el) return;
+      el.innerHTML = '<div class="spinner"></div> Loading channels...';
+      api('GET', 'channels').then(function(data) {
+        var channels = data.channels || data || [];
+        if (!Array.isArray(channels)) channels = [];
+        var defaultChannels = [
+          { id: 'slack', name: 'Slack', icon: '💼', color: '#4A154B' },
+          { id: 'discord', name: 'Discord', icon: '🎮', color: '#5865F2' },
+          { id: 'telegram', name: 'Telegram', icon: '✈️', color: '#0088cc' },
+          { id: 'whatsapp', name: 'WhatsApp', icon: '📱', color: '#25D366' },
+          { id: 'signal', name: 'Signal', icon: '🔒', color: '#3A76F0' },
+          { id: 'matrix', name: 'Matrix', icon: '🔗', color: '#0DBD8B' }
+        ];
+        // Merge API data with defaults
+        var channelMap = {};
+        for (var i = 0; i < channels.length; i++) channelMap[channels[i].id || channels[i].type] = channels[i];
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">';
+        for (var j = 0; j < defaultChannels.length; j++) {
+          var dc = defaultChannels[j];
+          var ch = channelMap[dc.id] || {};
+          var connected = ch.connected || ch.status === 'connected';
+          var statusColor = connected ? 'var(--green, #22c55e)' : 'var(--text-dim, #666)';
+          var statusText = connected ? '● Connected' : '○ Not connected';
+          html += '<div style="background:var(--bg-card, #111);border:1px solid var(--border, #222);border-radius:12px;padding:16px;border-left:3px solid ' + dc.color + '">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+          html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:24px">' + dc.icon + '</span><strong style="color:var(--text, #eee)">' + dc.name + '</strong></div>';
+          html += '<span style="color:' + statusColor + ';font-size:11px;font-weight:600">' + statusText + '</span></div>';
+          if (ch.webhook || ch.botName) {
+            html += '<div style="font-size:11px;color:var(--text-dim, #888);margin-bottom:8px">';
+            if (ch.botName) html += 'Bot: ' + escapeHtml(ch.botName) + '<br>';
+            if (ch.webhook) html += 'Webhook: ••••' + escapeHtml(ch.webhook.slice(-8));
+            html += '</div>';
+          }
+          html += '<button class="btn-sm" onclick="window.aries.configureChannel(\'' + dc.id + '\')" style="width:100%">' + (connected ? '⚙️ Configure' : '🔗 Connect') + '</button>';
+          html += '</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      }).catch(function(e) { el.innerHTML = '<div style="color:var(--red, #f44)">Failed to load channels: ' + escapeHtml(e.message) + '</div>'; });
+    }
+
+    function configureChannel(channelId) {
+      var token = prompt('Enter API token / webhook URL for ' + channelId + ':');
+      if (!token) return;
+      api('POST', 'channels/' + encodeURIComponent(channelId), { token: token }).then(function() {
+        toast(channelId + ' configured!', 'success');
+        refreshChannels();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
     window.aries = {
-      switchPanel: switchPanel, refreshAgents: refreshAgents, openAgentDetail: openAgentDetail, closeAgentDetail: closeAgentDetail, sendAgentTask: sendAgentTask, refreshSwarm: refreshSwarm,
+      switchPanel: switchPanel, refreshAgents: refreshAgents, openAgentDetail: openAgentDetail, closeAgentDetail: closeAgentDetail, sendAgentTask: sendAgentTask,
+      refreshSubagents: refreshSubagents, openSubagentChat: openSubagentChat, closeSubagentChat: closeSubagentChat, sendSubagentTask: sendSubagentTask, clearSubagentHistory: clearSubagentHistory,
+      showCreateSubagent: showCreateSubagent, closeCreateSubagent: closeCreateSubagent, createSubagent: createSubagentFromModal, removeSubagent: removeSubagent, editSubagentModel: editSubagentModel,
+      refreshSwarm: refreshSwarm,
       submitSwarmTask: submitSwarmTask, refreshLogs: refreshLogs, createBackup: createBackup,
       restoreBackup: restoreBackup, runSandbox: runSandbox, webSearch: webSearch,
       searchSkills: searchSkills, importSkill: importSkill, installHubSkill: installHubSkill,
       addMemory: addMemory, searchRag: searchRag, addRagDoc: addRagDoc,
-      browserGo: browserGo, addWatch: addWatch, saveSettings: saveSettings,
+      browserGo: browserGo, addWatch: addWatch, saveSettings: saveSettings, saveGoogleApiKey: saveGoogleApiKey,
       testAiToken: testAiToken, saveAiToken: saveAiToken, setTheme: setTheme,
       startPacketSend: startPacketSend, stopPacketSend: stopPacketSend,
       refreshPacketSend: refreshPacketSend, loadEvolve: loadEvolve, evolveAction: evolveAction, evolveApply: evolveApply, evolveFullCycle: evolveFullCycle,
@@ -7122,9 +7850,17 @@
       loadProjects: loadProjects, startProjectBuild: startProjectBuild,
       stopProjectPreview: stopProjectPreview, toggleProjectPreview: toggleProjectPreview,
       streamProjectLogs: streamProjectLogs,
+      loadAccounts: loadAccounts, refreshAccounts: refreshAccounts,
+      googleStartOAuth: googleStartOAuth, googleSetApiKey: googleSetApiKey, googleLogout: googleLogout,
       checkAuth: checkAuth, logout: logoutUser, loadUsers: loadUsers, createUser: createUser,
       deleteUser: deleteUser, updateUserRole: updateUserRole,
-      _loadedPanels: _loadedPanels, _toast: toast
+      _loadedPanels: _loadedPanels, _toast: toast,
+      refreshHands: refreshHands, handAction: handAction, viewHandOutput: viewHandOutput,
+      refreshWorkflows: refreshWorkflows, runWorkflow: runWorkflow, deleteWorkflow: deleteWorkflow, showCreateWorkflow: showCreateWorkflow,
+      refreshAnalytics: refreshAnalytics,
+      refreshKnowledge: refreshKnowledge, searchKnowledge: searchKnowledge,
+      refreshSecurity: refreshSecurity, runSecurityScan: runSecurityScan,
+      refreshChannels: refreshChannels, configureChannel: configureChannel
     };
   }
 
