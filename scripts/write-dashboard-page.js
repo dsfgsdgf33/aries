@@ -269,6 +269,3 @@ export default function DashboardPage() {
 `;
 fs.writeFileSync('app/page.tsx', code);
 console.log('Dashboard page written:', code.length, 'chars');
-`;
-fs.writeFileSync('scripts/write-dashboard-page.js', code);
-console.log('Script written');

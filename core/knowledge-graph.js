@@ -274,6 +274,18 @@ Be precise. Only extract clearly stated entities and relationships.`
   }
 
   /**
+   * Get knowledge graph statistics
+   * @returns {object} Stats summary
+   */
+  stats() {
+    return {
+      nodeCount: this.nodes.size,
+      edgeCount: this.edges.size,
+      types: this._countTypes(),
+    };
+  }
+
+  /**
    * Search nodes by term
    * @param {string} term
    * @returns {object[]} Matching nodes
