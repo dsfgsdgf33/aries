@@ -566,7 +566,7 @@ const tools = {
   async netscan(subnet) {
     try {
       const target = subnet || '192.168.1';
-      const result = await this.shell(`1..254 | ForEach-Object { $ip="${target}.$_"; if(Test-Connection $ip -Count 1 -Quiet -TimeoutSeconds 1){$ip} }`, 60000);
+      const result = await this.shell(`1..254 | ForEach-Object { $ip="${target}.$_"; if(Test-Connection $ip -Count 1 -Quiet -ErrorAction SilentlyContinue){$ip} }`, 120000);
       return result;
     } catch (e) {
       return { success: false, output: e.message };
