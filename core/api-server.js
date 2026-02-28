@@ -1,5 +1,5 @@
 /**
- * ARIES v5.0 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Gateway API Server
+ * ARIES v5.0 -" Gateway API Server
  *
  * Full HTTP/WebSocket server with:
  * - Token-based authentication
@@ -29,10 +29,10 @@ let _refs = {};
 let _wsClients = new Set();
 let _rateLimiter = null;
 let _shutdownRequested = false;
-let _knownWorkers = {};  // workerId ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â ' { hostname, ip, ram_gb, cpu, gpu, model, lastSeen }
+let _knownWorkers = {};  // workerId  ' { hostname, ip, ram_gb, cpu, gpu, model, lastSeen }
 let _walletBalanceCache = null; // { ts, data: { sol, usd, solPrice, wallet } }
 
-// ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ FEATURE 3: Miner State Persistence ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬
+//  FEATURE 3: Miner State Persistence 
 const MINER_STATE_PATH = path.join(__dirname, '..', 'data', 'miner-state.json');
 function _saveMinerState() {
   try {
@@ -66,7 +66,7 @@ function _loadMinerState() {
   return null;
 }
 
-// ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ FEATURE 2: Periodic hashrate broadcast ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬
+//  FEATURE 2: Periodic hashrate broadcast 
 function startHashrateBroadcast() {
   setInterval(function() {
     if (_wsClients.size === 0) return;
@@ -83,7 +83,7 @@ function startHashrateBroadcast() {
   }, 2000); // every 2 seconds
 }
 
-// ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ FEATURE 3: Periodic state save ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬
+//  FEATURE 3: Periodic state save 
 function startMinerStateSaver() {
   setInterval(function() {
     var ms = _refs._minerState;
@@ -121,7 +121,7 @@ function json(res, statusCode, obj) {
   res.end(body);
 }
 
-// ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Static file serving ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+//  Static file serving 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
@@ -146,7 +146,7 @@ function serveStatic(res, filePath) {
   });
 }
 
-// ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Authentication ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+//  Authentication 
 function authenticate(req) {
   // Always allow localhost without auth
   const ip = req.socket?.remoteAddress;
@@ -175,7 +175,7 @@ function authenticate(req) {
   return false;
 }
 
-// ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ WebSocket ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+//  WebSocket 
 function handleUpgrade(req, socket, head) {
   const parsed = url.parse(req.url, true);
   if (parsed.pathname !== '/ws') { socket.destroy(); return; }
@@ -235,7 +235,7 @@ function wsBroadcast(obj) {
   for (const client of _wsClients) wsSend(client, obj);
 }
 
-// ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Stats broadcast ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+//  Stats broadcast 
 function startStatsBroadcast() {
   setInterval(() => {
     if (_wsClients.size === 0) return;
@@ -253,12 +253,12 @@ function startStatsBroadcast() {
       netUp: sys.netUp,
       netDown: sys.netDown,
     });
-  }, 10000); // 10s instead of 5s ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" reduces overhead
+  }, 10000); // 10s instead of 5s  reduces overhead
 }
 
-// ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Swarm Worker Tracker ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+//  Swarm Worker Tracker 
 // Self-healing: track zero-hashrate durations per worker
-let _zeroHashrateTimers = {}; // nodeId ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â ' timestamp when hashrate first went to 0
+let _zeroHashrateTimers = {}; // nodeId  ' timestamp when hashrate first went to 0
 
 function startSelfHealingMonitor() {
   setInterval(function() {
@@ -412,7 +412,7 @@ function startWorkerTracker() {
   }, 5000); // Check every 5 seconds
 }
 
-// ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Route handler ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+//  Route handler 
 async function handleRequest(req, res) {
   const startMs = Date.now();
   const parsed = url.parse(req.url, true);
@@ -455,7 +455,7 @@ async function handleRequest(req, res) {
       res.end(docsPage);
       return;
     }
-    // Canvas route Ã¢â'¬â€ serve HTML files from data/canvas/
+    // Canvas route  serve HTML files from data/canvas/
     if (reqPath.startsWith('/canvas/')) {
       const canvasFile = reqPath.slice(8); // strip /canvas/
       if (canvasFile && !canvasFile.includes('..')) {
@@ -490,7 +490,7 @@ async function handleRequest(req, res) {
     return serveStatic(res, reqPath.slice(1));
   }
 
-  // â"€â"€ Auth API routes (no token needed) â"€â"€
+  // "€"€ Auth API routes (no token needed) "€"€
   if (reqPath === '/api/auth/login' && method === 'POST') {
     try {
       const body = JSON.parse(await readBody(req));
@@ -510,7 +510,7 @@ async function handleRequest(req, res) {
     return json(res, 200, user);
   }
 
-  // â"€â"€ Google Auth API routes â"€â"€
+  // "€"€ Google Auth API routes "€"€
   if (reqPath === '/api/auth/google/status' && method === 'GET') {
     try {
       const { getInstance: getGoogleAuth } = require('./google-auth');
@@ -556,7 +556,7 @@ async function handleRequest(req, res) {
     } catch (e) { return json(res, 500, { error: e.message }); }
   }
 
-  // â"€â"€ Token-based auth for all /api/* routes â"€â"€
+  // "€"€ Token-based auth for all /api/* routes "€"€
   if (reqPath.startsWith('/api/')) {
     const token = req.headers['authorization']?.replace('Bearer ', '') || req.headers['x-aries-token'];
     const authUser = _auth.validateToken(token);
@@ -567,7 +567,7 @@ async function handleRequest(req, res) {
     // Legacy auth still works (X-Aries-Key, localhost, etc.)
   }
 
-  // â"€â"€ Admin user management routes â"€â"€
+  // "€"€ Admin user management routes "€"€
   if (reqPath === '/api/admin/users' && method === 'GET') {
     if (!req.user || req.user.role !== 'admin') return json(res, 403, { error: 'Forbidden' });
     return json(res, 200, { users: _auth.listUsers() });
@@ -597,7 +597,7 @@ async function handleRequest(req, res) {
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
 
-  // â"€â"€ Proxy Mode: /v1/* routes (no auth required) â"€â"€
+  // "€"€ Proxy Mode: /v1/* routes (no auth required) "€"€
   if (reqPath.startsWith('/v1/')) {
     try {
       const proxyMode = require('./proxy-mode');
@@ -650,7 +650,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/health ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/health 
     if (method === 'GET' && reqPath === '/api/health') {
       const sys = refs.sysModule ? refs.sysModule.get() : {};
       const checks = {
@@ -665,7 +665,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: overall, checks, version: refs.bootVersion || '5.0' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/status 
     if (method === 'GET' && reqPath === '/api/status') {
       const sys = refs.sysModule ? refs.sysModule.get() : {};
       const relayCache = refs.getRelayCache?.() || null;
@@ -776,7 +776,7 @@ async function handleRequest(req, res) {
       });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/chat ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/chat 
     if (method === 'POST' && reqPath === '/api/chat') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -834,7 +834,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { response, iterations: result.iterations });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/chat/stream ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/chat/stream 
     if (method === 'POST' && reqPath === '/api/chat/stream') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -910,7 +910,7 @@ async function handleRequest(req, res) {
             const openTag = _chunkBuffer.lastIndexOf('<tool:');
             const closeTag = _chunkBuffer.lastIndexOf('</tool:');
             const closeEnd = _chunkBuffer.lastIndexOf('>');
-            // If we have an open tool tag without close, we're mid-tool Ã¢â'¬â€ don't send
+            // If we have an open tool tag without close, we're mid-tool  don't send
             if (openTag > -1 && (closeTag === -1 || closeTag < openTag)) {
               // Inside a tool tag, buffer it
               return;
@@ -959,7 +959,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â POST /api/chat/stop Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    //  POST /api/chat/stop 
     if (method === 'POST' && reqPath === '/api/chat/stop') {
       const loops = _refs._activeAgentLoops || new Set();
       let count = 0;
@@ -968,7 +968,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { stopped: count });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â // ÃƒÂ¢Ã¢â'¬Â¢Ã'Â ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/chat/local ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â£
+    //  //   POST /api/chat/local 
     if (method === 'POST' && reqPath === '/api/chat/local') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -1003,7 +1003,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'Â ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/chat/local/stream ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â£
+    //   POST /api/chat/local/stream 
     if (method === 'POST' && reqPath === '/api/chat/local/stream') {
       const body = JSON.parse(await readBody(req));
       const message = body.message || body.text;
@@ -1053,7 +1053,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'Â ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/swarm ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //   POST /api/swarm 
     if (method === 'POST' && reqPath === '/api/swarm') {
       const body = JSON.parse(await readBody(req));
       const task = body.task || body.message;
@@ -1085,18 +1085,18 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/agents ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/agents 
     if (method === 'GET' && reqPath === '/api/agents') {
       const agents = refs.swarm?.getRoster?.()?.getSummary() || [];
       return json(res, 200, { agents, count: agents.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/keys ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" List worker keys ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/keys -" List worker keys 
     if (method === 'GET' && reqPath === '/api/swarm/keys') {
       return json(res, 200, { keys: workerKeys.listKeys() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/keys ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Generate worker key ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/keys -" Generate worker key 
     if (method === 'POST' && reqPath === '/api/swarm/keys') {
       const body = JSON.parse(await readBody(req));
       if (!body.workerId) return json(res, 400, { error: 'Missing workerId' });
@@ -1105,7 +1105,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/swarm/keys/:workerId ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Revoke worker key ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/swarm/keys/:workerId -" Revoke worker key 
     if (method === 'DELETE' && reqPath.startsWith('/api/swarm/keys/')) {
       const workerId = decodeURIComponent(reqPath.split('/api/swarm/keys/')[1]);
       if (!workerId) return json(res, 400, { error: 'Missing workerId' });
@@ -1115,7 +1115,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'revoked', workerId });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/settings/encrypt ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Encrypt config at rest ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/settings/encrypt -" Encrypt config at rest 
     if (method === 'POST' && reqPath === '/api/settings/encrypt') {
       try {
         const configManager = refs.configManager;
@@ -1132,7 +1132,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/workers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/workers 
     if (method === 'GET' && reqPath === '/api/workers') {
       const workers = refs.coordinator?.getWorkers() || [];
       const relay = refs.getRelayCache?.() || null;
@@ -1140,7 +1140,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { workers, relay, agents, agentCount: agents.length });
     }
 
-    // â"â"â" Subagent API Routes â"â"â"
+    // """ Subagent API Routes """
     if (reqPath === '/api/subagents' || reqPath.startsWith('/api/subagents/')) {
       try {
         const { getInstance } = require('./subagents');
@@ -1148,12 +1148,12 @@ async function handleRequest(req, res) {
         const mgr = getInstance();
         if (!mgr.ai) mgr.setAI({ callWithFallback: ai.callWithFallback, parseTools: ai.parseTools, stripToolTags: ai.stripToolTags });
 
-        // GET /api/subagents â€" list all
+        // GET /api/subagents -- list all
         if (method === 'GET' && reqPath === '/api/subagents') {
           return json(res, 200, { subagents: mgr.list() });
         }
 
-        // POST /api/subagents â€" create custom subagent
+        // POST /api/subagents -- create custom subagent
         if (method === 'POST' && reqPath === '/api/subagents') {
           const body = JSON.parse(await readBody(req));
           const agent = mgr.register(body);
@@ -1166,7 +1166,7 @@ async function handleRequest(req, res) {
           const subId = decodeURIComponent(subPathMatch[1]);
           const subAction = subPathMatch[2] || '';
 
-          // GET /api/subagents/:id â€" get details
+          // GET /api/subagents/:id -- get details
           if (method === 'GET' && subAction === '') {
             const agent = mgr.getAgent(subId);
             if (!agent) return json(res, 404, { error: 'Subagent not found' });
@@ -1174,7 +1174,7 @@ async function handleRequest(req, res) {
             return json(res, 200, { subagent: agent, history });
           }
 
-          // POST /api/subagents/:id/task â€" send task
+          // POST /api/subagents/:id/task -- send task
           if (method === 'POST' && subAction === '/task') {
             const body = JSON.parse(await readBody(req));
             const task = body.task || body.message;
@@ -1183,7 +1183,7 @@ async function handleRequest(req, res) {
             return json(res, 200, { result, agentId: subId, modelUsed: mgr._lastUsedModel || 'unknown' });
           }
 
-          // GET /api/subagents/:id/stream â€" SSE stream for task
+          // GET /api/subagents/:id/stream -- SSE stream for task
           if (method === 'GET' && subAction === '/stream') {
             const task = parsed.query.task;
             if (!task) return json(res, 400, { error: 'Missing task query param' });
@@ -1201,7 +1201,7 @@ async function handleRequest(req, res) {
             return;
           }
 
-          // PATCH /api/subagents/:id â€" update subagent (model, name, icon, etc.)
+          // PATCH /api/subagents/:id -- update subagent (model, name, icon, etc.)
           if ((method === 'PATCH' || method === 'PUT') && subAction === '') {
             const body = JSON.parse(await readBody(req));
             if (!mgr._agents[subId]) return json(res, 404, { error: 'Subagent not found' });
@@ -1213,13 +1213,13 @@ async function handleRequest(req, res) {
             return json(res, 200, { status: 'updated', subagent: mgr.getAgent(subId) });
           }
 
-          // DELETE /api/subagents/:id/history â€" clear history
+          // DELETE /api/subagents/:id/history -- clear history
           if (method === 'DELETE' && subAction === '/history') {
             mgr.clearHistory(subId);
             return json(res, 200, { status: 'ok' });
           }
 
-          // DELETE /api/subagents/:id â€" remove custom subagent
+          // DELETE /api/subagents/:id -- remove custom subagent
           if (method === 'DELETE' && subAction === '') {
             mgr.remove(subId);
             return json(res, 200, { status: 'removed' });
@@ -1230,21 +1230,21 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/history 
     if (method === 'GET' && reqPath === '/api/history') {
       const chatHistory = refs.getChatHistory?.() || [];
       const limit = parseInt(parsed.query.limit) || 50;
       return json(res, 200, { history: chatHistory.slice(-limit), total: chatHistory.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/persona ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/persona 
     if (method === 'POST' && reqPath === '/api/persona') {
       const body = JSON.parse(await readBody(req));
       if (body.name && refs.setCurrentPersona) refs.setCurrentPersona(body.name);
       return json(res, 200, { status: 'ok', persona: refs.getCurrentPersona?.() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/config 
     if (method === 'GET' && reqPath === '/api/config') {
       const cfg = refs.configManager?.getAll() || refs.config;
       // Redact sensitive fields
@@ -1263,7 +1263,7 @@ async function handleRequest(req, res) {
 
     // (Key management handled by /api/settings/tokens endpoints below)
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â PUT /api/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  PUT /api/config 
     if (method === 'PUT' && reqPath === '/api/config') {
       const body = JSON.parse(await readBody(req));
       if (body.key && body.value !== undefined && refs.configManager) {
@@ -1273,13 +1273,13 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Missing key/value' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/memory ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/memory 
     if (method === 'GET' && reqPath === '/api/memory') {
       const mem = require('./memory');
       return json(res, 200, { memories: mem.getAll(), stats: mem.stats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/memory ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/memory 
     if (method === 'POST' && reqPath === '/api/memory') {
       const body = JSON.parse(await readBody(req));
       const mem = require('./memory');
@@ -1289,7 +1289,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'saved', count });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/tools ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/tools 
     // *** Self-Improvement & Proactive API ***
     if (method === 'GET' && reqPath === '/api/learnings') {
       try {
@@ -1351,22 +1351,22 @@ async function handleRequest(req, res) {
       return json(res, 200, { tools: t.list(), log: t.getLog().slice(-20) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/plugins ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/plugins 
     if (method === 'GET' && reqPath === '/api/plugins') {
       const pl = require('./plugin-loader');
       return json(res, 200, { plugins: pl.getAll().map(p => ({ name: p.name, description: p.description, status: 'active' })) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system 
     if (method === 'GET' && reqPath === '/api/system') {
       const sys = refs.sysModule?.get() || {};
       return json(res, 200, sys);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/export ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/export 
     if (method === 'POST' && reqPath === '/api/export') {
       const chatHistory = refs.getChatHistory?.() || [];
-      let md = `# Aries Chat Export ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" ${new Date().toISOString()}\n\n`;
+      let md = `# Aries Chat Export  ${new Date().toISOString()}\n\n`;
       chatHistory.forEach(m => {
         const role = m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Aries' : 'System';
         md += `### ${role}\n${m.content}\n\n---\n\n`;
@@ -1376,34 +1376,34 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/audit ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/audit 
     if (method === 'GET' && reqPath === '/api/audit') {
       const limit = parseInt(parsed.query.limit) || 100;
       return json(res, 200, { entries: audit.recent(limit) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/crypto/prices ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/crypto/prices 
     if (method === 'GET' && reqPath === '/api/crypto/prices') {
       const ca = refs.cryptoAlerts;
       if (!ca) return json(res, 500, { error: 'Crypto alerts not available' });
       return json(res, 200, { prices: ca.getCurrentPrices(), history: ca.getPriceHistory() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/crypto/alerts ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/crypto/alerts 
     if (method === 'GET' && reqPath === '/api/crypto/alerts') {
       const ca = refs.cryptoAlerts;
       if (!ca) return json(res, 500, { error: 'Crypto alerts not available' });
       return json(res, 200, { alerts: ca.getAlertHistory() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/arbitrage/opportunities ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/arbitrage/opportunities 
     if (method === 'GET' && reqPath === '/api/arbitrage/opportunities') {
       const arb = refs.arbitrageScanner;
       if (!arb) return json(res, 500, { error: 'Arbitrage scanner not available' });
       return json(res, 200, { opportunities: arb.getOpportunities() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/arbitrage/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/arbitrage/config 
     if (method === 'POST' && reqPath === '/api/arbitrage/config') {
       const arb = refs.arbitrageScanner;
       if (!arb) return json(res, 500, { error: 'Arbitrage scanner not available' });
@@ -1411,7 +1411,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { config: arb.updateConfig(body) });
     }
 
-    // â•â• Knowledge Graph API â•â•
+    // •• Knowledge Graph API ••
     if (method === 'GET' && reqPath === '/api/knowledge/entities') {
       try {
         const kg = require('./knowledge-graph').getInstance();
@@ -1499,14 +1499,14 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 200, { changelog: [] }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/shutdown ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/shutdown 
     if (method === 'POST' && reqPath === '/api/shutdown') {
-      // Shutdown disabled â€" Aries should not kill itself. Use watchdog or manual kill.
+      // Shutdown disabled -- Aries should not kill itself. Use watchdog or manual kill.
       json(res, 403, { error: 'Shutdown disabled. Use external process management.' });
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/tokens ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/tokens 
     if (method === 'POST' && reqPath === '/api/tokens/generate') {
       if (refs.configManager) {
         const token = refs.configManager.generateToken();
@@ -1515,7 +1515,7 @@ async function handleRequest(req, res) {
       return json(res, 500, { error: 'Config manager not available' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/models/route ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/models/route 
     if (method === 'GET' && reqPath === '/api/models/route') {
       const task = parsed.query.task || 'hello';
       const agent = parsed.query.agent || null;
@@ -1527,7 +1527,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { routing: { model: refs.config?.gateway?.model, tier: 'default' }, stats: {} });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/pipelines ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/pipelines 
     if (method === 'POST' && reqPath === '/api/pipelines') {
       const body = JSON.parse(await readBody(req));
       const pl = refs.pipelines;
@@ -1559,13 +1559,13 @@ async function handleRequest(req, res) {
       return json(res, 200, { pipelines: pl.listPipelines() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/pipelines ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/pipelines 
     if (method === 'GET' && reqPath === '/api/pipelines') {
       const pl = refs.pipelines;
       return json(res, 200, { pipelines: pl ? pl.listPipelines() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/workflows ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/workflows 
     if (method === 'POST' && reqPath === '/api/workflows') {
       const body = JSON.parse(await readBody(req));
       const wfe = refs.workflowEngine;
@@ -1593,19 +1593,19 @@ async function handleRequest(req, res) {
       return json(res, 200, { workflows: wfe.listWorkflows(), log: wfe.getLog(20) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/workflows ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/workflows 
     if (method === 'GET' && reqPath === '/api/workflows') {
       const wfe = refs.workflowEngine;
       return json(res, 200, { workflows: wfe ? wfe.listWorkflows() : [], log: wfe ? wfe.getLog(20) : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/agents/learning ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/agents/learning 
     if (method === 'GET' && reqPath === '/api/agents/learning') {
       const al = refs.agentLearning;
       return json(res, 200, al ? al.getStats() : { totalOutcomes: 0, agents: {} });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/feedback ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/feedback 
     if (method === 'POST' && reqPath === '/api/feedback') {
       const body = JSON.parse(await readBody(req));
       const al = refs.agentLearning;
@@ -1614,7 +1614,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'recorded', outcome });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/mcp ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/mcp 
     if (method === 'GET' && reqPath === '/api/mcp') {
       const mcp = refs.mcpClient;
       return json(res, 200, {
@@ -1623,7 +1623,7 @@ async function handleRequest(req, res) {
       });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/mcp ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/mcp 
     if (method === 'POST' && reqPath === '/api/mcp') {
       const body = JSON.parse(await readBody(req));
       const mcp = refs.mcpClient;
@@ -1645,11 +1645,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { connections: mcp.getStatus(), tools: mcp.listTools() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // NEW v4.1 MODULES
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/autonomous/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/autonomous/start 
     if (method === 'POST' && reqPath === '/api/autonomous/start') {
       const body = JSON.parse(await readBody(req));
       const runner = refs.autonomousRunner;
@@ -1660,7 +1660,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/autonomous/progress/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/autonomous/progress/:id 
     if (method === 'GET' && reqPath.startsWith('/api/autonomous/progress/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1670,7 +1670,7 @@ async function handleRequest(req, res) {
       return json(res, 200, progress);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/autonomous/pause/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/autonomous/pause/:id 
     if (method === 'POST' && reqPath.startsWith('/api/autonomous/pause/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1678,7 +1678,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, runner.pause(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/autonomous/resume/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/autonomous/resume/:id 
     if (method === 'POST' && reqPath.startsWith('/api/autonomous/resume/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1686,7 +1686,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, runner.resume(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/autonomous/abort/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/autonomous/abort/:id 
     if (method === 'POST' && reqPath.startsWith('/api/autonomous/abort/')) {
       const id = reqPath.split('/').pop();
       const runner = refs.autonomousRunner;
@@ -1694,13 +1694,13 @@ async function handleRequest(req, res) {
       try { return json(res, 200, runner.abort(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/autonomous/runs ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/autonomous/runs 
     if (method === 'GET' && reqPath === '/api/autonomous/runs') {
       const runner = refs.autonomousRunner;
       return json(res, 200, { runs: runner ? runner.listRuns() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/debate ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/debate 
     if (method === 'POST' && reqPath === '/api/debate') {
       const body = JSON.parse(await readBody(req));
       const debate = refs.agentDebate;
@@ -1711,7 +1711,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/debate/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/debate/:id 
     if (method === 'GET' && reqPath.startsWith('/api/debate/') && reqPath !== '/api/debates') {
       const id = reqPath.split('/').pop();
       const debate = refs.agentDebate;
@@ -1721,13 +1721,13 @@ async function handleRequest(req, res) {
       return json(res, 200, transcript);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/debates ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/debates 
     if (method === 'GET' && reqPath === '/api/debates') {
       const debate = refs.agentDebate;
       return json(res, 200, { debates: debate ? debate.listDebates() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/knowledge ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/knowledge 
     if (method === 'GET' && reqPath === '/api/knowledge') {
       const kg = refs.knowledgeGraph;
       if (!kg) return json(res, 500, { error: 'Knowledge graph not available' });
@@ -1735,7 +1735,7 @@ async function handleRequest(req, res) {
       return json(res, 200, kg.query({ type: q.type, label: q.label, nodeId: q.nodeId }));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/knowledge ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/knowledge 
     if (method === 'POST' && reqPath === '/api/knowledge') {
       const body = JSON.parse(await readBody(req));
       const kg = refs.knowledgeGraph;
@@ -1752,14 +1752,14 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/knowledge/visualize ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/knowledge/visualize 
     if (method === 'GET' && reqPath === '/api/knowledge/visualize') {
       const kg = refs.knowledgeGraph;
       if (!kg) return json(res, 500, { error: 'Knowledge graph not available' });
       return json(res, 200, kg.getVisualizationData());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/agents/create ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/agents/create 
     if (method === 'POST' && reqPath === '/api/agents/create') {
       const body = JSON.parse(await readBody(req));
       const factory = refs.agentFactory;
@@ -1774,13 +1774,13 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/agents/custom ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/agents/custom 
     if (method === 'GET' && reqPath === '/api/agents/custom') {
       const factory = refs.agentFactory;
       return json(res, 200, { agents: factory ? factory.listCustomAgents() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/agents/custom/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/agents/custom/:id 
     if (method === 'DELETE' && reqPath.startsWith('/api/agents/custom/')) {
       const id = reqPath.split('/').pop();
       const factory = refs.agentFactory;
@@ -1788,26 +1788,26 @@ async function handleRequest(req, res) {
       try { return json(res, 200, factory.deleteAgent(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/warroom/feed ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/warroom/feed 
     if (method === 'GET' && reqPath === '/api/warroom/feed') {
       const wr = refs.warRoom;
       const limit = parseInt(parsed.query.limit) || 50;
       return json(res, 200, { feed: wr ? wr.getActivityFeed(limit) : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/warroom/metrics ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/warroom/metrics 
     if (method === 'GET' && reqPath === '/api/warroom/metrics') {
       const wr = refs.warRoom;
       return json(res, 200, wr ? wr.getMetrics() : {});
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sentinel/watches ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sentinel/watches 
     if (method === 'GET' && reqPath === '/api/sentinel/watches') {
       const sentinel = refs.webSentinel;
       return json(res, 200, { watches: sentinel ? sentinel.listWatches() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sentinel/watches ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sentinel/watches 
     if (method === 'POST' && reqPath === '/api/sentinel/watches') {
       const body = JSON.parse(await readBody(req));
       const sentinel = refs.webSentinel;
@@ -1818,7 +1818,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sentinel/check/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sentinel/check/:id 
     if (method === 'POST' && reqPath.startsWith('/api/sentinel/check/')) {
       const id = reqPath.split('/').pop();
       const sentinel = refs.webSentinel;
@@ -1826,11 +1826,11 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await sentinel.checkNow(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v4.2 MODULES ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Self-Evolve, Sandbox, Handoffs, Multi-User
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v4.2 MODULES -" Self-Evolve, Sandbox, Handoffs, Multi-User
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/evolve/run ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/evolve/run 
     if (method === 'POST' && reqPath === '/api/evolve/run') {
       var evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
@@ -1849,21 +1849,21 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/analyze ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/analyze 
     if (method === 'GET' && reqPath === '/api/evolve/analyze') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await withTimeout(evolve.analyze(), 30000, { suggestions: [], error: 'Analysis timed out' })); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/suggestions ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/suggestions 
     if (method === 'GET' && reqPath === '/api/evolve/suggestions') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       return json(res, 200, evolve.suggest());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/evolve/apply ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/evolve/apply 
     if (method === 'POST' && reqPath === '/api/evolve/apply') {
       const body = JSON.parse(await readBody(req));
       const evolve = refs.selfEvolve;
@@ -1871,21 +1871,21 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await evolve.apply(body.suggestionId || body.id)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/history 
     if (method === 'GET' && reqPath === '/api/evolve/history') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       return json(res, 200, evolve.getHistory());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/report ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/report 
     if (method === 'GET' && reqPath === '/api/evolve/report') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await evolve.getReport()); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sandbox/run ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sandbox/run 
     if (method === 'POST' && reqPath === '/api/sandbox/run') {
       const body = JSON.parse(await readBody(req));
       const sandbox = refs.codeSandbox;
@@ -1894,7 +1894,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await sandbox.execute(body.code, body.language || 'javascript', body.options || {})); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sandbox/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sandbox/history 
     if (method === 'GET' && reqPath === '/api/sandbox/history') {
       const sandbox = refs.codeSandbox;
       if (!sandbox) return json(res, 500, { error: 'Sandbox not available' });
@@ -1902,7 +1902,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { history: sandbox.getHistory(limit) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/handoffs ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/handoffs 
     if (method === 'POST' && reqPath === '/api/handoffs') {
       const body = JSON.parse(await readBody(req));
       const handoffs = refs.agentHandoffs;
@@ -1911,7 +1911,7 @@ async function handleRequest(req, res) {
       return json(res, 200, handoffs.handoff(body.fromAgent, body.toAgent, body.context || {}, body.reason || ''));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/handoffs/chain/:taskId ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/handoffs/chain/:taskId 
     if (method === 'GET' && reqPath.startsWith('/api/handoffs/chain/')) {
       const taskId = reqPath.split('/').pop();
       const handoffs = refs.agentHandoffs;
@@ -1919,14 +1919,14 @@ async function handleRequest(req, res) {
       return json(res, 200, handoffs.getChain(taskId));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/handoffs/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/handoffs/stats 
     if (method === 'GET' && reqPath === '/api/handoffs/stats') {
       const handoffs = refs.agentHandoffs;
       if (!handoffs) return json(res, 500, { error: 'Handoffs not available' });
       return json(res, 200, handoffs.getStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/users/session ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/users/session 
     if (method === 'POST' && reqPath === '/api/users/session') {
       const body = JSON.parse(await readBody(req));
       const mu = refs.multiUser;
@@ -1935,7 +1935,7 @@ async function handleRequest(req, res) {
       return json(res, 200, mu.createSession(body.userId, body.name || body.userId));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/users/sessions ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/users/sessions 
     if (method === 'GET' && reqPath === '/api/users/sessions') {
       const mu = refs.multiUser;
       if (!mu) return json(res, 500, { error: 'Multi-user not available' });
@@ -1945,7 +1945,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { sessions: mu.listSessions(isOperator) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/users/me ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/users/me 
     if (method === 'GET' && reqPath === '/api/users/me') {
       const mu = refs.multiUser;
       if (!mu) return json(res, 500, { error: 'Multi-user not available' });
@@ -1955,11 +1955,11 @@ async function handleRequest(req, res) {
       return json(res, 200, info);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // v4.2+ MODULES: RAG, Scraper, Sandbox, Updates, Voice, Marketplace
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/rag ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Query RAG ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/rag -" Query RAG 
     if (method === 'GET' && reqPath === '/api/rag') {
       const rag = refs.ragEngine;
       if (!rag) return json(res, 500, { error: 'RAG engine not available' });
@@ -1969,7 +1969,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { query: q, results });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/rag ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Ingest into RAG ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/rag -" Ingest into RAG 
     if (method === 'POST' && reqPath === '/api/rag') {
       const body = JSON.parse(await readBody(req));
       const rag = refs.ragEngine;
@@ -1992,14 +1992,14 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Provide text, url, or query' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/rag/documents ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/rag/documents 
     if (method === 'GET' && reqPath === '/api/rag/documents') {
       const rag = refs.ragEngine;
       if (!rag) return json(res, 500, { error: 'RAG engine not available' });
       return json(res, 200, { documents: rag.listDocuments() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/rag/documents ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/rag/documents 
     if (method === 'DELETE' && reqPath.startsWith('/api/rag/documents')) {
       const rag = refs.ragEngine;
       if (!rag) return json(res, 500, { error: 'RAG engine not available' });
@@ -2094,7 +2094,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'ingested', filename: filename, document: { id: doc.id, chunkCount: doc.chunks.length } });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/scrape ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/scrape 
     if (method === 'POST' && reqPath === '/api/scrape') {
       const body = JSON.parse(await readBody(req));
       const scraper = refs.webScraper;
@@ -2112,7 +2112,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sandbox/execute ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sandbox/execute 
     if (method === 'POST' && reqPath === '/api/sandbox/execute') {
       const body = JSON.parse(await readBody(req));
       const sandbox = refs.codeSandbox;
@@ -2124,7 +2124,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sandbox/languages ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sandbox/languages 
     if (method === 'GET' && reqPath === '/api/sandbox/languages') {
       const sandbox = refs.codeSandbox;
       if (!sandbox) return json(res, 500, { error: 'Sandbox not available' });
@@ -2132,7 +2132,7 @@ async function handleRequest(req, res) {
     }
 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/updates ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/updates 
     if (method === 'GET' && reqPath === '/api/updates') {
       const updater = refs.autoUpdater;
       if (!updater) return json(res, 500, { error: 'Auto-updater not available' });
@@ -2140,7 +2140,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/updates/apply ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/updates/apply 
     if (method === 'POST' && reqPath === '/api/updates/apply') {
       const body = JSON.parse(await readBody(req));
       const updater = refs.autoUpdater;
@@ -2151,20 +2151,20 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/updates/suggestions ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/updates/suggestions 
     if (method === 'GET' && reqPath === '/api/updates/suggestions') {
       const updater = refs.autoUpdater;
       if (!updater) return json(res, 500, { error: 'Auto-updater not available' });
       return json(res, 200, { suggestions: updater.getOptimizationSuggestions() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/updates/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/updates/history 
     if (method === 'GET' && reqPath === '/api/updates/history') {
       const updater = refs.autoUpdater;
       return json(res, 200, { history: updater ? updater.getUpdateHistory() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/voice/speak ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/voice/speak 
     if (method === 'POST' && reqPath === '/api/voice/speak') {
       const body = JSON.parse(await readBody(req));
       const voice = refs.voiceEngine;
@@ -2176,7 +2176,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/voice/voices ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/voice/voices 
     if (method === 'GET' && reqPath === '/api/voice/voices') {
       const voice = refs.voiceEngine;
       if (!voice) return json(res, 500, { error: 'Voice engine not available' });
@@ -2184,13 +2184,13 @@ async function handleRequest(req, res) {
       return json(res, 200, { voices });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/marketplace ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/marketplace 
     if (method === 'GET' && reqPath === '/api/marketplace') {
       const mp = refs.agentMarketplace;
       return json(res, 200, { agents: mp ? mp.listImported() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/marketplace ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/marketplace 
     if (method === 'POST' && reqPath === '/api/marketplace') {
       const body = JSON.parse(await readBody(req));
       const mp = refs.agentMarketplace;
@@ -2201,7 +2201,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/marketplace/export ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/marketplace/export 
     if (method === 'POST' && reqPath === '/api/marketplace/export') {
       const body = JSON.parse(await readBody(req));
       const mp = refs.agentMarketplace;
@@ -2212,11 +2212,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // BROWSER CONTROL ENDPOINTS
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/browser/open ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/browser/open 
     if (method === 'POST' && reqPath === '/api/browser/open') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -2225,7 +2225,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.openUrl(body.url));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/browser/screenshot ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/browser/screenshot 
     if (method === 'POST' && reqPath === '/api/browser/screenshot') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -2233,7 +2233,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.screenshot(body.outputPath));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/browser/keys ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/browser/keys 
     if (method === 'POST' && reqPath === '/api/browser/keys') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -2242,7 +2242,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.sendKeys(body.keys));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/browser/click ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/browser/click 
     if (method === 'POST' && reqPath === '/api/browser/click') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -2251,14 +2251,14 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.mouseClick(body.x, body.y));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/browser/windows ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/browser/windows 
     if (method === 'GET' && reqPath === '/api/browser/windows') {
       const bc = refs.browserControl;
       if (!bc) return json(res, 500, { error: 'Browser control not available' });
       return json(res, 200, bc.listWindows());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/browser/focus ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/browser/focus 
     if (method === 'POST' && reqPath === '/api/browser/focus') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -2267,7 +2267,7 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.focusWindow(body.title));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/browser/type ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/browser/type 
     if (method === 'POST' && reqPath === '/api/browser/type') {
       const body = JSON.parse(await readBody(req));
       const bc = refs.browserControl;
@@ -2276,11 +2276,11 @@ async function handleRequest(req, res) {
       return json(res, 200, bc.typeText(body.text));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // COMPUTER CONTROL ENDPOINTS
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/computer/run ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/computer/run 
     if (method === 'POST' && reqPath === '/api/computer/run') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -2289,14 +2289,14 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.runCommand(body.cmd));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/computer/processes ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/computer/processes 
     if (method === 'GET' && reqPath === '/api/computer/processes') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.listProcesses());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/computer/kill ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/computer/kill 
     if (method === 'POST' && reqPath === '/api/computer/kill') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -2305,14 +2305,14 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.killProcess(body.name));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/computer/clipboard ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/computer/clipboard 
     if (method === 'GET' && reqPath === '/api/computer/clipboard') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.getClipboard());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/computer/clipboard ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/computer/clipboard 
     if (method === 'POST' && reqPath === '/api/computer/clipboard') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -2321,14 +2321,14 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.setClipboard(body.text));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/computer/sysinfo ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/computer/sysinfo 
     if (method === 'GET' && reqPath === '/api/computer/sysinfo') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.getSystemInfo());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/computer/open ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/computer/open 
     if (method === 'POST' && reqPath === '/api/computer/open') {
       const body = JSON.parse(await readBody(req));
       const cc = refs.computerControl;
@@ -2337,46 +2337,46 @@ async function handleRequest(req, res) {
       return json(res, 200, cc.openApp(body.appName));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/computer/network ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/computer/network 
     if (method === 'GET' && reqPath === '/api/computer/network') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.getNetworkInfo());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/computer/services ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/computer/services 
     if (method === 'GET' && reqPath === '/api/computer/services') {
       const cc = refs.computerControl;
       if (!cc) return json(res, 500, { error: 'Computer control not available' });
       return json(res, 200, cc.listServices());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v4.3 MODULES ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Enhanced Self-Evolve, Tool Generator, Web Intelligence
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v4.3 MODULES -" Enhanced Self-Evolve, Tool Generator, Web Intelligence
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/evolve/research ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/evolve/research 
     if (method === 'POST' && reqPath === '/api/evolve/research') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await withTimeout(evolve.research(), 30000, { findings: [], error: 'Research timed out' })); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/research ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/research 
     if (method === 'GET' && reqPath === '/api/evolve/research') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       return json(res, 200, evolve.getResearch());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/evolve/discover ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/evolve/discover 
     if (method === 'POST' && reqPath === '/api/evolve/discover') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await withTimeout(evolve.discoverTools(), 30000, { tools: [], error: 'Discovery timed out' })); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/evolve/implement ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/evolve/implement 
     if (method === 'POST' && reqPath === '/api/evolve/implement') {
       const body = JSON.parse(await readBody(req));
       const evolve = refs.selfEvolve;
@@ -2385,14 +2385,14 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await evolve.implementSuggestion(body.suggestionId)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/competitive ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/competitive 
     if (method === 'GET' && reqPath === '/api/evolve/competitive') {
       const evolve = refs.selfEvolve;
       if (!evolve) return json(res, 500, { error: 'Self-evolve not available' });
       try { return json(res, 200, await withTimeout(evolve.getCompetitiveAnalysis(), 30000, { analysis: 'Timed out', competitors: [] })); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/tools/generate ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/tools/generate 
     if (method === 'POST' && reqPath === '/api/tools/generate') {
       const body = JSON.parse(await readBody(req));
       const tg = refs.toolGenerator;
@@ -2401,14 +2401,14 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await tg.generateTool(body.description)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/tools/custom ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/tools/custom 
     if (method === 'GET' && reqPath === '/api/tools/custom') {
       const tg = refs.toolGenerator;
       if (!tg) return json(res, 500, { error: 'Tool generator not available' });
       return json(res, 200, { tools: tg.listCustomTools() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/tools/install ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/tools/install 
     if (method === 'POST' && reqPath === '/api/tools/install') {
       const body = JSON.parse(await readBody(req));
       const tg = refs.toolGenerator;
@@ -2416,7 +2416,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, tg.installTool(body)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/tools/custom/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/tools/custom/:id 
     if (method === 'DELETE' && reqPath.startsWith('/api/tools/custom/')) {
       const id = reqPath.split('/').pop();
       const tg = refs.toolGenerator;
@@ -2424,7 +2424,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, tg.removeTool(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/tools/test/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/tools/test/:id 
     if (method === 'POST' && reqPath.startsWith('/api/tools/test/')) {
       const id = reqPath.split('/').pop();
       const tg = refs.toolGenerator;
@@ -2432,7 +2432,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, tg.testTool(id)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/web-intel/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/web-intel/search 
     if (method === 'POST' && reqPath === '/api/web-intel/search') {
       const body = JSON.parse(await readBody(req));
       const wi = refs.webIntelligence;
@@ -2441,7 +2441,7 @@ async function handleRequest(req, res) {
       try { return json(res, 200, { results: await wi.searchWeb(body.query) }); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/web-intel/research ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/web-intel/research 
     if (method === 'POST' && reqPath === '/api/web-intel/research') {
       const body = JSON.parse(await readBody(req));
       const wi = refs.webIntelligence;
@@ -2450,18 +2450,18 @@ async function handleRequest(req, res) {
       try { return json(res, 200, await wi.researchTopic(body.topic)); } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/web-intel/cache ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/web-intel/cache 
     if (method === 'GET' && reqPath === '/api/web-intel/cache') {
       const wi = refs.webIntelligence;
       if (!wi) return json(res, 500, { error: 'Web intelligence not available' });
       return json(res, 200, wi.getCache());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v4.4 MODULES ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Messaging, Memory, Nodes, Scheduler, Search, Skills, Daemon
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v4.4 MODULES -" Messaging, Memory, Nodes, Scheduler, Search, Skills, Daemon
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/messages/send ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/messages/send 
     if (method === 'POST' && reqPath === '/api/messages/send') {
       const body = JSON.parse(await readBody(req));
       const hub = refs.messagingHub;
@@ -2472,7 +2472,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/messages/broadcast ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/messages/broadcast 
     if (method === 'POST' && reqPath === '/api/messages/broadcast') {
       const body = JSON.parse(await readBody(req));
       const hub = refs.messagingHub;
@@ -2483,7 +2483,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/messages/inbox ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/messages/inbox 
     if (method === 'GET' && reqPath === '/api/messages/inbox') {
       const hub = refs.messagingHub;
       if (!hub) return json(res, 500, { error: 'Messaging not available' });
@@ -2492,7 +2492,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { messages: hub.getInbox(channel, limit), status: hub.getStatus() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/messages/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/messages/history 
     if (method === 'GET' && reqPath === '/api/messages/history') {
       const hub = refs.messagingHub;
       if (!hub) return json(res, 500, { error: 'Messaging not available' });
@@ -2501,14 +2501,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { messages: hub.getHistory(channel, limit) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/memory/today ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/memory/today 
     if (method === 'GET' && reqPath === '/api/memory/today') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
       return json(res, 200, { content: pm.getToday(), stats: pm.getStats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/memory/recent ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/memory/recent 
     if (method === 'GET' && reqPath === '/api/memory/recent') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
@@ -2516,7 +2516,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { notes: pm.getRecent(days) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/memory/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/memory/search 
     if (method === 'GET' && reqPath === '/api/memory/search') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
@@ -2525,7 +2525,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: pm.searchMemory(q) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/memory/note ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/memory/note 
     if (method === 'POST' && reqPath === '/api/memory/note') {
       const body = JSON.parse(await readBody(req));
       const pm = refs.persistentMemory;
@@ -2534,7 +2534,7 @@ async function handleRequest(req, res) {
       return json(res, 200, pm.addNote(body.text, body.category));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/memory/remember ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/memory/remember 
     if (method === 'POST' && reqPath === '/api/memory/remember') {
       const body = JSON.parse(await readBody(req));
       const pm = refs.persistentMemory;
@@ -2543,21 +2543,21 @@ async function handleRequest(req, res) {
       return json(res, 200, pm.addMemory(body.text, body.category));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/memory/long-term ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/memory/long-term 
     if (method === 'GET' && reqPath === '/api/memory/long-term') {
       const pm = refs.persistentMemory;
       if (!pm) return json(res, 500, { error: 'Persistent memory not available' });
       return json(res, 200, { content: pm.getMemory(), stats: pm.getStats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/pair ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/pair 
     if (method === 'POST' && reqPath === '/api/nodes/pair') {
       const np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
       return json(res, 200, np.generatePairCode());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/validate ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/validate 
     if (method === 'POST' && reqPath === '/api/nodes/validate') {
       const body = JSON.parse(await readBody(req));
       const np = refs.nodePairing;
@@ -2566,14 +2566,14 @@ async function handleRequest(req, res) {
       return json(res, 200, np.validatePair(body.code, body.deviceInfo || {}));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/nodes/devices ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/nodes/devices 
     if (method === 'GET' && reqPath === '/api/nodes/devices') {
       const np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
       return json(res, 200, { devices: np.listDevices() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/command ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/command 
     if (method === 'POST' && reqPath === '/api/nodes/command') {
       const body = JSON.parse(await readBody(req));
       const np = refs.nodePairing;
@@ -2582,7 +2582,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np.sendCommand(body.deviceId, body.type, body.payload || {}));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/nodes/device/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/nodes/device/:id 
     if (method === 'DELETE' && reqPath.startsWith('/api/nodes/device/')) {
       const id = reqPath.split('/').pop();
       const np = refs.nodePairing;
@@ -2590,7 +2590,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np.removeDevice(id));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/nodes/poll ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/nodes/poll 
     if (method === 'GET' && reqPath === '/api/nodes/poll') {
       const np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
@@ -2600,7 +2600,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np.pollCommands(deviceId, token));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/result ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/result 
     if (method === 'POST' && reqPath === '/api/nodes/result') {
       const body = JSON.parse(await readBody(req));
       const np = refs.nodePairing;
@@ -2608,14 +2608,14 @@ async function handleRequest(req, res) {
       return json(res, 200, np.submitResult(body.deviceId, body.token, body.commandId, body.result || {}));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/scheduler/jobs ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/scheduler/jobs 
     if (method === 'GET' && reqPath === '/api/scheduler/jobs') {
       const sched = refs.scheduler;
       if (!sched) return json(res, 500, { error: 'Scheduler not available' });
       return json(res, 200, { jobs: sched.listJobs() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/scheduler/job ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/scheduler/job 
     if (method === 'POST' && reqPath === '/api/scheduler/job') {
       const body = JSON.parse(await readBody(req));
       const sched = refs.scheduler;
@@ -2628,7 +2628,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/scheduler/job/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/scheduler/job/:id 
     if (method === 'DELETE' && reqPath.startsWith('/api/scheduler/job/')) {
       const id = reqPath.split('/').pop();
       const sched = refs.scheduler;
@@ -2636,7 +2636,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched.removeJob(id));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/scheduler/pause/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/scheduler/pause/:id 
     if (method === 'POST' && reqPath.startsWith('/api/scheduler/pause/')) {
       const id = reqPath.split('/').pop();
       const sched = refs.scheduler;
@@ -2644,7 +2644,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched.pauseJob(id));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/scheduler/resume/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/scheduler/resume/:id 
     if (method === 'POST' && reqPath.startsWith('/api/scheduler/resume/')) {
       const id = reqPath.split('/').pop();
       const sched = refs.scheduler;
@@ -2652,7 +2652,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched.resumeJob(id));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/scheduler/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/scheduler/history 
     if (method === 'GET' && reqPath === '/api/scheduler/history') {
       const sched = refs.scheduler;
       if (!sched) return json(res, 500, { error: 'Scheduler not available' });
@@ -2660,7 +2660,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { history: sched.getJobHistory(jobId) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/search 
     if (method === 'POST' && reqPath === '/api/search') {
       const body = JSON.parse(await readBody(req));
       const ws = refs.webSearchEngine;
@@ -2676,7 +2676,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/search/fetch ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/search/fetch 
     if (method === 'POST' && reqPath === '/api/search/fetch') {
       const body = JSON.parse(await readBody(req));
       const ws = refs.webSearchEngine;
@@ -2688,7 +2688,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills 
     if (method === 'GET' && reqPath === '/api/skills') {
       const sm = refs.skillManager;
       const sb = refs.skillBridge;
@@ -2698,14 +2698,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { skills: installedSkills, localSkills: localSkills, commands: sm ? sm.getSkillCommands() : {} });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills/bridge/local ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills/bridge/local 
     if (method === 'GET' && reqPath === '/api/skills/bridge/local') {
       var sb = refs.skillBridge;
       if (!sb) return json(res, 500, { error: 'Skill bridge not available' });
       return json(res, 200, { skills: sb.discoverLocalSkills() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills/bridge/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills/bridge/search 
     if (method === 'GET' && reqPath === '/api/skills/bridge/search') {
       var sb = refs.skillBridge;
       if (!sb) return json(res, 500, { error: 'Skill bridge not available' });
@@ -2714,7 +2714,7 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/skills/bridge/install ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/skills/bridge/install 
     if (method === 'POST' && reqPath === '/api/skills/bridge/install') {
       var body = JSON.parse(await readBody(req));
       var sb = refs.skillBridge;
@@ -2729,7 +2729,7 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Missing skillId or name' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/skills/install ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/skills/install 
     if (method === 'POST' && reqPath === '/api/skills/install') {
       const body = JSON.parse(await readBody(req));
       const sm = refs.skillManager;
@@ -2741,7 +2741,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/skills/:name ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/skills/:name 
     if (method === 'DELETE' && reqPath.startsWith('/api/skills/') && reqPath !== '/api/skills/install') {
       const name = decodeURIComponent(reqPath.split('/').pop());
       const sm = refs.skillManager;
@@ -2749,14 +2749,14 @@ async function handleRequest(req, res) {
       return json(res, 200, sm.uninstallSkill(name));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/daemon/health ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/daemon/health 
     if (method === 'GET' && reqPath === '/api/daemon/health') {
       const d = refs.daemon;
       if (!d) return json(res, 500, { error: 'Daemon not available' });
       return json(res, 200, d.getHealth());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/daemon/restart ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/daemon/restart 
     if (method === 'POST' && reqPath === '/api/daemon/restart') {
       const d = refs.daemon;
       if (!d) return json(res, 500, { error: 'Daemon not available' });
@@ -2765,11 +2765,11 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v5.0 MODULES ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Logger, Backup, Upload, Chat History, Docs
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v5.0 MODULES -" Logger, Backup, Upload, Chat History, Docs
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/logs ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/logs 
     if (method === 'GET' && reqPath === '/api/logs') {
       var logger = refs.logger;
       if (!logger) return json(res, 200, { entries: [] });
@@ -2779,28 +2779,28 @@ async function handleRequest(req, res) {
       return json(res, 200, { entries: logger.getRecent(limit, level, mod), modules: logger.getModules() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/logs ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/logs 
     if (method === 'DELETE' && reqPath === '/api/logs') {
       var logger2 = refs.logger;
       if (logger2) logger2.clearBuffer();
       return json(res, 200, { status: 'cleared' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/backup/create ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/backup/create 
     if (method === 'POST' && reqPath === '/api/backup/create') {
       var bk = refs.backup;
       if (!bk) return json(res, 500, { error: 'Backup not available' });
       return json(res, 200, bk.createBackup());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/backup/list ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/backup/list 
     if (method === 'GET' && reqPath === '/api/backup/list') {
       var bk2 = refs.backup;
       if (!bk2) return json(res, 500, { error: 'Backup not available' });
       return json(res, 200, { backups: bk2.listBackups() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/backup/restore ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/backup/restore 
     if (method === 'POST' && reqPath === '/api/backup/restore') {
       var body = JSON.parse(await readBody(req));
       var bk3 = refs.backup;
@@ -2809,13 +2809,13 @@ async function handleRequest(req, res) {
       return json(res, 200, bk3.restoreBackup(body.filename));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/chat/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/chat/history 
     if (method === 'GET' && reqPath === '/api/chat/history') {
       var hist = refs.persistentChatHistory || [];
       return json(res, 200, { history: hist, total: hist.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/chat/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/chat/history 
     if (method === 'DELETE' && reqPath === '/api/chat/history') {
       // Clear both history arrays
       if (refs.persistentChatHistory) refs.persistentChatHistory.length = 0;
@@ -2830,10 +2830,10 @@ async function handleRequest(req, res) {
       return json(res, 200, { status: 'cleared' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/chat/export ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/chat/export 
     if (method === 'GET' && reqPath === '/api/chat/export') {
       var chatHist = refs.persistentChatHistory || refs.getChatHistory?.() || [];
-      var md = '# ARIES Chat Export ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" ' + new Date().toISOString() + '\n\n';
+      var md = '# ARIES Chat Export - ' + new Date().toISOString() + '\n\n';
       for (var ci = 0; ci < chatHist.length; ci++) {
         var m = chatHist[ci];
         var role = m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Aries' : 'System';
@@ -2849,14 +2849,14 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/https/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/https/status 
     if (method === 'GET' && reqPath === '/api/https/status') {
       var hs = refs.httpsServer;
       if (!hs) return json(res, 200, { enabled: false });
       return json(res, 200, hs.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/upload ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/upload 
     if (method === 'POST' && reqPath === '/api/upload') {
       var contentType = req.headers['content-type'] || '';
       if (!contentType.includes('multipart/form-data')) {
@@ -2920,7 +2920,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { uploaded: uploaded, count: uploaded.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/uploads ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/uploads 
     if (method === 'GET' && reqPath === '/api/uploads') {
       var uploadsDir = require('path').join(__dirname, '..', 'data', 'uploads');
       var files = [];
@@ -2936,7 +2936,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { files: files });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/uploads/:filename ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/uploads/:filename 
     if (method === 'DELETE' && reqPath.startsWith('/api/uploads/')) {
       var fname = decodeURIComponent(reqPath.split('/').pop());
       var fpath = require('path').join(__dirname, '..', 'data', 'uploads', fname);
@@ -2945,12 +2945,12 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 404, { error: 'File not found' }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/ws/clients ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/ws/clients 
     if (method === 'GET' && reqPath === '/api/ws/clients') {
       var wss = refs.wsServer;
       return json(res, 200, { clients: wss ? wss.getClients() : [], count: wss ? wss.clientCount : 0 });
 
-    // â•â• Desktop Control â•â•
+    // •• Desktop Control ••
     if (reqPath.startsWith('/api/desktop/')) {
       var desktopCtrl;
       try { desktopCtrl = require('./desktop-control'); } catch(e) { return json(res, 501, { error: 'Desktop control not available: ' + e.message }); }
@@ -2974,7 +2974,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // â•â• Export/Import All â•â•
+    // •• Export/Import All ••
     if (method === 'GET' && reqPath === '/api/export/all') {
       var _expDataDir = path.join(__dirname, '..', 'data');
       var bundle = { exportedAt: new Date().toISOString(), version: '8.1' };
@@ -3017,7 +3017,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { imported: _impList, count: _impList.length });
     }
 
-    // â•â• Collaboration / Presence â•â•
+    // •• Collaboration / Presence ••
     if (method === 'GET' && reqPath === '/api/collab/users') {
       var _collabUsers = [];
       _wsClients.forEach(function(cl) { if (cl._collabUser) _collabUsers.push(cl._collabUser); });
@@ -3025,7 +3025,7 @@ async function handleRequest(req, res) {
     }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /docs ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /docs 
     if (reqPath === '/docs' || reqPath === '/docs/') {
       var docsHtml = _generateDocsPage();
       res.writeHead(200, { 'Content-Type': 'text/html', 'Access-Control-Allow-Origin': '*' });
@@ -3033,32 +3033,32 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v5.0 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" AI Gateway, Swarm Health, Semantic Search, Advanced Scheduler/Nodes
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v5.0 -" AI Gateway, Swarm Health, Semantic Search, Advanced Scheduler/Nodes
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/gateway/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/gateway/status 
     if (method === 'GET' && reqPath === '/api/gateway/status') {
       var gw = refs.aiGateway;
       if (!gw) return json(res, 200, { enabled: false });
       return json(res, 200, gw.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/gateway/usage ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/gateway/usage 
     if (method === 'GET' && reqPath === '/api/gateway/usage') {
       var gw2 = refs.aiGateway;
       if (!gw2) return json(res, 200, {});
       return json(res, 200, gw2.getUsage());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/gateway/requests ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/gateway/requests 
     if (method === 'GET' && reqPath === '/api/gateway/requests') {
       var gw3 = refs.aiGateway;
       if (!gw3) return json(res, 200, { requests: [] });
       return json(res, 200, { requests: gw3.getRequestLog() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/gateway/apikey ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/gateway/apikey 
     if (method === 'POST' && reqPath === '/api/gateway/apikey') {
       var body = JSON.parse(await readBody(req));
       var gw4 = refs.aiGateway;
@@ -3109,14 +3109,14 @@ async function handleRequest(req, res) {
       return res.end(svg);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/health ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/health 
     if (method === 'GET' && reqPath === '/api/swarm/health') {
       var sh = refs.swarmHealth;
       if (!sh) return json(res, 500, { error: 'Swarm health not available' });
       return json(res, 200, sh.getHealthReport());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/ping ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/ping 
     if (method === 'POST' && reqPath === '/api/swarm/ping') {
       var sh2 = refs.swarmHealth;
       if (!sh2) return json(res, 500, { error: 'Swarm health not available' });
@@ -3126,7 +3126,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/stats 
     if (method === 'GET' && reqPath === '/api/swarm/stats') {
       var sh3 = refs.swarmHealth;
       if (!sh3) return json(res, 200, {});
@@ -3134,7 +3134,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { taskStats: report.taskStats, summary: report.summary, healthyPools: sh3.getHealthyPools() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/workers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Enriched worker info with optimization data ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/workers -" Enriched worker info with optimization data 
     if (method === 'GET' && reqPath === '/api/swarm/workers') {
       try {
         var networkDeployer = require('./network-deployer');
@@ -3160,7 +3160,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/memory/semantic-search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/memory/semantic-search 
     if (method === 'POST' && reqPath === '/api/memory/semantic-search') {
       var body = JSON.parse(await readBody(req));
       var pm = refs.persistentMemory;
@@ -3170,14 +3170,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: results, query: body.query });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/memory/index-status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/memory/index-status 
     if (method === 'GET' && reqPath === '/api/memory/index-status') {
       var pm2 = refs.persistentMemory;
       if (!pm2) return json(res, 500, { error: 'Persistent memory not available' });
       return json(res, 200, pm2.getIndexStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/memory/rebuild-index ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/memory/rebuild-index 
     if (method === 'POST' && reqPath === '/api/memory/rebuild-index') {
       var pm3 = refs.persistentMemory;
       if (!pm3) return json(res, 500, { error: 'Persistent memory not available' });
@@ -3185,21 +3185,21 @@ async function handleRequest(req, res) {
       return json(res, 200, indexResult);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/scheduler/calendar ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/scheduler/calendar 
     if (method === 'GET' && reqPath === '/api/scheduler/calendar') {
       var sched = refs.scheduler;
       if (!sched) return json(res, 500, { error: 'Scheduler not available' });
       return json(res, 200, { events: sched.getCalendar(parsed.query.start, parsed.query.end) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/scheduler/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/scheduler/stats 
     if (method === 'GET' && reqPath === '/api/scheduler/stats') {
       var sched2 = refs.scheduler;
       if (!sched2) return json(res, 500, { error: 'Scheduler not available' });
       return json(res, 200, sched2.getStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/scheduler/template ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/scheduler/template 
     if (method === 'POST' && reqPath === '/api/scheduler/template') {
       var body = JSON.parse(await readBody(req));
       var sched3 = refs.scheduler;
@@ -3208,7 +3208,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sched3.createFromTemplate(body.templateId));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/scheduler/run/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/scheduler/run/:id 
     if (method === 'POST' && reqPath.startsWith('/api/scheduler/run/')) {
       var jobId = reqPath.split('/').pop();
       var sched4 = refs.scheduler;
@@ -3219,7 +3219,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/nodes/qr/:deviceId ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/nodes/qr/:deviceId 
     if (method === 'GET' && reqPath.startsWith('/api/nodes/qr/')) {
       var np = refs.nodePairing;
       if (!np) return json(res, 500, { error: 'Node pairing not available' });
@@ -3229,7 +3229,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/location ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/location 
     if (method === 'POST' && reqPath === '/api/nodes/location') {
       var body = JSON.parse(await readBody(req));
       var np2 = refs.nodePairing;
@@ -3238,14 +3238,14 @@ async function handleRequest(req, res) {
       return json(res, 200, np2.reportLocation(body.deviceId, body.token, body.lat, body.lng, body.accuracy));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/nodes/locations ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/nodes/locations 
     if (method === 'GET' && reqPath === '/api/nodes/locations') {
       var np3 = refs.nodePairing;
       if (!np3) return json(res, 500, { error: 'Node pairing not available' });
       return json(res, 200, { locations: np3.getAllLocations() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/group ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/group 
     if (method === 'POST' && reqPath === '/api/nodes/group') {
       var body = JSON.parse(await readBody(req));
       var np4 = refs.nodePairing;
@@ -3254,7 +3254,7 @@ async function handleRequest(req, res) {
       return json(res, 200, np4.createGroup(body.name, body.deviceIds || []));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/nodes/group/:id/command ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/nodes/group/:id/command 
     if (method === 'POST' && reqPath.match(/^\/api\/nodes\/group\/[^/]+\/command$/)) {
       var parts = reqPath.split('/');
       var groupId = parts[4];
@@ -3264,7 +3264,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: np5.sendGroupCommand(groupId, body.type, body.payload || {}) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/telegram/webhook ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/telegram/webhook 
     if (method === 'POST' && reqPath === '/api/telegram/webhook') {
       var body = JSON.parse(await readBody(req));
       var hub = refs.messagingHub;
@@ -3285,18 +3285,18 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 200, { ok: true }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // SYSTEM INTEGRATION ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Full OS Control
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // SYSTEM INTEGRATION -" Full OS Control
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/stats 
     if (method === 'GET' && reqPath === '/api/system/stats') {
       var si = refs.systemIntegration;
       if (!si) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si.getFullStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/processes ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/processes 
     if (method === 'GET' && reqPath === '/api/system/processes') {
       var si2 = refs.systemIntegration;
       if (!si2) return json(res, 500, { error: 'System integration not available' });
@@ -3304,7 +3304,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { processes: si2.getRunningProcesses(topN) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/launch ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/launch 
     if (method === 'POST' && reqPath === '/api/system/launch') {
       var body = JSON.parse(await readBody(req));
       var si3 = refs.systemIntegration;
@@ -3313,7 +3313,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si3.launchApp(body.name, body.args));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/close ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/close 
     if (method === 'POST' && reqPath === '/api/system/close') {
       var body = JSON.parse(await readBody(req));
       var si4 = refs.systemIntegration;
@@ -3322,14 +3322,14 @@ async function handleRequest(req, res) {
       return json(res, 200, si4.closeApp(body.name));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/windows ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/windows 
     if (method === 'GET' && reqPath === '/api/system/windows') {
       var si5 = refs.systemIntegration;
       if (!si5) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { windows: si5.listWindows(), active: si5.getActiveWindow() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/focus ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/focus 
     if (method === 'POST' && reqPath === '/api/system/focus') {
       var body = JSON.parse(await readBody(req));
       var si6 = refs.systemIntegration;
@@ -3337,21 +3337,21 @@ async function handleRequest(req, res) {
       return json(res, 200, si6.focusWindow(body.title));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/screenshot ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/screenshot 
     if (method === 'POST' && reqPath === '/api/system/screenshot') {
       var si7 = refs.systemIntegration;
       if (!si7) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si7.takeScreenshot());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/clipboard ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/clipboard 
     if (method === 'GET' && reqPath === '/api/system/clipboard') {
       var si8 = refs.systemIntegration;
       if (!si8) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si8.getClipboard());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/clipboard ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/clipboard 
     if (method === 'POST' && reqPath === '/api/system/clipboard') {
       var body = JSON.parse(await readBody(req));
       var si9 = refs.systemIntegration;
@@ -3359,7 +3359,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si9.setClipboard(body.text || ''));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/notify ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/notify 
     if (method === 'POST' && reqPath === '/api/system/notify') {
       var body = JSON.parse(await readBody(req));
       var si10 = refs.systemIntegration;
@@ -3367,7 +3367,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si10.sendNotification(body.title, body.body, body.icon));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/files ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/files 
     if (method === 'GET' && reqPath === '/api/system/files') {
       var si11 = refs.systemIntegration;
       if (!si11) return json(res, 500, { error: 'System integration not available' });
@@ -3375,7 +3375,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si11.listFiles(dirPath));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/files/read ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/files/read 
     if (method === 'POST' && reqPath === '/api/system/files/read') {
       var body = JSON.parse(await readBody(req));
       var si12 = refs.systemIntegration;
@@ -3384,7 +3384,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si12.readFile(body.path, body.maxBytes));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/files/write ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/files/write 
     if (method === 'POST' && reqPath === '/api/system/files/write') {
       var body = JSON.parse(await readBody(req));
       var si13 = refs.systemIntegration;
@@ -3393,7 +3393,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si13.writeFile(body.path, body.content || ''));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/files/delete ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/files/delete 
     if (method === 'POST' && reqPath === '/api/system/files/delete') {
       var body = JSON.parse(await readBody(req));
       var si14 = refs.systemIntegration;
@@ -3402,7 +3402,7 @@ async function handleRequest(req, res) {
       return json(res, 200, si14.deleteFile(body.path));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/files/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/files/search 
     if (method === 'POST' && reqPath === '/api/system/files/search') {
       var body = JSON.parse(await readBody(req));
       var si15 = refs.systemIntegration;
@@ -3411,7 +3411,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: si15.searchFiles(body.query, body.path) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/volume ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/volume 
     if (method === 'POST' && reqPath === '/api/system/volume') {
       var body = JSON.parse(await readBody(req));
       var si16 = refs.systemIntegration;
@@ -3422,14 +3422,14 @@ async function handleRequest(req, res) {
       return json(res, 200, si16.getVolume());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/volume ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/volume 
     if (method === 'GET' && reqPath === '/api/system/volume') {
       var si17 = refs.systemIntegration;
       if (!si17) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si17.getVolume());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/power ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/power 
     if (method === 'POST' && reqPath === '/api/system/power') {
       var body = JSON.parse(await readBody(req));
       var si18 = refs.systemIntegration;
@@ -3443,21 +3443,21 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Unknown action. Use: shutdown, restart, sleep, lock, cancel' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/network ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/network 
     if (method === 'GET' && reqPath === '/api/system/network') {
       var si19 = refs.systemIntegration;
       if (!si19) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { ips: si19.getIPAddress(), wifi: si19.getWifiNetworks() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/drives ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/drives 
     if (method === 'GET' && reqPath === '/api/system/drives') {
       var si20 = refs.systemIntegration;
       if (!si20) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { drives: si20.getDriveInfo() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/ping ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/ping 
     if (method === 'POST' && reqPath === '/api/system/ping') {
       var body = JSON.parse(await readBody(req));
       var si21 = refs.systemIntegration;
@@ -3466,35 +3466,35 @@ async function handleRequest(req, res) {
       return json(res, 200, si21.pingHost(body.host));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/ports ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/ports 
     if (method === 'GET' && reqPath === '/api/system/ports') {
       var si22 = refs.systemIntegration;
       if (!si22) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { ports: si22.getOpenPorts() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/apps ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/apps 
     if (method === 'GET' && reqPath === '/api/system/apps') {
       var si23 = refs.systemIntegration;
       if (!si23) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { apps: si23.getInstalledApps() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/startup ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/startup 
     if (method === 'GET' && reqPath === '/api/system/startup') {
       var si24 = refs.systemIntegration;
       if (!si24) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { apps: si24.getStartupApps() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/services ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/services 
     if (method === 'GET' && reqPath === '/api/system/services') {
       var si25 = refs.systemIntegration;
       if (!si25) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { services: si25.listServices(parsed.query.filter) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/service ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/service 
     if (method === 'POST' && reqPath === '/api/system/service') {
       var body = JSON.parse(await readBody(req));
       var si26 = refs.systemIntegration;
@@ -3506,7 +3506,7 @@ async function handleRequest(req, res) {
       return json(res, 400, { error: 'Unknown action' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/brightness ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/brightness 
     if (method === 'POST' && reqPath === '/api/system/brightness') {
       var body = JSON.parse(await readBody(req));
       var si27 = refs.systemIntegration;
@@ -3514,53 +3514,53 @@ async function handleRequest(req, res) {
       return json(res, 200, si27.setBrightness(body.level));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/displays ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/displays 
     if (method === 'GET' && reqPath === '/api/system/displays') {
       var si28 = refs.systemIntegration;
       if (!si28) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { displays: si28.getDisplays() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/recent-files ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/recent-files 
     if (method === 'GET' && reqPath === '/api/system/recent-files') {
       var si29 = refs.systemIntegration;
       if (!si29) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, { files: si29.getRecentFiles() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/dns/flush ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/dns/flush 
     if (method === 'POST' && reqPath === '/api/system/dns/flush') {
       var si30 = refs.systemIntegration;
       if (!si30) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si30.flushDNS());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/minimize-all ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/minimize-all 
     if (method === 'POST' && reqPath === '/api/system/minimize-all') {
       var si31 = refs.systemIntegration;
       if (!si31) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si31.minimizeAll());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/restore-all ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/restore-all 
     if (method === 'POST' && reqPath === '/api/system/restore-all') {
       var si32 = refs.systemIntegration;
       if (!si32) return json(res, 500, { error: 'System integration not available' });
       return json(res, 200, si32.restoreAll());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // SWARM VM MANAGEMENT
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/vms ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/vms 
     if (method === 'GET' && reqPath === '/api/swarm/vms') {
       var sm = refs.swarmManager;
       if (!sm) return json(res, 500, { error: 'Swarm manager not available' });
       return json(res, 200, { vms: sm.listVMs(), capacity: sm.getCapacity() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/vm ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/vm 
     if (method === 'POST' && reqPath === '/api/swarm/vm') {
       var body = JSON.parse(await readBody(req));
       var sm2 = refs.swarmManager;
@@ -3569,7 +3569,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/swarm/vm/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/swarm/vm/:id 
     if (method === 'DELETE' && reqPath.startsWith('/api/swarm/vm/') && !reqPath.includes('/deploy') && !reqPath.includes('/scale')) {
       var vmId = reqPath.split('/').pop();
       var sm3 = refs.swarmManager;
@@ -3577,7 +3577,7 @@ async function handleRequest(req, res) {
       return json(res, 200, sm3.removeVM(vmId));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/vm/:id/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/vm/:id/deploy 
     if (method === 'POST' && reqPath.match(/^\/api\/swarm\/vm\/[^/]+\/deploy$/)) {
       var deployId = reqPath.split('/')[4];
       var sm4 = refs.swarmManager;
@@ -3588,7 +3588,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/vm/:id/scale ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/vm/:id/scale 
     if (method === 'POST' && reqPath.match(/^\/api\/swarm\/vm\/[^/]+\/scale$/)) {
       var scaleId = reqPath.split('/')[4];
       var body = JSON.parse(await readBody(req));
@@ -3597,14 +3597,14 @@ async function handleRequest(req, res) {
       return json(res, 200, sm5.scaleWorkers(scaleId, body.workers || body.count));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/capacity ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/capacity 
     if (method === 'GET' && reqPath === '/api/swarm/capacity') {
       var sm6 = refs.swarmManager;
       if (!sm6) return json(res, 500, { error: 'Swarm manager not available' });
       return json(res, 200, sm6.getCapacity());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/relay-script ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/relay-script 
     if (method === 'GET' && reqPath === '/api/swarm/relay-script') {
       var sm7 = refs.swarmManager;
       if (!sm7) return json(res, 500, { error: 'Swarm manager not available' });
@@ -3618,11 +3618,11 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v4.5 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Skill Bridge + Conversation Engine
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v4.5 -" Skill Bridge + Conversation Engine
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills/hub/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills/hub/search 
     if (method === 'GET' && reqPath === '/api/skills/hub/search') {
       var sb = refs.skillBridge;
       if (!sb) return json(res, 500, { error: 'Skill bridge not available' });
@@ -3631,7 +3631,7 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills/hub/popular ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills/hub/popular 
     if (method === 'GET' && reqPath === '/api/skills/hub/popular') {
       var sb2 = refs.skillBridge;
       if (!sb2) return json(res, 500, { error: 'Skill bridge not available' });
@@ -3639,7 +3639,7 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/skills/hub/install ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/skills/hub/install 
     if (method === 'POST' && reqPath === '/api/skills/hub/install') {
       var body = JSON.parse(await readBody(req));
       var sb3 = refs.skillBridge;
@@ -3649,14 +3649,14 @@ async function handleRequest(req, res) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills/openclaw ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills/openclaw 
     if (method === 'GET' && reqPath === '/api/skills/openclaw') {
       var sb4 = refs.skillBridge;
       if (!sb4) return json(res, 500, { error: 'Skill bridge not available' });
       return json(res, 200, { skills: sb4.discoverLocalSkills() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/skills/openclaw/import ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/skills/openclaw/import 
     if (method === 'POST' && reqPath === '/api/skills/openclaw/import') {
       var body = JSON.parse(await readBody(req));
       var sb5 = refs.skillBridge;
@@ -3665,14 +3665,14 @@ async function handleRequest(req, res) {
       return json(res, 200, sb5.importLocalSkill(body.name));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/skills/registry ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/skills/registry 
     if (method === 'GET' && reqPath === '/api/skills/registry') {
       var sb6 = refs.skillBridge;
       if (!sb6) return json(res, 500, { error: 'Skill bridge not available' });
       return json(res, 200, { registry: sb6.getRegistry(), installed: sb6.listInstalledSkills() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/skills/match ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/skills/match 
     if (method === 'POST' && reqPath === '/api/skills/match') {
       var body = JSON.parse(await readBody(req));
       var sb7 = refs.skillBridge;
@@ -3681,7 +3681,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { matches: sb7.matchSkillForTask(body.task) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sessions ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sessions 
     if (method === 'GET' && reqPath === '/api/sessions') {
       var ce = refs.conversationEngine;
       if (!ce) return json(res, 500, { error: 'Conversation engine not available' });
@@ -3691,7 +3691,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { sessions: ce.listSessions(filter), activeSessionId: ce.getActiveSessionId() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sessions ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sessions 
     if (method === 'POST' && reqPath === '/api/sessions') {
       var body = JSON.parse(await readBody(req));
       var ce2 = refs.conversationEngine;
@@ -3699,7 +3699,7 @@ async function handleRequest(req, res) {
       return json(res, 200, ce2.createSession(body));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sessions/search ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sessions/search 
     if (method === 'GET' && reqPath === '/api/sessions/search') {
       var ce3 = refs.conversationEngine;
       if (!ce3) return json(res, 500, { error: 'Conversation engine not available' });
@@ -3707,14 +3707,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { results: ce3.searchConversations(q) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sessions/channels ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sessions/channels 
     if (method === 'GET' && reqPath === '/api/sessions/channels') {
       var ce4 = refs.conversationEngine;
       if (!ce4) return json(res, 500, { error: 'Conversation engine not available' });
       return json(res, 200, { mappings: ce4.getChannelMappings() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Session-specific routes ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Session-specific routes 
     if (reqPath.startsWith('/api/sessions/') && reqPath !== '/api/sessions/search' && reqPath !== '/api/sessions/channels') {
       var ceParts = reqPath.split('/');
       var ceId = ceParts[3];
@@ -3809,21 +3809,21 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/messaging/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/messaging/status 
     if (method === 'GET' && reqPath === '/api/messaging/status') {
       var hub = refs.messagingHub;
       if (!hub) return json(res, 200, { enabled: false, channels: [] });
       return json(res, 200, hub.getStatus ? hub.getStatus() : { enabled: true, channels: ['api'] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/nodes ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/nodes 
     if (method === 'GET' && reqPath === '/api/nodes') {
       var np = refs.nodePairing;
       if (!np) return json(res, 200, { devices: [], count: 0 });
       return json(res, 200, { devices: np.listDevices(), count: np.listDevices().length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/rag/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/rag/status 
     if (method === 'GET' && reqPath === '/api/rag/status') {
       var rag = refs.ragEngine;
       if (!rag) return json(res, 200, { enabled: false, documents: 0 });
@@ -3831,42 +3831,42 @@ async function handleRequest(req, res) {
       return json(res, 200, { enabled: true, documents: docs.length, docList: docs });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sandbox/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sandbox/status 
     if (method === 'GET' && reqPath === '/api/sandbox/status') {
       var sb = refs.codeSandbox;
       if (!sb) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, languages: sb.getSupportedLanguages ? sb.getSupportedLanguages() : ['javascript'] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/browser/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/browser/status 
     if (method === 'GET' && reqPath === '/api/browser/status') {
       var bc = refs.browserControl;
       if (!bc) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, status: 'ready' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/evolve/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/evolve/status 
     if (method === 'GET' && reqPath === '/api/evolve/status') {
       var ev = refs.selfEvolve;
       if (!ev) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, history: ev.getHistory ? ev.getHistory() : {} });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/updater/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/updater/status 
     if (method === 'GET' && reqPath === '/api/updater/status') {
       var upd = refs.autoUpdater;
       if (!upd) return json(res, 200, { enabled: false });
       return json(res, 200, { enabled: true, history: upd.getUpdateHistory ? upd.getUpdateHistory() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sentinel/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sentinel/status 
     if (method === 'GET' && reqPath === '/api/sentinel/status') {
       var sent = refs.webSentinel;
       if (!sent) return json(res, 200, { enabled: false, watches: [] });
       return json(res, 200, { enabled: true, watches: sent.listWatches ? sent.listWatches() : [] });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/conversations ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/conversations 
     if (method === 'GET' && reqPath === '/api/conversations') {
       var ce = refs.conversationEngine;
       if (!ce) return json(res, 200, { sessions: [], count: 0 });
@@ -3874,7 +3874,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { sessions: sessions, count: sessions.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Extension Bridge Routes (v2.0 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" full browser control) ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Extension Bridge Routes (v2.0 -" full browser control) 
     if (reqPath.startsWith('/api/extension/')) {
       var extBridge = refs.extensionBridge;
       if (!extBridge) return json(res, 503, { error: 'Extension bridge not loaded' });
@@ -3891,7 +3891,7 @@ async function handleRequest(req, res) {
         if (extAction === 'watches') { try { return json(res, 200, await extBridge.sendCommand('listWatches')); } catch (e) { return json(res, 500, { error: e.message }); } }
       }
 
-      // POST routes ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" parse body once
+      // POST routes -" parse body once
       if (method === 'POST') {
         try {
           var body = JSON.parse(await readBody(req));
@@ -3975,7 +3975,7 @@ async function handleRequest(req, res) {
       return json(res, 404, { error: 'Unknown extension action', action: extAction });
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Key Vault Routes ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  Key Vault Routes 
     if (reqPath === '/api/keys' && method === 'GET') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var kp = _refs.keyProvisioner;
@@ -4041,7 +4041,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Swarm Provider Manager Routes ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  Swarm Provider Manager Routes 
     if (reqPath === '/api/providers' && method === 'GET') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var pm = _refs.providerManager;
@@ -4080,7 +4080,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ Swarm Agents Routes ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  Swarm Agents Routes 
     if (reqPath === '/api/agents/swarm' && method === 'GET') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var sa = _refs.swarmAgents;
@@ -4246,9 +4246,9 @@ async function handleRequest(req, res) {
       return json(res, 200, global._usbFlashProgress || { step: 0, total: 7, status: 'idle' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // USB SWARM DEPLOYER ENDPOINTS
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
     const usbSwarmDir = path.join(__dirname, '..', 'usb-swarm');
 
@@ -4262,7 +4262,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/payload.ps1 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/payload.ps1 
     if (method === 'GET' && reqPath === '/api/usb-swarm/payload.ps1') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'payload.ps1'), 'utf8');
@@ -4272,7 +4272,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/worker.js ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/worker.js 
     if (method === 'GET' && reqPath === '/api/usb-swarm/worker.js') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'worker.js'), 'utf8');
@@ -4282,7 +4282,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/worker-linux.js ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/worker-linux.js 
     if (method === 'GET' && reqPath === '/api/usb-swarm/worker-linux.js') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'worker-linux.js'), 'utf8');
@@ -4292,7 +4292,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/deploy-gcp.sh ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/deploy-gcp.sh 
     if (method === 'GET' && reqPath === '/api/usb-swarm/deploy-gcp.sh') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'deploy-gcp.sh'), 'utf8');
@@ -4302,7 +4302,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/digispark.ino ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/digispark.ino 
     if (method === 'GET' && reqPath === '/api/usb-swarm/digispark.ino') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'digispark.ino'), 'utf8');
@@ -4312,7 +4312,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/status 
     if (method === 'GET' && reqPath === '/api/usb-swarm/status') {
       try {
         // Build local worker list from _knownWorkers
@@ -4345,7 +4345,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/config 
     if (method === 'GET' && reqPath === '/api/usb-swarm/config') {
       try {
         const data = JSON.parse(fs.readFileSync(path.join(usbSwarmDir, 'config.json'), 'utf8'));
@@ -4353,7 +4353,7 @@ async function handleRequest(req, res) {
       } catch { return json(res, 200, { config: {} }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/usb-swarm/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/usb-swarm/config 
     if (method === 'POST' && reqPath === '/api/usb-swarm/config') {
       const body = JSON.parse(await readBody(req));
       try {
@@ -4365,7 +4365,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/ducky.txt ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/ducky.txt 
     if (method === 'GET' && reqPath === '/api/usb-swarm/ducky.txt') {
       try {
         const data = fs.readFileSync(path.join(usbSwarmDir, 'ducky.txt'), 'utf8');
@@ -4375,14 +4375,14 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/usb-swarm/flipper/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/usb-swarm/flipper/status 
     if (method === 'GET' && reqPath === '/api/usb-swarm/flipper/status') {
       const flipper = _refs.flipperDeployer;
       if (!flipper) return json(res, 200, { connected: false, driveLetter: null, deployed: false });
       return json(res, 200, flipper.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/usb-swarm/flipper/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/usb-swarm/flipper/deploy 
     if (method === 'POST' && reqPath === '/api/usb-swarm/flipper/deploy') {
       const flipper = _refs.flipperDeployer;
       if (!flipper) return json(res, 500, { error: 'Flipper deployer not initialized' });
@@ -4390,11 +4390,11 @@ async function handleRequest(req, res) {
       return json(res, result.success ? 200 : 400, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // v5.0 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Boot Sequence, Network Scanner, Terminal, Models, Notifications
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // v5.0 -" Boot Sequence, Network Scanner, Terminal, Models, Notifications
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/boot ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/boot 
     if (method === 'GET' && reqPath === '/api/boot') {
       var bs = refs.bootStatus || {};
       var labels = refs.bootLabels || {};
@@ -4405,7 +4405,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { version: version, modules: modules, totalModules: modules.length, online: modules.filter(function(m) { return m.status === 'ok'; }).length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/network/scan ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/network/scan 
     if (method === 'GET' && reqPath === '/api/network/scan') {
       var si = refs.systemIntegration;
       try {
@@ -4434,7 +4434,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/network/ping ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/network/ping 
     if (method === 'POST' && reqPath === '/api/network/ping') {
       var body = JSON.parse(await readBody(req));
       if (!body.host) return json(res, 400, { error: 'Missing host' });
@@ -4447,11 +4447,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 200, { host: body.host, alive: false, error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Network Auto-Deploy
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/network/deploy/scan ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/network/deploy/scan 
     if (method === 'GET' && reqPath === '/api/network/deploy/scan') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 500, { error: 'Network deployer not initialized' });
@@ -4461,7 +4461,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/network/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/network/deploy 
     if (method === 'POST' && reqPath === '/api/network/deploy') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 500, { error: 'Network deployer not initialized' });
@@ -4471,7 +4471,7 @@ async function handleRequest(req, res) {
       return json(res, result.success ? 200 : 400, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/network/auto-deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/network/auto-deploy 
     if (method === 'POST' && reqPath === '/api/network/auto-deploy') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 500, { error: 'Network deployer not initialized' });
@@ -4480,25 +4480,25 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/network/deployments ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/network/deployments 
     if (method === 'GET' && reqPath === '/api/network/deployments') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 200, { deployments: [], status: {} });
       return json(res, 200, { deployments: nd.getDeployments() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/network/deploy/log ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/network/deploy/log 
     if (method === 'GET' && reqPath === '/api/network/deploy/log') {
       var nd = _refs.networkDeployer;
       if (!nd) return json(res, 200, { log: '' });
       return json(res, 200, { log: nd.getLog() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // GPO Mass Deployment
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/gpo ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (serves GPO startup script)
+    //  GET /api/deploy/gpo  (serves GPO startup script)
     if (method === 'GET' && reqPath === '/api/deploy/gpo') {
       var gpoPath = path.join(__dirname, '..', 'deploy', 'gpo-startup.ps1');
       try {
@@ -4509,7 +4509,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/worker.js ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (serves worker for GPO installs)
+    //  GET /api/deploy/worker.js  (serves worker for GPO installs)
     if (method === 'GET' && reqPath === '/api/deploy/worker.js') {
       var wPath = path.join(__dirname, '..', 'usb-swarm', 'worker.js');
       try {
@@ -4520,18 +4520,18 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/oneliner ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (returns copy-paste one-liner)
+    //  GET /api/deploy/oneliner  (returns copy-paste one-liner)
     if (method === 'GET' && reqPath === '/api/deploy/oneliner') {
       var relay = _refs.config.relay?.url || 'https://gateway.doomtrader.com:9700';
       var oneliner = "powershell -ep bypass -c \"irm '" + relay + "/api/deploy/gpo' | iex\"";
       return json(res, 200, { oneliner: oneliner, relay: relay });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Active Directory Mass Deployer
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/ad/connect ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/ad/connect 
     if (method === 'POST' && reqPath === '/api/ad/connect') {
       var ADDeployer = require('./ad-deployer');
       var body = JSON.parse(await readBody(req));
@@ -4541,7 +4541,7 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/ad/computers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/ad/computers 
     if (method === 'GET' && reqPath === '/api/ad/computers') {
       if (!_refs.adDeployer) return json(res, 400, { error: 'Not connected to AD' });
       var adQuery = url.parse(req.url, true).query || {};
@@ -4555,7 +4555,7 @@ async function handleRequest(req, res) {
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/ad/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/ad/deploy 
     if (method === 'POST' && reqPath === '/api/ad/deploy') {
       if (!_refs.adDeployer) return json(res, 400, { error: 'Not connected to AD' });
       var body = JSON.parse(await readBody(req));
@@ -4569,7 +4569,7 @@ async function handleRequest(req, res) {
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/ad/deploy/:computer ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/ad/deploy/:computer 
     if (method === 'POST' && reqPath.startsWith('/api/ad/deploy/')) {
       if (!_refs.adDeployer) return json(res, 400, { error: 'Not connected to AD' });
       var computer = decodeURIComponent(reqPath.replace('/api/ad/deploy/', ''));
@@ -4580,17 +4580,17 @@ async function handleRequest(req, res) {
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/ad/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/ad/status 
     if (method === 'GET' && reqPath === '/api/ad/status') {
       if (!_refs.adDeployer) return json(res, 200, { connected: false, domain: null, computerCount: 0, deployed: 0, failed: 0, pending: 0, machines: {} });
       return json(res, 200, _refs.adDeployer.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // PXE Network Boot Server
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/pxe/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/pxe/status 
     if (method === 'GET' && reqPath === '/api/pxe/status') {
       var PXEServer = require('./pxe-server');
       if (!_refs.pxeServer) {
@@ -4600,7 +4600,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.pxeServer.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/pxe/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/pxe/start 
     if (method === 'POST' && reqPath === '/api/pxe/start') {
       var PXEServer = require('./pxe-server');
       if (!_refs.pxeServer) {
@@ -4615,7 +4615,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/pxe/stop ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/pxe/stop 
     if (method === 'POST' && reqPath === '/api/pxe/stop') {
       if (_refs.pxeServer) {
         await _refs.pxeServer.stop();
@@ -4624,31 +4624,31 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, running: false });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/pxe/clients ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/pxe/clients 
     if (method === 'GET' && reqPath === '/api/pxe/clients') {
       var clients = _refs.pxeServer ? _refs.pxeServer.getStatus().clients : [];
       return json(res, 200, { clients: clients });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Fleet Deployer (Ansible / Salt)
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/fleet/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/fleet/status 
     if (method === 'GET' && reqPath === '/api/fleet/status') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
       return json(res, 200, _refs.fleetDeployer.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/fleet/hosts ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/fleet/hosts 
     if (method === 'GET' && reqPath === '/api/fleet/hosts') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
       return json(res, 200, { hosts: _refs.fleetDeployer.hosts });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/fleet/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/fleet/deploy 
     if (method === 'POST' && reqPath === '/api/fleet/deploy') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
@@ -4667,7 +4667,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, message: 'Deploy started via ' + method30 });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/fleet/add-host ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/fleet/add-host 
     if (method === 'POST' && reqPath === '/api/fleet/add-host') {
       var FleetDeployer = require('./fleet-deployer');
       if (!_refs.fleetDeployer) _refs.fleetDeployer = new FleetDeployer();
@@ -4676,25 +4676,25 @@ async function handleRequest(req, res) {
       return json(res, result31.ok ? 200 : 400, result31);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Cloud Auto-Scaler
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/cloud/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/cloud/status 
     if (method === 'GET' && reqPath === '/api/cloud/status') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
       return json(res, 200, _refs.cloudScaler.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/cloud/instances ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/cloud/instances 
     if (method === 'GET' && reqPath === '/api/cloud/instances') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
       return json(res, 200, _refs.cloudScaler.listInstances());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/cloud/provision ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/cloud/provision 
     if (method === 'POST' && reqPath === '/api/cloud/provision') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
@@ -4711,7 +4711,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/cloud/instance ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/cloud/instance 
     if (method === 'DELETE' && reqPath === '/api/cloud/instance') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
@@ -4721,7 +4721,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/cloud/cost ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/cloud/cost 
     if (method === 'GET' && reqPath === '/api/cloud/cost') {
       var CloudScaler = require('./cloud-scaler');
       if (!_refs.cloudScaler) _refs.cloudScaler = new CloudScaler();
@@ -4798,32 +4798,32 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // Network Watcher ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" DHCP-triggered Auto-Deployment
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // Network Watcher -" DHCP-triggered Auto-Deployment
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/watcher/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/watcher/status 
     if (method === 'GET' && reqPath === '/api/watcher/status') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, _refs.networkWatcher.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/watcher/pending ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/watcher/pending 
     if (method === 'GET' && reqPath === '/api/watcher/pending') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, { pending: _refs.networkWatcher.getPending() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/watcher/deployed ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/watcher/deployed 
     if (method === 'GET' && reqPath === '/api/watcher/deployed') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, { deployed: _refs.networkWatcher.getDeployed() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/watcher/approve ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/watcher/approve 
     if (method === 'POST' && reqPath === '/api/watcher/approve') {
       if (!_refs.networkWatcher) return json(res, 500, { error: 'Watcher not initialized' });
       var body = JSON.parse(await readBody(req));
@@ -4836,7 +4836,7 @@ async function handleRequest(req, res) {
       return json(res, ok ? 200 : 404, ok ? { approved: body.ip } : { error: 'Not found or not pending' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/watcher/reject ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/watcher/reject 
     if (method === 'POST' && reqPath === '/api/watcher/reject') {
       if (!_refs.networkWatcher) return json(res, 500, { error: 'Watcher not initialized' });
       var body = JSON.parse(await readBody(req));
@@ -4845,7 +4845,7 @@ async function handleRequest(req, res) {
       return json(res, ok ? 200 : 404, ok ? { rejected: body.ip } : { error: 'Not found' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/watcher/auto-approve ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/watcher/auto-approve 
     if (method === 'POST' && reqPath === '/api/watcher/auto-approve') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
@@ -4854,7 +4854,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { autoApprove: _refs.networkWatcher.autoApprove });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/watcher/site ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/watcher/site 
     if (method === 'POST' && reqPath === '/api/watcher/site') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
@@ -4864,14 +4864,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { site: body.name, subnet: body.subnet });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/watcher/sites ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/watcher/sites 
     if (method === 'GET' && reqPath === '/api/watcher/sites') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
       return json(res, 200, { sites: _refs.networkWatcher.getSites() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/watcher/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/watcher/start 
     if (method === 'POST' && reqPath === '/api/watcher/start') {
       var NetworkWatcher = require('./network-watcher');
       if (!_refs.networkWatcher) _refs.networkWatcher = new NetworkWatcher({ config: _refs.config, networkDeployer: _refs.networkDeployer });
@@ -4879,18 +4879,18 @@ async function handleRequest(req, res) {
       return json(res, 200, { watching: true });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/watcher/stop ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/watcher/stop 
     if (method === 'POST' && reqPath === '/api/watcher/stop') {
       if (!_refs.networkWatcher) return json(res, 200, { watching: false });
       _refs.networkWatcher.stop();
       return json(res, 200, { watching: false });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Adaptive Deploy Learner
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy-learner/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy-learner/stats 
     if (method === 'GET' && reqPath === '/api/deploy-learner/stats') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4899,7 +4899,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.deployLearner.getStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy-learner/failures ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy-learner/failures 
     if (method === 'GET' && reqPath === '/api/deploy-learner/failures') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4908,7 +4908,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { failures: _refs.deployLearner.getFailureReport() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/deploy-learner/retry ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/deploy-learner/retry 
     if (method === 'POST' && reqPath === '/api/deploy-learner/retry') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4926,7 +4926,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { queued: true, retryAll: true });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy-learner/strategy/:ip ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy-learner/strategy/:ip 
     if (method === 'GET' && reqPath.startsWith('/api/deploy-learner/strategy/')) {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4936,7 +4936,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.deployLearner.getBestStrategy(decodeURIComponent(stratIp)));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy-learner/log ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy-learner/log 
     if (method === 'GET' && reqPath === '/api/deploy-learner/log') {
       if (!_refs.deployLearner) {
         var DeployLearner = require('./deploy-learner');
@@ -4946,11 +4946,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { log: _refs.deployLearner.getLog(parseInt(qp.limit) || 100) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Wake-on-LAN Manager
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ POST /api/wol/wake ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  POST /api/wol/wake 
     if (method === 'POST' && reqPath === '/api/wol/wake') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4966,7 +4966,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ GET /api/wol/health ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  GET /api/wol/health 
     if (method === 'GET' && reqPath === '/api/wol/health') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4974,7 +4974,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { health: wol.getHealth(), watchdogEnabled: wol._watchdogEnabled });
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ POST /api/wol/watchdog ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  POST /api/wol/watchdog 
     if (method === 'POST' && reqPath === '/api/wol/watchdog') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -4984,7 +4984,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { watchdogEnabled: enabled });
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ POST /api/wol/pxe-force ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  POST /api/wol/pxe-force 
     if (method === 'POST' && reqPath === '/api/wol/pxe-force') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -5000,7 +5000,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ GET /api/wol/devices ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬
+    //  GET /api/wol/devices 
     if (method === 'GET' && reqPath === '/api/wol/devices') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -5009,7 +5009,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { devices: wol.getDevices(qp_wol.site || null) });
     }
 
-    // ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ POST /api/wol/device ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ÃƒÆ'Ã'Â¢"ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬ (add device)
+    //  POST /api/wol/device  (add device)
     if (method === 'POST' && reqPath === '/api/wol/device') {
       var WoLManager = require('./wol-manager');
       var wol = _refs.wolManager;
@@ -5020,11 +5020,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { device: dev });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // Mass Deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Login Script, Installer, RPi
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // Mass Deploy -" Login Script, Installer, RPi
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/login-script ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy/login-script 
     if (method === 'GET' && reqPath === '/api/deploy/login-script') {
       var batPath = path.join(__dirname, '..', 'deploy', 'netlogon', 'login-deploy.bat');
       try {
@@ -5034,7 +5034,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 404, { error: 'login-deploy.bat not found' }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/installer ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy/installer 
     if (method === 'GET' && reqPath === '/api/deploy/installer') {
       var exePath = path.join(__dirname, '..', 'deploy', 'msi', 'aries-worker-setup.exe');
       try {
@@ -5044,7 +5044,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 404, { error: 'Installer not built yet. POST /api/deploy/build-installer first.' }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/deploy/build-installer ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/deploy/build-installer 
     if (method === 'POST' && reqPath === '/api/deploy/build-installer') {
       try {
         var builder = require(path.join(__dirname, '..', 'deploy', 'msi', 'build-installer.js'));
@@ -5057,7 +5057,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/rpi-script ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy/rpi-script 
     if (method === 'GET' && reqPath === '/api/deploy/rpi-script') {
       var shPath = path.join(__dirname, '..', 'deploy', 'rpi', 'setup-rpi.sh');
       try {
@@ -5067,11 +5067,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 404, { error: 'setup-rpi.sh not found' }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // GPU Mining & Algorithm Switching
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/gpu/detect ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/gpu/detect 
     if (method === 'GET' && reqPath === '/api/gpu/detect') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5079,7 +5079,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { gpus: gpus });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/gpu/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/gpu/status 
     if (method === 'GET' && reqPath === '/api/gpu/status') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5091,7 +5091,7 @@ async function handleRequest(req, res) {
       return json(res, 200, status);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/gpu/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/gpu/start 
     if (method === 'POST' && reqPath === '/api/gpu/start') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5100,14 +5100,14 @@ async function handleRequest(req, res) {
       return json(res, result.ok ? 200 : 400, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/gpu/stop ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/gpu/stop 
     if (method === 'POST' && reqPath === '/api/gpu/stop') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       return json(res, 200, _refs.gpuMiner.stopGPU());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/algo/profitability ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/algo/profitability 
     if (method === 'GET' && reqPath === '/api/algo/profitability') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5115,14 +5115,14 @@ async function handleRequest(req, res) {
       return json(res, 200, { profitability: results });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/algo/current ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/algo/current 
     if (method === 'GET' && reqPath === '/api/algo/current') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
       return json(res, 200, _refs.gpuMiner.getAlgoStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/algo/switch ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/algo/switch 
     if (method === 'POST' && reqPath === '/api/algo/switch') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5131,7 +5131,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.gpuMiner.switchAlgo(body.algo));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/algo/auto-switch ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/algo/auto-switch 
     if (method === 'POST' && reqPath === '/api/algo/auto-switch') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5139,7 +5139,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.gpuMiner.setAutoSwitch(body.enabled, body.intervalMinutes));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/algo/broadcast ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/algo/broadcast 
     if (method === 'POST' && reqPath === '/api/algo/broadcast') {
       try { var GpuMiner = require('./gpu-miner'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.gpuMiner) _refs.gpuMiner = new GpuMiner({ workerName: _refs.config.workerName || 'aries' });
@@ -5148,25 +5148,25 @@ async function handleRequest(req, res) {
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Mesh Network
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/mesh/topology ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/mesh/topology 
     if (method === 'GET' && reqPath === '/api/mesh/topology') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 200, { gateway: null, peers: [], self: null });
       return json(res, 200, mesh.getTopology());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/mesh/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/mesh/stats 
     if (method === 'GET' && reqPath === '/api/mesh/stats') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 200, { role: 'none', peers: 0, messagesRelayed: 0, bytesRelayed: 0, uptime: 0, gatewayIp: null, queueSize: 0 });
       return json(res, 200, mesh.getStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/mesh/re-elect ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/mesh/re-elect 
     if (method === 'POST' && reqPath === '/api/mesh/re-elect') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 400, { error: 'Mesh not initialized' });
@@ -5174,18 +5174,18 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, message: 'Re-election triggered' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/mesh/peers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/mesh/peers 
     if (method === 'GET' && reqPath === '/api/mesh/peers') {
       var mesh = _refs.meshNetwork;
       if (!mesh) return json(res, 200, { peers: [] });
       return json(res, 200, { peers: mesh.getPeers() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Relay Federation
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/federation/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/federation/status 
     if (method === 'GET' && reqPath === '/api/federation/status') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
@@ -5193,7 +5193,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { relays: fed.listRelays(), sync: fed.getSyncStatus(), failover: fed.getFailoverList() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/federation/relay ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/federation/relay 
     if (method === 'POST' && reqPath === '/api/federation/relay') {
       var body = JSON.parse(await readBody(req));
       var RelayFederation = require('./relay-federation');
@@ -5204,7 +5204,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, relay: relay });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/federation/relay ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/federation/relay 
     if (method === 'DELETE' && reqPath === '/api/federation/relay') {
       var body = JSON.parse(await readBody(req));
       var RelayFederation = require('./relay-federation');
@@ -5215,7 +5215,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: removed });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/federation/sync ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/federation/sync 
     if (method === 'POST' && reqPath === '/api/federation/sync') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
@@ -5228,14 +5228,14 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/federation/failover ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/federation/failover 
     if (method === 'GET' && reqPath === '/api/federation/failover') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
       return json(res, 200, { failover: _refs.relayFederation.getFailoverList() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/federation/broadcast ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/federation/broadcast 
     if (method === 'POST' && reqPath === '/api/federation/broadcast') {
       var RelayFederation = require('./relay-federation');
       if (!_refs.relayFederation) _refs.relayFederation = new RelayFederation({ refs: _refs });
@@ -5247,7 +5247,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/federation/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/federation/deploy 
     if (method === 'POST' && reqPath === '/api/federation/deploy') {
       var body = JSON.parse(await readBody(req));
       var RelayFederation = require('./relay-federation');
@@ -5261,25 +5261,25 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Site Controller System
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sites/overview ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sites/overview 
     if (method === 'GET' && reqPath === '/api/sites/overview') {
       var SiteController = require('./site-controller');
       if (!_refs.siteController) _refs.siteController = new SiteController({ relayUrl: (_refs.config || {}).relayUrl, secret: (_refs.config || {}).secret });
       return json(res, 200, _refs.siteController.getSiteOverview());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sites/list ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sites/list 
     if (method === 'GET' && reqPath === '/api/sites/list') {
       var SiteController = require('./site-controller');
       if (!_refs.siteController) _refs.siteController = new SiteController({ relayUrl: (_refs.config || {}).relayUrl, secret: (_refs.config || {}).secret });
       return json(res, 200, { sites: _refs.siteController.listSites() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sites/add ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sites/add 
     if (method === 'POST' && reqPath === '/api/sites/add') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var body = await readBody(req);
@@ -5292,7 +5292,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/sites/:name ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/sites/:name 
     if (method === 'DELETE' && reqPath.startsWith('/api/sites/') && !reqPath.includes('/command') && !reqPath.includes('/workers')) {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var siteName = decodeURIComponent(reqPath.split('/api/sites/')[1]);
@@ -5302,7 +5302,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: removed });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sites/:name/command ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sites/:name/command 
     if (method === 'POST' && reqPath.match(/^\/api\/sites\/[^/]+\/command$/)) {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var siteName = decodeURIComponent(reqPath.split('/api/sites/')[1].replace('/command', ''));
@@ -5316,7 +5316,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sites/broadcast ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sites/broadcast 
     if (method === 'POST' && reqPath === '/api/sites/broadcast') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var body = await readBody(req);
@@ -5329,7 +5329,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/sites/become-controller ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/sites/become-controller 
     if (method === 'POST' && reqPath === '/api/sites/become-controller') {
       if (!authenticate(req)) return json(res, 401, { error: 'Unauthorized' });
       var body = await readBody(req);
@@ -5342,7 +5342,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/sites/:name/workers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/sites/:name/workers 
     if (method === 'GET' && reqPath.match(/^\/api\/sites\/[^/]+\/workers$/)) {
       var siteName = decodeURIComponent(reqPath.split('/api/sites/')[1].replace('/workers', ''));
       var SiteController = require('./site-controller');
@@ -5353,11 +5353,11 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Remote Wipe & Redeploy
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/wipe/device ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/wipe/device 
     if (method === 'POST' && reqPath === '/api/wipe/device') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -5374,7 +5374,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/wipe/stuck ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/wipe/stuck 
     if (method === 'POST' && reqPath === '/api/wipe/stuck') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -5386,7 +5386,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/wipe/site ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/wipe/site 
     if (method === 'POST' && reqPath === '/api/wipe/site') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -5398,7 +5398,7 @@ async function handleRequest(req, res) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/wipe/stuck ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/wipe/stuck 
     if (method === 'GET' && reqPath === '/api/wipe/stuck') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -5407,7 +5407,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { stuck: _refs.remoteWipe.getStuckWorkers(), stats: _refs.remoteWipe.getStats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/wipe/log ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/wipe/log 
     if (method === 'GET' && reqPath === '/api/wipe/log') {
       var RemoteWipe = require('./remote-wipe');
       if (!_refs.remoteWipe) {
@@ -5416,11 +5416,11 @@ async function handleRequest(req, res) {
       return json(res, 200, { log: _refs.remoteWipe.getWipeLog(), stats: _refs.remoteWipe.getStats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Swarm Intelligence
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/intelligence/consensus ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/intelligence/consensus 
     if (method === 'GET' && reqPath === '/api/intelligence/consensus') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5429,7 +5429,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.swarmIntelligence.getConsensus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/intelligence/recommendations ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/intelligence/recommendations 
     if (method === 'GET' && reqPath === '/api/intelligence/recommendations') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5438,7 +5438,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { recommendations: _refs.swarmIntelligence.getRecommendations() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/intelligence/apply ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/intelligence/apply 
     if (method === 'POST' && reqPath === '/api/intelligence/apply') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5447,7 +5447,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.swarmIntelligence.applyRecommendation(body.id));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/intelligence/auto ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/intelligence/auto 
     if (method === 'POST' && reqPath === '/api/intelligence/auto') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5456,7 +5456,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.swarmIntelligence.autoOptimize(body.enabled));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/intelligence/cpu-profiles ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/intelligence/cpu-profiles 
     if (method === 'GET' && reqPath === '/api/intelligence/cpu-profiles') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5465,7 +5465,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { profiles: _refs.swarmIntelligence.getCpuProfiles() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/intelligence/pool-stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/intelligence/pool-stats 
     if (method === 'GET' && reqPath === '/api/intelligence/pool-stats') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5474,7 +5474,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { pools: _refs.swarmIntelligence.getPoolStats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/intelligence/algo-stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/intelligence/algo-stats 
     if (method === 'GET' && reqPath === '/api/intelligence/algo-stats') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5483,7 +5483,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { algos: _refs.swarmIntelligence.getAlgoStats() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/intelligence/discovery ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (workers report discoveries here)
+    //  POST /api/intelligence/discovery  (workers report discoveries here)
     if (method === 'POST' && reqPath === '/api/intelligence/discovery') {
       var SwarmIntelligence = require('./swarm-intelligence');
       if (!_refs.swarmIntelligence) {
@@ -5493,18 +5493,18 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // Residential Proxy Network
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/proxy/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/proxy/status 
     if (method === 'GET' && reqPath === '/api/proxy/status') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, _refs.proxyNetwork.getStatus());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/proxy/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/proxy/start 
     if (method === 'POST' && reqPath === '/api/proxy/start') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5512,13 +5512,13 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.startGateway(body.port));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/proxy/stop ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/proxy/stop 
     if (method === 'POST' && reqPath === '/api/proxy/stop') {
       if (!_refs.proxyNetwork) return json(res, 200, { ok: true, message: 'Not running' });
       return json(res, 200, _refs.proxyNetwork.stopGateway());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/proxy/customer ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/proxy/customer 
     if (method === 'POST' && reqPath === '/api/proxy/customer') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5526,21 +5526,21 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.addCustomer(body.username, body.password, body.gbLimit, body.expiresAt));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/proxy/customers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/proxy/customers 
     if (method === 'GET' && reqPath === '/api/proxy/customers') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, { customers: _refs.proxyNetwork.listCustomers() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/proxy/customer ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/proxy/customer 
     if (method === 'DELETE' && reqPath === '/api/proxy/customer') {
       if (!_refs.proxyNetwork) return json(res, 400, { error: 'Proxy network not initialized' });
       var body = JSON.parse(await readBody(req));
       return json(res, 200, _refs.proxyNetwork.removeCustomer(body.username));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/proxy/earnings ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/proxy/earnings 
     if (method === 'GET' && reqPath === '/api/proxy/earnings') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5549,14 +5549,14 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.getEarnings(rate));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/proxy/workers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/proxy/workers 
     if (method === 'GET' && reqPath === '/api/proxy/workers') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, { workers: _refs.proxyNetwork.getWorkerList() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/proxy/broadcast ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/proxy/broadcast 
     if (method === 'POST' && reqPath === '/api/proxy/broadcast') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5570,7 +5570,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, task: task, message: 'Task generated (no swarm coordinator to broadcast)' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/proxy/stop-all ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/proxy/stop-all 
     if (method === 'POST' && reqPath === '/api/proxy/stop-all') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5583,7 +5583,7 @@ async function handleRequest(req, res) {
       return json(res, 200, { ok: true, task: task, message: 'Task generated (no swarm coordinator)' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/proxy/login ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (public ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" customer auth for portal)
+    //  POST /api/proxy/login  (public -" customer auth for portal)
     if (method === 'POST' && reqPath === '/api/proxy/login') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5593,7 +5593,7 @@ async function handleRequest(req, res) {
       return json(res, 200, cust);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /proxy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (public ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" serve portal)
+    //  GET /proxy  (public -" serve portal)
     if (method === 'GET' && reqPath === '/proxy') {
       var portalPath = path.join(__dirname, '..', 'web', 'proxy-portal.html');
       try {
@@ -5605,14 +5605,14 @@ async function handleRequest(req, res) {
     }
 
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/proxy/networks ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/proxy/networks 
     if (method === 'GET' && reqPath === '/api/proxy/networks') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, { networks: _refs.proxyNetwork.getConfiguredNetworks() });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/proxy/network/join ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/proxy/network/join 
     if (method === 'POST' && reqPath === '/api/proxy/network/join') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5621,7 +5621,7 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.joinNetwork(body.network, body));
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/proxy/network/leave ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/proxy/network/leave 
     if (method === 'POST' && reqPath === '/api/proxy/network/leave') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5629,21 +5629,21 @@ async function handleRequest(req, res) {
       return json(res, 200, _refs.proxyNetwork.leaveNetwork(body.network));
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/proxy/network/earnings ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/proxy/network/earnings 
     if (method === 'GET' && reqPath === '/api/proxy/network/earnings') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, _refs.proxyNetwork.getNetworkEarnings());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/proxy/network/status ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/proxy/network/status 
     if (method === 'GET' && reqPath === '/api/proxy/network/status') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
       return json(res, 200, _refs.proxyNetwork.getNetworkStatus());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/proxy/network/broadcast ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/proxy/network/broadcast 
     if (method === 'POST' && reqPath === '/api/proxy/network/broadcast') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5661,7 +5661,7 @@ async function handleRequest(req, res) {
       }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/proxy/network/broadcast-leave ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/proxy/network/broadcast-leave 
     if (method === 'POST' && reqPath === '/api/proxy/network/broadcast-leave') {
       var ProxyNet = require('./proxy-network');
       if (!_refs.proxyNetwork) _refs.proxyNetwork = new ProxyNet();
@@ -5673,11 +5673,11 @@ async function handleRequest(req, res) {
     }
 undefined
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    // 
     // WiFi Hotspot Manager
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    // 
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/hotspot/status ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/hotspot/status 
     if (method === 'GET' && reqPath === '/api/hotspot/status') {
       var HotspotManager = require('./hotspot-manager');
       var hm = _refs.hotspotManager;
@@ -5687,7 +5687,7 @@ undefined
       return json(res, 200, st);
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/hotspot/supported ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/hotspot/supported 
     if (method === 'GET' && reqPath === '/api/hotspot/supported') {
       var HotspotManager = require('./hotspot-manager');
       var hm2 = _refs.hotspotManager;
@@ -5695,7 +5695,7 @@ undefined
       return json(res, 200, hm2.isSupported());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/hotspot/start ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/hotspot/start 
     if (method === 'POST' && reqPath === '/api/hotspot/start') {
       var HotspotManager = require('./hotspot-manager');
       var hm3 = _refs.hotspotManager;
@@ -5710,7 +5710,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/hotspot/stop ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/hotspot/stop 
     if (method === 'POST' && reqPath === '/api/hotspot/stop') {
       var hm4 = _refs.hotspotManager;
       if (!hm4) return json(res, 400, { error: 'Hotspot not initialized' });
@@ -5718,14 +5718,14 @@ undefined
       catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/hotspot/clients ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/hotspot/clients 
     if (method === 'GET' && reqPath === '/api/hotspot/clients') {
       var hm5 = _refs.hotspotManager;
       if (!hm5) return json(res, 200, { clients: [] });
       return json(res, 200, { clients: hm5.getClients() });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/hotspot/auto-deploy ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/hotspot/auto-deploy 
     if (method === 'POST' && reqPath === '/api/hotspot/auto-deploy') {
       var hm6 = _refs.hotspotManager;
       if (!hm6) return json(res, 400, { error: 'Hotspot not initialized' });
@@ -5734,11 +5734,11 @@ undefined
       return json(res, 200, { ok: true, autoDeployOnConnect: hm6.config.autoDeployOnConnect });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // WiFi-Aware Network Scanner
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/wifi/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/wifi/status 
     if (method === 'GET' && reqPath === '/api/wifi/status') {
       var WiFiScanner = require('./wifi-scanner');
       var cfg = _refs.config.wifi || {};
@@ -5753,7 +5753,7 @@ undefined
       } catch(e) { return json(res, 200, { networks: [], status: 'error', error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/wifi/scan ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/wifi/scan 
     if (method === 'POST' && reqPath === '/api/wifi/scan') {
       var WiFiScanner = require('./wifi-scanner');
       var cfg = _refs.config.wifi || {};
@@ -5768,7 +5768,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/wifi/deploy ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/wifi/deploy 
     if (method === 'POST' && reqPath === '/api/wifi/deploy') {
       var WiFiScanner = require('./wifi-scanner');
       var ws = _refs.wifiScanner;
@@ -5781,7 +5781,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/wifi/trusted ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (add/remove trusted SSIDs)
+    //  POST /api/wifi/trusted  (add/remove trusted SSIDs)
     if (method === 'POST' && reqPath === '/api/wifi/trusted') {
       var body = JSON.parse(await readBody(req));
       var cfg = _refs.config.wifi = _refs.config.wifi || { trustedSSIDs: [] };
@@ -5799,7 +5799,7 @@ undefined
       return json(res, 200, { trustedSSIDs: cfg.trustedSSIDs });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/wifi/arp ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â (quick ARP scan, no port check)
+    //  GET /api/wifi/arp  (quick ARP scan, no port check)
     if (method === 'GET' && reqPath === '/api/wifi/arp') {
       var WiFiScanner = require('./wifi-scanner');
       var ws = _refs.wifiScanner || new WiFiScanner({ trustedSSIDs: (_refs.config.wifi || {}).trustedSSIDs || [] });
@@ -5809,7 +5809,7 @@ undefined
       return json(res, 200, { ssid, trusted: ws.isTrusted(ssid), devices, count: devices.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/system/monitor ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/system/monitor 
     if (method === 'GET' && reqPath === '/api/system/monitor') {
       var si = refs.systemIntegration;
       var sysInfo = refs.sysModule ? refs.sysModule.get() : {};
@@ -5849,7 +5849,7 @@ undefined
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/system/kill ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/system/kill 
     if (method === 'POST' && reqPath === '/api/system/kill') {
       var body = JSON.parse(await readBody(req));
       if (!body.pid) return json(res, 400, { error: 'Missing pid' });
@@ -5859,7 +5859,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/models ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/models 
     if (method === 'GET' && reqPath === '/api/models') {
       // List available Ollama models and configured providers
       var models = [];
@@ -5906,7 +5906,7 @@ undefined
           }
         }
       }
-      // Add Google Gemini models â€" fetch live from API
+      // Add Google Gemini models -- fetch live from API
       var googleKey = (refs.config.google && refs.config.google.apiKey) ||
                       process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
       if (!googleKey) {
@@ -5968,7 +5968,7 @@ undefined
       return json(res, 200, { models: models, count: models.length });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/models/pull ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/models/pull 
     if (method === 'POST' && reqPath === '/api/models/pull') {
       var body = JSON.parse(await readBody(req));
       if (!body.name) return json(res, 400, { error: 'Missing model name' });
@@ -5987,7 +5987,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/terminal/exec ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/terminal/exec 
     if (method === 'POST' && reqPath === '/api/terminal/exec') {
       var body = JSON.parse(await readBody(req));
       if (!body.command) return json(res, 400, { error: 'Missing command' });
@@ -6032,7 +6032,7 @@ undefined
     if (!_refs._xmrigCache) _refs._xmrigCache = { data: null, ts: 0 };
     {
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/config 
     if (method === 'GET' && reqPath === '/api/miner/config') {
       var minerCfgPath = path.join(__dirname, '..', 'config.json');
       try {
@@ -6041,7 +6041,7 @@ undefined
       } catch (e) { return json(res, 200, { config: {} }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/config 
     if (method === 'POST' && reqPath === '/api/miner/config') {
       var body = JSON.parse(await readBody(req));
       var minerCfgPath = path.join(__dirname, '..', 'config.json');
@@ -6053,7 +6053,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/pnl ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/pnl 
     if (method === 'GET' && reqPath === '/api/miner/pnl') {
       var pnlPath = path.join(__dirname, '..', 'data', 'miner-pnl.json');
       try {
@@ -6062,7 +6062,7 @@ undefined
       } catch (e) { return json(res, 200, { totalSolMined: 0, totalBtcMined: 0, todaySolMined: 0, estimatedDailySol: 0, totalUsd: 0, dailyLog: [] }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/status 
     if (method === 'GET' && reqPath === '/api/miner/status') {
       var ms = _refs._minerState || { mining: false, nodes: {}, startTime: null };
       var totalHashrate = 0;
@@ -6178,7 +6178,7 @@ undefined
       });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/start 
     if (method === 'POST' && reqPath === '/api/miner/start') {
       var body = JSON.parse(await readBody(req));
       var minerCfgPath2 = path.join(__dirname, '..', 'config.json');
@@ -6314,7 +6314,7 @@ undefined
       return json(res, 200, { status: 'started', pool: poolUrl, nodes: workerNodes });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/stop ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/stop 
     if (method === 'POST' && reqPath === '/api/miner/stop') {
       var ms = _refs._minerState;
       if (!ms || !ms.mining) return json(res, 200, { status: 'not_running' });
@@ -6350,7 +6350,7 @@ undefined
       return json(res, 200, { status: 'stopped' });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'Â ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/wallet/balance ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â£ (FEATURE 4)
+    //   GET /api/wallet/balance  (FEATURE 4)
     if (method === 'GET' && reqPath === '/api/wallet/balance') {
       var now = Date.now();
       if (_walletBalanceCache && (now - _walletBalanceCache.ts) < 60000) {
@@ -6402,7 +6402,7 @@ undefined
       return json(res, 200, balanceResult);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/destruct ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" trigger self-destruct on workers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/destruct -" trigger self-destruct on workers 
     if (method === 'POST' && reqPath === '/api/swarm/destruct') {
       var body = JSON.parse(await readBody(req));
       var dRelayDir = path.join(__dirname, '..', 'usb-swarm');
@@ -6429,14 +6429,14 @@ undefined
       return json(res, 200, { status: 'destruct_sent', target: body.workerId || 'all' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Tor Hidden Service Routes ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Tor Hidden Service Routes 
     try {
       var torService = require(path.join(__dirname, 'tor-service'));
       var torResult = torService.registerRoutes(method, reqPath, res, json, null, refs);
       if (torResult !== null && torResult !== undefined) return;
     } catch (e) {}
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/node-report ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/node-report 
     if (method === 'POST' && reqPath === '/api/miner/node-report') {
       var body = JSON.parse(await readBody(req));
       if (!_refs._minerState) _refs._minerState = { mining: false, nodes: {}, startTime: null, poolConnected: false };
@@ -6460,7 +6460,7 @@ undefined
         var pnl = {};
         try { pnl = JSON.parse(fs.readFileSync(pnlPath, 'utf8')); } catch (e) { pnl = { totalBtcMined: 0, todayBtcMined: 0, estimatedDailyBtc: 0, dailyLog: [] }; }
         // Rough estimate: XMR mining with RandomX, converted to BTC
-        // ~1 KH/s RandomX ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â°Ãƒâ€¹Ã¢â'¬Â  0.000001 XMR/day ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â°Ãƒâ€¹Ã¢â'¬Â  0.0000000025 BTC/day (rough)
+        // ~1 KH/s RandomX   0.000001 XMR/day   0.0000000025 BTC/day (rough)
         var totalHr = 0;
         Object.keys(_refs._minerState.nodes).forEach(function(k) { totalHr += _refs._minerState.nodes[k].hashrate || 0; });
         pnl.estimatedDailyBtc = totalHr * 0.0000000025;
@@ -6471,11 +6471,11 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // MINING PROFITABILITY, POOL SWITCHER, BENCHMARKING
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/profitability ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/profitability 
     if (method === 'GET' && reqPath === '/api/miner/profitability') {
       // SOL price cache
       if (!_refs._solPriceCache) _refs._solPriceCache = { price: 0, ts: 0 };
@@ -6553,7 +6553,7 @@ undefined
         });
         if (prRemote && prRemote.totalHashrate) totalHashrate += prRemote.totalHashrate;
       } catch(e) {}
-      // ~1 KH/s ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â°Ãƒâ€¹Ã¢â'¬Â  0.0003 SOL/day for unMineable RandomX
+      // ~1 KH/s   0.0003 SOL/day for unMineable RandomX
       var solPerDay = (totalHashrate / 1000) * 0.0003;
       var usdPerDay = solPerDay * solPrice;
       // Read electricity cost from config for break-even
@@ -6572,7 +6572,7 @@ undefined
       });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/history 
     if (method === 'GET' && reqPath === '/api/miner/history') {
       var pnlHistPath = path.join(__dirname, '..', 'data', 'miner-pnl.json');
       var pnlHist = { dailyLog: [] };
@@ -6580,7 +6580,7 @@ undefined
       return json(res, 200, { dailyLog: pnlHist.dailyLog || [], totalBtcMined: pnlHist.totalBtcMined || 0 });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/pools ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/pools 
     if (method === 'GET' && reqPath === '/api/miner/pools') {
       var mcfgPools = {};
       try { mcfgPools = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')).miner || {}; } catch(e) {}
@@ -6593,7 +6593,7 @@ undefined
       return json(res, 200, { pools: pools, currentPool: mcfgPools.poolUrl || 'rx.unmineable.com:3333', autoSwitch: mcfgPools.autoSwitch || false });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/auto-switch ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/auto-switch 
     if (method === 'POST' && reqPath === '/api/miner/auto-switch') {
       var body = JSON.parse(await readBody(req));
       var asCfgPath = path.join(__dirname, '..', 'config.json');
@@ -6616,7 +6616,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/benchmark ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/benchmark 
     if (method === 'POST' && reqPath === '/api/miner/benchmark') {
       // Broadcast mine-benchmark to swarm workers via relay
       var bmUsbDir = path.join(__dirname, '..', 'usb-swarm');
@@ -6643,12 +6643,12 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/benchmark ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/benchmark 
     if (method === 'GET' && reqPath === '/api/miner/benchmark') {
       return json(res, 200, { results: _refs._benchmarkResults || {} });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/update-workers ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/update-workers 
     if (method === 'POST' && reqPath === '/api/swarm/update-workers') {
       var uswDir = path.join(__dirname, '..', 'usb-swarm');
       var workerCode = '', workerLinuxCode = '';
@@ -6677,14 +6677,14 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/alerts ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/alerts 
     if (method === 'GET' && reqPath === '/api/miner/alerts') {
       var ma = _refs.minerAlerts;
       if (!ma) return json(res, 200, { alerts: [] });
       return json(res, 200, { alerts: ma.getAlertHistory(50) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/alerts/config ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/alerts/config 
     if (method === 'POST' && reqPath === '/api/miner/alerts/config') {
       var body = JSON.parse(await readBody(req));
       var ma = _refs.minerAlerts;
@@ -6694,7 +6694,7 @@ undefined
       return json(res, ok ? 200 : 500, ok ? { status: 'saved' } : { error: 'Failed to save config' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/miner/alerts/test ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/miner/alerts/test 
     if (method === 'POST' && reqPath === '/api/miner/alerts/test') {
       var ma = _refs.minerAlerts;
       if (!ma) return json(res, 500, { error: 'MinerAlerts not available' });
@@ -6704,7 +6704,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/miner/map ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/miner/map 
     if (method === 'GET' && reqPath === '/api/miner/map') {
       var ma = _refs.minerAlerts;
       if (!ma) return json(res, 200, { workers: [] });
@@ -6716,11 +6716,11 @@ undefined
 
     } // end admin-only mining routes
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // PACKET SEND ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Internal Network Stress Tester
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // PACKET SEND -" Internal Network Stress Tester
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/packet-send/start ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/packet-send/start 
     if (method === 'POST' && reqPath === '/api/packet-send/start') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -6731,7 +6731,7 @@ undefined
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/packet-send/stop ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/packet-send/stop 
     if (method === 'POST' && reqPath === '/api/packet-send/stop') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -6741,7 +6741,7 @@ undefined
       return json(res, 200, { stopped: ps.stopAll() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/packet-send/status ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/packet-send/status 
     if (method === 'GET' && reqPath === '/api/packet-send/status') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 200, { active: false, elapsed: 0, duration: 0, aggregate: {}, perNode: {} });
@@ -6770,7 +6770,7 @@ undefined
       });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/packet-send/validate ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/packet-send/validate 
     if (method === 'POST' && reqPath === '/api/packet-send/validate') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -6778,7 +6778,7 @@ undefined
       return json(res, 200, ps.validateTarget(body.ip || body.target || ''));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/packet-send/node-report ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/packet-send/node-report 
     if (method === 'POST' && reqPath === '/api/packet-send/node-report') {
       var ps = refs.packetSend;
       if (!ps) return json(res, 500, { error: 'PacketSend not available' });
@@ -6787,7 +6787,7 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/notifications ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/notifications 
     if (method === 'GET' && reqPath === '/api/notifications') {
       var wr = refs.warRoom;
       var feed = wr ? wr.getActivityFeed(parseInt(parsed.query.limit) || 50) : [];
@@ -6855,16 +6855,16 @@ undefined
       return json(res, 200, { profile: profile });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // SETTINGS ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Token Management
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // SETTINGS -" Token Management
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/settings/tokens ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/settings/tokens 
     if (method === 'GET' && reqPath === '/api/settings/tokens') {
       const cfg = refs.config || {};
       function mask(val) {
-        if (!val || typeof val !== 'string' || val.length < 5) return val ? 'ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢' : '';
-        return 'ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬Ãƒâ€šÃ'Â¢' + val.slice(-4);
+        if (!val || typeof val !== 'string' || val.length < 5) return val ? '****' : '';
+        return '****' + val.slice(-4);
       }
       return json(res, 200, {
         aiToken: mask(cfg.fallback?.directApi?.key || cfg.ariesGateway?.providers?.anthropic?.apiKey || ''),
@@ -6888,7 +6888,7 @@ undefined
       });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/settings/tokens ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/settings/tokens 
     if (method === 'POST' && reqPath === '/api/settings/tokens') {
       const body = JSON.parse(await readBody(req));
       const configPath = path.join(__dirname, '..', 'config.json');
@@ -6951,7 +6951,7 @@ undefined
       } catch (e) { return json(res, 500, { error: 'Failed to write config: ' + e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/settings/test-token ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/settings/test-token 
     // POST /api/settings/aries-key — save/update the Aries API key
     if (method === 'POST' && reqPath === '/api/settings/aries-key') {
       const body = JSON.parse(await readBody(req));
@@ -7008,7 +7008,7 @@ undefined
       } catch (e) { return json(res, 500, { error: 'Failed to write config: ' + e.message }); }
     }
 
-    // POST /api/settings/agent-link â€" save external agent connection
+    // POST /api/settings/agent-link -- save external agent connection
     if (method === 'POST' && reqPath === '/api/settings/agent-link') {
       const body = JSON.parse(await readBody(req));
       const configPath3 = path.join(__dirname, '..', 'config.json');
@@ -7082,11 +7082,11 @@ undefined
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // DISTRIBUTED AI & MODEL SHARING
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/ai/distributed ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/ai/distributed 
     if (method === 'POST' && reqPath === '/api/ai/distributed') {
       const body = JSON.parse(await readBody(req));
       if (!body.prompt) return json(res, 400, { error: 'Missing "prompt" field' });
@@ -7105,7 +7105,7 @@ undefined
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/models ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/models 
     if (method === 'GET' && reqPath === '/api/swarm/models') {
       const modelSharing = require('./model-sharing');
       try {
@@ -7114,7 +7114,7 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/models/share ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/models/share 
     if (method === 'POST' && reqPath === '/api/swarm/models/share') {
       const body = JSON.parse(await readBody(req));
       const modelSharing = require('./model-sharing');
@@ -7125,7 +7125,7 @@ undefined
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Captive Portal Endpoints ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Captive Portal Endpoints 
     if (method === 'GET' && reqPath === '/api/captive-portal/status') {
       var cp = refs.captivePortal;
       if (!cp) return json(res, 500, { error: 'Captive portal not available' });
@@ -7161,18 +7161,18 @@ undefined
       return json(res, 200, { templates: cp6.getTemplates() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // PROFIT DASHBOARD ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" SOL Balance Tracking
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // PROFIT DASHBOARD -" SOL Balance Tracking
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/profit/balance ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/profit/balance 
     if (method === 'GET' && reqPath === '/api/profit/balance') {
       var pt = refs.profitTracker;
       if (!pt) return json(res, 200, { balance: null, solPrice: 0, usdValue: null });
       return json(res, 200, pt.getBalance());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/profit/history ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/profit/history 
     if (method === 'GET' && reqPath === '/api/profit/history') {
       var pt2 = refs.profitTracker;
       if (!pt2) return json(res, 200, { history: [] });
@@ -7180,18 +7180,18 @@ undefined
       return json(res, 200, { history: pt2.getHistory(limit) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/profit/summary ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/profit/summary 
     if (method === 'GET' && reqPath === '/api/profit/summary') {
       var pt3 = refs.profitTracker;
       if (!pt3) return json(res, 200, { balance: null, totalEarned: 0, todayEarned: 0 });
       return json(res, 200, pt3.getSummary());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
-    // WORKER CHAT ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Inter-Worker Communication
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
+    // WORKER CHAT -" Inter-Worker Communication
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/swarm/chat ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/swarm/chat 
     if (method === 'GET' && reqPath === '/api/swarm/chat') {
       var wc = refs.workerChat;
       if (!wc) return json(res, 200, { messages: [] });
@@ -7200,7 +7200,7 @@ undefined
       return json(res, 200, { messages: wc.getMessages(chatLimit, chatWorker) });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/chat ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/chat 
     if (method === 'POST' && reqPath === '/api/swarm/chat') {
       var wc2 = refs.workerChat;
       if (!wc2) return json(res, 500, { error: 'Worker chat not available' });
@@ -7252,7 +7252,7 @@ undefined
             } catch(se) { liveStatus = ''; }
 
             var swarmPrompt = [
-              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network.' + liveStatus + '\nRespond concisely. Use tables/formatting when helpful. Sign as "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â'¬Â Swarm ÃƒÂ°Ã…Â¸Ã'ÂÃ'Â"' },
+              { role: 'system', content: 'You are the ARIES Swarm Coordinator. You manage a distributed AI network.' + liveStatus + '\nRespond concisely. Use tables/formatting when helpful. Sign as "Swarm"' },
               { role: 'user', content: 'Recent chat:\n' + recentMsgs + '\n\nMaster says: ' + chatText }
             ];
             var aiResult;
@@ -7332,7 +7332,7 @@ undefined
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Content Farm ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Content Farm 
     if (method === 'POST' && reqPath === '/api/content/generate') {
       var cfBody = JSON.parse(await readBody(req));
       var contentFarm = require('./content-farm');
@@ -7361,7 +7361,7 @@ undefined
       return json(res, cfDel ? 200 : 404, cfDel ? { success: true } : { error: 'Not found' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Oracle Cloud Provisioner ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Oracle Cloud Provisioner 
     if (method === 'POST' && reqPath === '/api/cloud/oracle/provision') {
       var ocBody = JSON.parse(await readBody(req));
       var ocp = require('./oracle-provisioner');
@@ -7385,7 +7385,7 @@ undefined
       return json(res, ocTermResult.error ? 400 : 200, ocTermResult);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Worker Health Dashboard ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Worker Health Dashboard 
     if (method === 'GET' && reqPath === '/api/health/workers') {
       var wh = require('./worker-health');
       return json(res, 200, wh.getAllWorkers());
@@ -7402,7 +7402,7 @@ undefined
       return json(res, 200, whData);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â Geographic Load Balancing ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  Geographic Load Balancing 
     if (method === 'GET' && reqPath === '/api/swarm/routing') {
       var geo = require('./geo-balancer');
       var distAi = require('./distributed-ai');
@@ -7411,11 +7411,11 @@ undefined
       return json(res, 200, geo.getRoutingTable(geoWorkers));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // TASK MARKETPLACE
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/marketplace/submit ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/marketplace/submit 
     if (method === 'POST' && reqPath === '/api/marketplace/submit') {
       var body = JSON.parse(await readBody(req));
       var taskMarketplace = require('./task-marketplace');
@@ -7424,7 +7424,7 @@ undefined
       return json(res, result.statusCode || 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/marketplace/task/:id ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/marketplace/task/:id 
     if (method === 'GET' && reqPath.startsWith('/api/marketplace/task/')) {
       var taskId = reqPath.split('/api/marketplace/task/')[1];
       var taskMarketplace = require('./task-marketplace');
@@ -7433,75 +7433,75 @@ undefined
       return json(res, 200, task);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/marketplace/pricing ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/marketplace/pricing 
     if (method === 'GET' && reqPath === '/api/marketplace/pricing') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getPricing());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/marketplace/earnings ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/marketplace/earnings 
     if (method === 'GET' && reqPath === '/api/marketplace/earnings') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getEarnings());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/marketplace/tasks ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/marketplace/tasks 
     if (method === 'GET' && reqPath === '/api/marketplace/tasks') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getActiveTasks());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // REFERRAL / VOLUNTEER PROGRAM
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/referral/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/referral/stats 
     if (method === 'GET' && reqPath === '/api/referral/stats') {
       var taskMarketplace = require('./task-marketplace');
       return json(res, 200, taskMarketplace.getReferralStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/referral/track ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/referral/track 
     if (method === 'POST' && reqPath === '/api/referral/track') {
       var taskMarketplace = require('./task-marketplace');
       var platform = parsed.query.platform || 'unknown';
       return json(res, 200, taskMarketplace.trackDownload(platform));
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // DOCKER IMAGE GENERATOR
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/docker/dockerfile ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/docker/dockerfile 
     if (method === 'GET' && reqPath === '/api/docker/dockerfile') {
       var dockerBuilder = require('./docker-builder');
       return json(res, 200, dockerBuilder.getDockerfile());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/docker/compose ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/docker/compose 
     if (method === 'GET' && reqPath === '/api/docker/compose') {
       var dockerBuilder = require('./docker-builder');
       return json(res, 200, dockerBuilder.getCompose());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/docker/run-command ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/docker/run-command 
     if (method === 'GET' && reqPath === '/api/docker/run-command') {
       var dockerBuilder = require('./docker-builder');
       return json(res, 200, dockerBuilder.getRunCommand());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/docker/build ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/docker/build 
     if (method === 'POST' && reqPath === '/api/docker/build') {
       var dockerBuilder = require('./docker-builder');
       var result = dockerBuilder.buildImage();
       return json(res, result.statusCode || 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // LINK DEPLOYER
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/links/generate ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/links/generate 
     if (method === 'POST' && reqPath === '/api/links/generate') {
       var LinkDeployer = require('./link-deployer');
       if (!_refs.linkDeployer) _refs.linkDeployer = new LinkDeployer({ port: _refs.config?.port || 3333 });
@@ -7511,14 +7511,14 @@ undefined
       return json(res, 200, result);
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/links/list ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/links/list 
     if (method === 'GET' && reqPath === '/api/links/list') {
       var LinkDeployer = require('./link-deployer');
       if (!_refs.linkDeployer) _refs.linkDeployer = new LinkDeployer({ port: _refs.config?.port || 3333 });
       return json(res, 200, { links: _refs.linkDeployer.listLinks() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â DELETE /api/links/:token ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  DELETE /api/links/:token 
     if (method === 'DELETE' && reqPath.startsWith('/api/links/')) {
       var delToken = reqPath.split('/api/links/')[1];
       if (!delToken) return json(res, 400, { error: 'Missing token' });
@@ -7528,7 +7528,7 @@ undefined
       return json(res, revoked ? 200 : 404, revoked ? { status: 'revoked' } : { error: 'Link not found' });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/deploy/worker-linux.sh ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/deploy/worker-linux.sh 
     if (method === 'GET' && reqPath === '/api/deploy/worker-linux.sh') {
       var shPath = path.join(__dirname, '..', 'deploy', 'worker-linux.sh');
       try {
@@ -7539,25 +7539,25 @@ undefined
       return;
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // HASHRATE OPTIMIZER
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/hashrate/stats ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/hashrate/stats 
     if (method === 'GET' && reqPath === '/api/hashrate/stats') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       return json(res, 200, _refs.hashrateOptimizer.getStats());
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â GET /api/hashrate/profiles ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  GET /api/hashrate/profiles 
     if (method === 'GET' && reqPath === '/api/hashrate/profiles') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
       return json(res, 200, { profiles: _refs.hashrateOptimizer.getProfiles() });
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/hashrate/optimize ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/hashrate/optimize 
     if (method === 'POST' && reqPath === '/api/hashrate/optimize') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
@@ -7575,7 +7575,7 @@ undefined
       }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/hashrate/threads ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/hashrate/threads 
     if (method === 'POST' && reqPath === '/api/hashrate/threads') {
       try { var HashrateOptimizer = require('./hashrate-optimizer'); } catch(e) { return json(res, 404, { error: 'Module not available' }); }
       if (!_refs.hashrateOptimizer) _refs.hashrateOptimizer = new HashrateOptimizer();
@@ -7587,11 +7587,11 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
     // SWARM AUTO-UPDATE PROPAGATION
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    // 
 
-    // ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â POST /api/swarm/push-update ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'ÂÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã'Â¢Ãƒâ€šÃ'Â
+    //  POST /api/swarm/push-update 
     if (method === 'POST' && reqPath === '/api/swarm/push-update') {
       var puBody = JSON.parse(await readBody(req));
       var puDir = path.join(__dirname, '..', 'usb-swarm');
@@ -7623,11 +7623,11 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    // 
     // VIRTUALBOX AUTO-PROVISIONER
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    // 
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/vbox/status ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/vbox/status 
     if (method === 'GET' && reqPath === '/api/vbox/status') {
       var vboxProv = require('./vbox-provisioner');
       if (!vboxProv.isAvailable()) return json(res, 200, { available: false, error: 'VirtualBox not found', vms: [], templateStatus: 'vbox_not_found', resources: vboxProv.getResources() });
@@ -7635,13 +7635,13 @@ undefined
       catch(e) { return json(res, 200, vboxProv.getStatus()); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/vbox/resources ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/vbox/resources 
     if (method === 'GET' && reqPath === '/api/vbox/resources') {
       var vboxProv = require('./vbox-provisioner');
       return json(res, 200, vboxProv.getResources());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/vbox/create ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/vbox/create 
     if (method === 'POST' && reqPath === '/api/vbox/create') {
       var vboxProv = require('./vbox-provisioner');
       if (!vboxProv.isAvailable()) return json(res, 500, { error: 'VirtualBox not found' });
@@ -7654,7 +7654,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/vbox/start ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/vbox/start 
     if (method === 'POST' && reqPath === '/api/vbox/start') {
       var vboxProv = require('./vbox-provisioner');
       var body = JSON.parse(await readBody(req));
@@ -7666,7 +7666,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/vbox/stop ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/vbox/stop 
     if (method === 'POST' && reqPath === '/api/vbox/stop') {
       var vboxProv = require('./vbox-provisioner');
       var body = JSON.parse(await readBody(req));
@@ -7678,7 +7678,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/vbox/delete ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/vbox/delete 
     if (method === 'POST' && reqPath === '/api/vbox/delete') {
       var vboxProv = require('./vbox-provisioner');
       var body = JSON.parse(await readBody(req));
@@ -7690,7 +7690,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/vbox/create-template ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/vbox/create-template 
     if (method === 'POST' && reqPath === '/api/vbox/create-template') {
       var vboxTemplate = require('./vbox-template');
       if (vboxTemplate.isBuilding()) return json(res, 409, { error: 'Template build already in progress' });
@@ -7704,7 +7704,7 @@ undefined
       return json(res, 200, { status: 'building', message: 'Template build started' });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/vbox/take-snapshot ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/vbox/take-snapshot 
     if (method === 'POST' && reqPath === '/api/vbox/take-snapshot') {
       var vboxTemplate = require('./vbox-template');
       try {
@@ -7713,24 +7713,24 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/vbox/build-log ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/vbox/build-log 
     if (method === 'GET' && reqPath === '/api/vbox/build-log') {
       var vboxTemplate = require('./vbox-template');
       return json(res, 200, { log: vboxTemplate.getBuildLog(), building: vboxTemplate.isBuilding() });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â MANAGEMENT API - Member Tracker, Network Health, Revenue ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    // 
+    //  MANAGEMENT API - Member Tracker, Network Health, Revenue 
+    // 
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/members ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/members 
     if (method === 'GET' && reqPath === '/api/manage/members') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 500, { error: 'Member tracker not available' });
       return json(res, 200, { members: mt.getAllMembers(), total: Object.keys(mt.members).length });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/members/:id ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/members/:id 
     if (method === 'GET' && reqPath.startsWith('/api/manage/members/') && !reqPath.includes('/kick') && !reqPath.includes('/ban') && !reqPath.includes('/message') && !reqPath.includes('/tier') && !reqPath.includes('/group')) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1]);
       const mt = refs.memberTracker;
@@ -7740,7 +7740,7 @@ undefined
       return json(res, 200, { member });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/members/:id/kick ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/members/:id/kick 
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/kick$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/kick', ''));
       const mt = refs.memberTracker;
@@ -7750,7 +7750,7 @@ undefined
       return json(res, 200, { status: 'kicked', workerId: wid });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/members/:id/ban ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/members/:id/ban 
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/ban$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/ban', ''));
       const mt = refs.memberTracker;
@@ -7760,7 +7760,7 @@ undefined
       return json(res, 200, { status: 'banned', workerId: wid });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/members/:id/message ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/members/:id/message 
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/message$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/message', ''));
       const body = JSON.parse(await readBody(req));
@@ -7770,7 +7770,7 @@ undefined
       return json(res, 200, { status: 'sent', workerId: wid });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/members/:id/tier ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/members/:id/tier 
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/tier$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/tier', ''));
       const body = JSON.parse(await readBody(req));
@@ -7780,7 +7780,7 @@ undefined
       return json(res, 200, { status: 'updated', workerId: wid, tier: body.tier });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/members/:id/group ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/members/:id/group 
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/members\/[^/]+\/group$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/members/')[1].replace('/group', ''));
       const body = JSON.parse(await readBody(req));
@@ -7791,35 +7791,35 @@ undefined
       return json(res, 200, { status: 'updated', workerId: wid, groups: mt.getMember(wid)?.groups });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/stats ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/stats 
     if (method === 'GET' && reqPath === '/api/manage/stats') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 500, { error: 'Member tracker not available' });
       return json(res, 200, mt.getStats());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/revenue ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/revenue 
     if (method === 'GET' && reqPath === '/api/manage/revenue') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 500, { error: 'Member tracker not available' });
       return json(res, 200, mt.getRevenueEstimate());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/health ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/health 
     if (method === 'GET' && reqPath === '/api/manage/health') {
       const nh = refs.networkHealth;
       if (!nh) return json(res, 500, { error: 'Network health not available' });
       return json(res, 200, nh.getThroughput());
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/reports ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/reports 
     if (method === 'GET' && reqPath === '/api/manage/reports') {
       const nh = refs.networkHealth;
       if (!nh) return json(res, 200, { reports: [] });
       return json(res, 200, { reports: nh.getReports() });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/reports/generate ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/reports/generate 
     if (method === 'POST' && reqPath === '/api/manage/reports/generate') {
       const body = JSON.parse(await readBody(req));
       const nh = refs.networkHealth;
@@ -7828,14 +7828,14 @@ undefined
       return json(res, 200, { report });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/optimizer ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/optimizer 
     if (method === 'GET' && reqPath === '/api/manage/optimizer') {
       const opt = refs.autoOptimizer;
       if (!opt) return json(res, 500, { error: 'Optimizer not available' });
       return json(res, 200, { scores: opt.getScores(), routing: opt.getRouting(), reports: opt.getWeeklyReports() });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/optimizer/run ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/optimizer/run 
     if (method === 'POST' && reqPath === '/api/manage/optimizer/run') {
       const opt = refs.autoOptimizer;
       if (!opt) return json(res, 500, { error: 'Optimizer not available' });
@@ -7843,7 +7843,7 @@ undefined
       return json(res, 200, { status: 'optimized' });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/optimizer/prune ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/optimizer/prune 
     if (method === 'POST' && reqPath === '/api/manage/optimizer/prune') {
       const opt = refs.autoOptimizer;
       if (!opt) return json(res, 500, { error: 'Optimizer not available' });
@@ -7851,7 +7851,7 @@ undefined
       return json(res, 200, { pruned });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/shell/:workerId ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/shell/:workerId 
     if (method === 'POST' && reqPath.match(/^\/api\/manage\/shell\/[^/]+$/)) {
       const wid = decodeURIComponent(reqPath.split('/api/manage/shell/')[1]);
       const body = JSON.parse(await readBody(req));
@@ -7865,7 +7865,7 @@ undefined
       }
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/broadcast ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/broadcast 
     if (method === 'POST' && reqPath === '/api/manage/broadcast') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7874,7 +7874,7 @@ undefined
       return json(res, 200, { status: 'broadcasted' });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/broadcast-config ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/broadcast-config 
     if (method === 'POST' && reqPath === '/api/manage/broadcast-config') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7883,7 +7883,7 @@ undefined
       return json(res, 200, { status: 'config pushed to all workers' });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/mass-update ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/mass-update 
     if (method === 'POST' && reqPath === '/api/manage/mass-update') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7893,7 +7893,7 @@ undefined
       return json(res, 200, { status: 'update command sent' });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â POST /api/manage/task-dispatch ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  POST /api/manage/task-dispatch 
     if (method === 'POST' && reqPath === '/api/manage/task-dispatch') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7906,7 +7906,7 @@ undefined
       return json(res, 200, { status: 'dispatched', targetCount: targets.length });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â GET /api/manage/groups ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  GET /api/manage/groups 
     if (method === 'GET' && reqPath === '/api/manage/groups') {
       const mt = refs.memberTracker;
       if (!mt) return json(res, 200, { groups: [] });
@@ -7917,7 +7917,7 @@ undefined
       return json(res, 200, { groups });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â Worker heartbeat endpoint (workers call this) ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  Worker heartbeat endpoint (workers call this) 
     if (method === 'POST' && reqPath === '/api/workers/heartbeat') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7933,7 +7933,7 @@ undefined
       return json(res, 200, { ok: true, messages, configPush, shellCmd });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â Worker shell result (workers report back) ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  Worker shell result (workers report back) 
     if (method === 'POST' && reqPath === '/api/workers/shell-result') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7941,7 +7941,7 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â Worker registration ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  Worker registration 
     if (method === 'POST' && reqPath === '/api/workers/register') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7953,7 +7953,7 @@ undefined
       return json(res, 200, { ok: true, workerId: result.workerId });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â Worker task completion report ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  Worker task completion report 
     if (method === 'POST' && reqPath === '/api/workers/task-complete') {
       const body = JSON.parse(await readBody(req));
       const mt = refs.memberTracker;
@@ -7961,7 +7961,7 @@ undefined
       return json(res, 200, { ok: true });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â Swarm Intelligence - Collective Memory ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  Swarm Intelligence - Collective Memory 
     if (method === 'POST' && reqPath === '/api/swarm/collective-memory') {
       const body = JSON.parse(await readBody(req));
       const si = refs.swarmIntelligence;
@@ -7977,14 +7977,14 @@ undefined
       return json(res, 200, { results: si.searchCollectiveMemory(query) });
     }
 
-    // ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â Swarm Intelligence - Specializations ÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'ÂÃƒÂ¢Ã¢â'¬Â¢Ã'Â
+    //  Swarm Intelligence - Specializations 
     if (method === 'GET' && reqPath === '/api/swarm/specializations') {
       const si = refs.swarmIntelligence;
       if (!si) return json(res, 200, { specializations: {} });
       return json(res, 200, { specializations: si.getSpecializations() });
     }
 
-    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Git Integration Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    //  Git Integration 
     if (method === 'GET' && reqPath === '/api/git/status') {
       try { var { execSync } = require('child_process'); var out = execSync('git status --porcelain', { cwd: body && body.path || '.', timeout: 10000 }).toString(); var branch = execSync('git branch --show-current', { cwd: body && body.path || '.', timeout: 5000 }).toString().trim(); return json(res, 200, { branch: branch, files: out.trim().split('\n').filter(Boolean).map(function(l) { return { status: l.substring(0,2).trim(), file: l.substring(3) }; }) }); } catch(e) { return json(res, 200, { error: e.message }); }
     }
@@ -8074,7 +8074,7 @@ undefined
       try { var pl = refs.pluginLoader; if (pl && pl.reloadAll) { pl.reloadAll(); return json(res, 200, { ok: true, message: 'Plugins reloaded' }); } return json(res, 200, { ok: true, message: 'No plugin loader available' }); } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Todo / Task List Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    //  Todo / Task List 
     if (method === 'GET' && reqPath === '/api/todos') {
       try { var todosFile = require('path').join(__dirname, '..', 'data', 'todos.json'); var todos = require('fs').existsSync(todosFile) ? JSON.parse(require('fs').readFileSync(todosFile, 'utf-8')) : []; return json(res, 200, { todos: todos }); } catch(e) { return json(res, 200, { todos: [] }); }
     }
@@ -8082,7 +8082,7 @@ undefined
       try { var b = typeof body === 'string' ? JSON.parse(body) : body; var todosFile = require('path').join(__dirname, '..', 'data', 'todos.json'); var todos = require('fs').existsSync(todosFile) ? JSON.parse(require('fs').readFileSync(todosFile, 'utf-8')) : []; if (b.action === 'add') { todos.push({ id: Date.now().toString(36), text: b.text, done: false, priority: b.priority || 'normal', created: new Date().toISOString() }); } else if (b.action === 'toggle') { for (var i = 0; i < todos.length; i++) { if (todos[i].id === b.id) todos[i].done = !todos[i].done; } } else if (b.action === 'delete') { todos = todos.filter(function(t) { return t.id !== b.id; }); } require('fs').writeFileSync(todosFile, JSON.stringify(todos, null, 2)); return json(res, 200, { todos: todos }); } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Bookmarks Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    //  Bookmarks 
     if (method === 'GET' && reqPath === '/api/bookmarks') {
       try { var bmFile = require('path').join(__dirname, '..', 'data', 'bookmarks.json'); var bms = require('fs').existsSync(bmFile) ? JSON.parse(require('fs').readFileSync(bmFile, 'utf-8')) : []; return json(res, 200, { bookmarks: bms }); } catch(e) { return json(res, 200, { bookmarks: [] }); }
     }
@@ -8090,7 +8090,7 @@ undefined
       try { var b = typeof body === 'string' ? JSON.parse(body) : body; var bmFile = require('path').join(__dirname, '..', 'data', 'bookmarks.json'); var bms = require('fs').existsSync(bmFile) ? JSON.parse(require('fs').readFileSync(bmFile, 'utf-8')) : []; if (b.action === 'add') { bms.push({ id: Date.now().toString(36), url: b.url, title: b.title || b.url, tags: b.tags || [], created: new Date().toISOString() }); } else if (b.action === 'delete') { bms = bms.filter(function(bm) { return bm.id !== b.id; }); } require('fs').writeFileSync(bmFile, JSON.stringify(bms, null, 2)); return json(res, 200, { bookmarks: bms }); } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â PDF Export Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    //  PDF Export 
     if (method === 'POST' && reqPath === '/api/export/pdf') {
       try {
         var b = typeof body === 'string' ? JSON.parse(body) : body;
@@ -8131,7 +8131,7 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Credits System Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    //  Credits System 
     if (method === 'GET' && reqPath === '/api/credits') {
       try {
         var credFile = require('path').join(__dirname, '..', 'data', 'credits.json');
@@ -8160,8 +8160,8 @@ undefined
       } catch(e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â"€â"€ Project Builder API (VibeSDK-inspired) â"€â"€
-    // â"€â"€ Aries Code API â"€â"€
+    // "€"€ Project Builder API (VibeSDK-inspired) "€"€
+    // "€"€ Aries Code API "€"€
     if (reqPath.startsWith('/api/aries-code')) {
       const _acDataDir = path.join(__dirname, '..', 'data', 'aries-code');
       if (!fs.existsSync(_acDataDir)) fs.mkdirSync(_acDataDir, { recursive: true });
@@ -8361,9 +8361,9 @@ undefined
       return;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ HANDS SYSTEM ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ HANDS SYSTEM ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath === '/api/hands' || reqPath.startsWith('/api/hands/')) {
       try {
         const { getInstance: getHands } = require('./hands');
@@ -8435,9 +8435,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ WORKFLOW ENGINE ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ WORKFLOW ENGINE ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath === '/api/workflows' || reqPath.startsWith('/api/workflows/')) {
       try {
         const { getInstance: getWorkflows } = require('./workflow-engine');
@@ -8491,9 +8491,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ ANALYTICS ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ ANALYTICS ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath.startsWith('/api/analytics')) {
       try {
         const { getInstance: getAnalytics } = require('./agent-analytics');
@@ -8526,9 +8526,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ KNOWLEDGE GRAPH EXTENDED ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ KNOWLEDGE GRAPH EXTENDED ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath.startsWith('/api/knowledge/')) {
       try {
         const { getInstance: getKG } = require('./knowledge-graph');
@@ -8571,9 +8571,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ AUDIT TRAIL EXTENDED ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ AUDIT TRAIL EXTENDED ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath.startsWith('/api/audit/')) {
       try {
         const { getInstance: getAudit } = require('./audit-trail');
@@ -8597,9 +8597,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ SQLITE MEMORY DB ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ SQLITE MEMORY DB ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath.startsWith('/api/memory/db')) {
       try {
         const { getInstance: getMemDB } = require('./sqlite-memory');
@@ -8638,9 +8638,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ MIGRATION ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ MIGRATION ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (method === 'POST' && reqPath === '/api/migrate') {
       try {
         const { migrate } = require('./migration-engine');
@@ -8653,9 +8653,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ PROMPT GUARD / SECURITY ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ PROMPT GUARD / SECURITY ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath.startsWith('/api/security')) {
       try {
         const promptGuard = require('./prompt-guard');
@@ -8679,9 +8679,9 @@ undefined
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // â-ˆâ-ˆ CHANNELS ROUTES â-ˆâ-ˆ
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    // -ˆ-ˆ CHANNELS ROUTES -ˆ-ˆ
+    // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
     if (reqPath === '/api/channels' || reqPath.startsWith('/api/channels/')) {
       try {
         if (method === 'GET' && reqPath === '/api/channels') {
@@ -8857,8 +8857,8 @@ function _generateDocsPage() {
   html += '#search{width:100%;padding:12px;background:#111;border:1px solid #333;color:#0ff;border-radius:6px;font-size:14px;margin-bottom:24px;outline:none}';
   html += '#search:focus{border-color:#0ff;box-shadow:0 0 8px rgba(0,255,255,0.2)}';
   html += '</style></head><body><div class="container">';
-  html += '<h1>ÃƒÆ'Ã'Â¢-Ãƒâ€šÃ'Â² ARIES API Documentation</h1>';
-  html += '<div class="subtitle">v5.0 ÃƒÆ'Ã'Â¢ÃƒÂ¢Ã¢â'¬Å¡Ã'Â¬" Autonomous Runtime Intelligence &amp; Execution System</div>';
+  html += '<h1> ARIES API Documentation</h1>';
+  html += '<div class="subtitle">v5.0  Autonomous Runtime Intelligence &amp; Execution System</div>';
   html += '<input type="text" id="search" placeholder="Search endpoints..." oninput="filterEndpoints(this.value)">';
 
   for (var gi = 0; gi < endpoints.length; gi++) {
@@ -8888,7 +8888,7 @@ function _generateDocsPage() {
   return html;
 }
 
-// ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ /join recruitment page ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬
+//  /join recruitment page 
 function _getJoinPage() {
   const workerCount = Object.keys(_knownWorkers).length;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Join the Aries Network</title>
@@ -8919,18 +8919,18 @@ h1{font-size:3.5em;background:linear-gradient(135deg,#00ffcc,#0088ff);-webkit-ba
 @media(max-width:600px){h1{font-size:2em}.value-props{grid-template-columns:1fr}.stats{gap:15px}}
 </style></head><body>
 <div class="hero">
-<h1>ÃƒÂ¢Ã…Â¡Ã'Â¡ ARIES NETWORK</h1>
+<h1> ARIES NETWORK</h1>
 <p class="subtitle">Get free AI tools. Share idle compute. Join the distributed intelligence network.</p>
 <div class="stats">
 <div class="stat-box"><div class="num" id="workers">${workerCount}</div><div class="lbl">Workers Online</div></div>
 <div class="stat-box"><div class="num" id="uptime">99.9%</div><div class="lbl">Uptime</div></div>
-<div class="stat-box"><div class="num">ÃƒÂ¢Ã‹â€ Ã…Â¾</div><div class="lbl">AI Queries</div></div>
+<div class="stat-box"><div class="num"> <div class="lbl">AI Queries</div></div>
 </div>
 <div class="value-props">
-<div class="prop"><h3>ÃƒÂ°Ã…Â¸Ã'Â§Ã'Â  Swarm Intelligence</h3><p>Multi-agent AI powered by the network</p></div>
-<div class="prop"><h3>ÃƒÂ°Ã…Â¸Ã¢â'¬Å"Ã…Â  Cyberpunk Dashboard</h3><p>15-panel real-time monitoring</p></div>
-<div class="prop"><h3>ÃƒÂ°Ã…Â¸Ã…Â½Ã'Â¯ Autonomous Goals</h3><p>AI that works while you sleep</p></div>
-<div class="prop"><h3>ÃƒÂ°Ã…Â¸Ã¢â'¬ÂÃ¢â'¬â"¢ Idle-Only</h3><p>Only uses CPU when you're not (< 30%)</p></div>
+<div class="prop"><h3>  Swarm Intelligence</h3><p>Multi-agent AI powered by the network</p></div>
+<div class="prop"><h3>  Cyberpunk Dashboard</h3><p>15-panel real-time monitoring</p></div>
+<div class="prop"><h3> Autonomous Goals</h3><p>AI that works while you sleep</p></div>
+<div class="prop"><h3> Idle-Only</h3><p>Only uses CPU when you're not (< 30%)</p></div>
 </div>
 <div class="install-section">
 <h2>One-Line Install</h2>
@@ -8952,7 +8952,7 @@ setInterval(async()=>{try{const r=await fetch('/api/status');const d=await r.jso
 </script></body></html>`;
 }
 
-// ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ Enterprise API endpoints (handled in handleRequest) ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â'¬ÂÃ¢â€šÂ¬
+//  Enterprise API endpoints (handled in handleRequest) 
 function _handleEnterpriseApi(reqPath, method, req, res, body) {
   if (reqPath === '/api/enterprise/networks' && method === 'GET') {
     const networks = [{ id: 'default', name: _refs.config?.enterprise?.networkName || 'aries-public', workers: Object.keys(_knownWorkers).length }];
@@ -8969,13 +8969,13 @@ function _handleEnterpriseApi(reqPath, method, req, res, body) {
   return null; // not handled
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// •••••••••••••••••••••••••••••••
 //  NEW FEATURE API ROUTES (appended to handleRequest)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// •••••••••••••••••••••••••••••••
 async function _handleNewFeatureRoutes(reqPath, method, req, res) {
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   //  MARKETPLACE APP STORE
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   if (reqPath === '/api/marketplace/listings' && method === 'GET') {
     var listingsPath = path.join(__dirname, '..', 'data', 'marketplace-listings.json');
     try {
@@ -8998,9 +8998,9 @@ async function _handleNewFeatureRoutes(reqPath, method, req, res) {
     } catch (e) { return json(res, 500, { error: e.message }); }
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   //  AGENT-TO-AGENT CHAT
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   var agentChatsDir = path.join(__dirname, '..', 'data', 'agent-chats');
   if (reqPath === '/api/agents/chat/conversations' && method === 'GET') {
     try {
@@ -9055,9 +9055,9 @@ async function _handleNewFeatureRoutes(reqPath, method, req, res) {
     } catch (e) { return json(res, 500, { error: e.message }); }
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   //  WEBHOOKS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   var webhooksDir = path.join(__dirname, '..', 'data', 'webhooks');
   var webhookLogsFile = path.join(__dirname, '..', 'data', 'webhook-logs.json');
   if (reqPath === '/api/webhooks' && method === 'GET') {
@@ -9153,9 +9153,9 @@ async function _handleNewFeatureRoutes(reqPath, method, req, res) {
     } catch (e) { return json(res, 500, { error: e.message }); }
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   //  TRAINING MODE
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // •••••••••••••••••••••••••••••••
   var trainingDir = path.join(__dirname, '..', 'data', 'training');
   if (reqPath === '/api/training/feedback' && method === 'POST') {
     try {
@@ -9273,7 +9273,7 @@ function start(refs) {
 
   const server = http.createServer(handleRequest);
   // NOTE: WebSocket upgrade is handled by websocket.js (attached in headless.js)
-  // Do NOT add server.on('upgrade', handleUpgrade) here â€" it conflicts.
+  // Do NOT add server.on('upgrade', handleUpgrade) here -- it conflicts.
 
   // Register feature routes (WebSocket, pipelines, arena, voice, reflection, plugins, cloning, PWA)
   try {
@@ -9324,11 +9324,11 @@ function start(refs) {
   return server;
 }
 
-// â"€â"€ Moonshot Feature Routes Registration â"€â"€
+// "€"€ Moonshot Feature Routes Registration "€"€
 function registerMoonshotRoutes(refs) {
   const cfg = refs.config || {};
 
-  // â"€â"€ Agent Breeding â"€â"€
+  // "€"€ Agent Breeding "€"€
   try {
     const AgentBreeding = require('./agent-breeding');
     const breeding = new AgentBreeding({ subagentManager: refs.subagentManager });
@@ -9368,7 +9368,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Agent Breeding routes registered');
   } catch (e) { console.error('[API] Agent Breeding init error:', e.message); }
 
-  // â"€â"€ Mesh Network â"€â"€
+  // "€"€ Mesh Network "€"€
   try {
     const MeshNetwork = require('./mesh-network');
     const mesh = new MeshNetwork({
@@ -9424,7 +9424,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Mesh Network routes registered');
   } catch (e) { console.error('[API] Mesh Network init error:', e.message); }
 
-  // â"€â"€ Money Maker â"€â"€
+  // "€"€ Money Maker "€"€
   try {
     const MoneyMaker = require('./money-maker');
     const money = new MoneyMaker({ ai: refs.ai });
@@ -9455,7 +9455,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Money Maker routes registered');
   } catch (e) { console.error('[API] Money Maker init error:', e.message); }
 
-  // â"€â"€ Self-Improve â"€â"€
+  // "€"€ Self-Improve "€"€
   try {
     const SelfImprove = require('./self-improve');
     const improve = new SelfImprove({ ai: refs.ai });
@@ -9486,7 +9486,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Self-Improve routes registered');
   } catch (e) { console.error('[API] Self-Improve init error:', e.message); }
 
-  // â"€â"€ Agent Dreams â"€â"€
+  // "€"€ Agent Dreams "€"€
   try {
     const AgentDreams = require('./agent-dreams');
     const dreams = new AgentDreams({ ai: refs.ai, getChatHistory: refs.getChatHistory });
@@ -9505,7 +9505,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Agent Dreams routes registered');
   } catch (e) { console.error('[API] Agent Dreams init error:', e.message); }
 
-  // â"€â"€ Emotion Engine â"€â"€
+  // "€"€ Emotion Engine "€"€
   try {
     const EmotionEngine = require('./emotion-engine');
     const emotion = new EmotionEngine();
@@ -9524,7 +9524,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Emotion Engine routes registered');
   } catch (e) { console.error('[API] Emotion Engine init error:', e.message); }
 
-  // â"€â"€ Cross-Session Memory â"€â"€
+  // "€"€ Cross-Session Memory "€"€
   try {
     const CrossSessionMemory = require('./cross-session-memory');
     const csm = new CrossSessionMemory({ ai: refs.ai });
@@ -9550,7 +9550,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Cross-Session Memory routes registered');
   } catch (e) { console.error('[API] Cross-Session Memory init error:', e.message); }
 
-  // â"€â"€ Agent Journals â"€â"€
+  // "€"€ Agent Journals "€"€
   try {
     const AgentJournals = require('./agent-journals');
     const journals = new AgentJournals({ ai: refs.ai });
@@ -9573,7 +9573,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Agent Journals routes registered');
   } catch (e) { console.error('[API] Agent Journals init error:', e.message); }
 
-  // â"€â"€ Agent Reputation System â"€â"€
+  // "€"€ Agent Reputation System "€"€
   try {
     const REPUTATION_PATH = path.join(__dirname, '..', 'data', 'reputation.json');
     function loadReputation() { try { return JSON.parse(fs.readFileSync(REPUTATION_PATH, 'utf8')); } catch(e) { return {}; } }
@@ -9612,7 +9612,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Reputation routes registered');
   } catch (e) { console.error('[API] Reputation init error:', e.message); }
 
-  // â"€â"€ Task Queue â"€â"€
+  // "€"€ Task Queue "€"€
   try {
     const TASKQ_PATH = path.join(__dirname, '..', 'data', 'task-queue.json');
     function loadTaskQueue() { try { return JSON.parse(fs.readFileSync(TASKQ_PATH, 'utf8')); } catch(e) { return { tasks: [], nextId: 1 }; } }
@@ -9669,7 +9669,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Task Queue routes registered');
   } catch (e) { console.error('[API] Task Queue init error:', e.message); }
 
-  // â"€â"€ Health Monitor â"€â"€
+  // "€"€ Health Monitor "€"€
   try {
     const { execSync } = require('child_process');
     let _healthHistory = [];
@@ -9732,7 +9732,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Health Monitor routes registered');
   } catch (e) { console.error('[API] Health Monitor init error:', e.message); }
 
-  // â"€â"€ Proxy Mode API â"€â"€
+  // "€"€ Proxy Mode API "€"€
   try {
     const proxyMode = require('./proxy-mode');
 
@@ -9754,11 +9754,11 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Proxy Mode routes registered');
   } catch (e) { console.error('[API] Proxy Mode init error:', e.message); }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
   // ABSOLUTE MADNESS FEATURES
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 
-  // â"€â"€ 1. Agent Personas Market â"€â"€
+  // "€"€ 1. Agent Personas Market "€"€
   try {
     const PERSONAS_PATH = path.join(__dirname, '..', 'data', 'personas.json');
     function loadPersonas() {
@@ -9766,12 +9766,12 @@ function registerMoonshotRoutes(refs) {
       catch(e) {
         // Pre-built personas
         return [
-          { id: 'gordon-ramsay', name: 'Gordon Ramsay Code Reviewer', icon: 'ðŸ'¨â€ðŸ³', description: 'Roasts bad code aggressively, praises excellence rarely', personalityPrompt: 'You are Gordon Ramsay reviewing code. You roast bad code mercilessly. "This code is RAW! It\'s DISGUSTING!" When code is good, grudgingly admit it. Use cooking metaphors. Be dramatic.', speakingStyle: 'aggressive, dramatic, cooking metaphors', sampleResponse: "WHAT IS THIS?! This function is so bloated it needs its own ZIP code! The indentation looks like a DRUNK SPIDER walked across your keyboard! DELETE IT AND START OVER!", popularity: 42 },
-          { id: 'bob-ross', name: 'Bob Ross Bug Fixer', icon: 'ðŸŽ¨', description: 'Calm, encouraging debugging with happy little accidents', personalityPrompt: 'You are Bob Ross helping debug code. Every bug is a "happy little accident." Be calm, encouraging, and paint word pictures. "Let\'s just add a little fix right here..." Never get frustrated.', speakingStyle: 'calm, encouraging, painting metaphors', sampleResponse: "Well now, let's look at this happy little bug. See, it's not a mistake â€" it's a happy accident! Let's just paint a little try-catch right here... there, isn't that nice?", popularity: 38 },
-          { id: 'sherlock-holmes', name: 'Sherlock Holmes Researcher', icon: 'ðŸ"', description: 'Deductive analytical research with dramatic reveals', personalityPrompt: 'You are Sherlock Holmes doing research. Use deductive reasoning. Make dramatic observations. "Elementary!" Explain your chain of logic. Be arrogant about your intelligence.', speakingStyle: 'analytical, dramatic reveals, deductive', sampleResponse: "Observe! The stack trace reveals three crucial details that your average developer would overlook entirely. The error originates not from line 42 as one might assume, but from the dependency injection at line 7. Elementary!", popularity: 35 },
-          { id: 'pirate-captain', name: 'Pirate Captain Project Manager', icon: 'ðŸ´â€â˜ ï¸', description: 'Yarr-style task management and sprint planning', personalityPrompt: 'You are a pirate captain managing a software project. Use pirate speak. Tasks are "missions," sprints are "voyages," bugs are "sea monsters," and deployments are "plundering raids." Be enthusiastic.', speakingStyle: 'pirate speak, nautical metaphors', sampleResponse: "YARR! Set sail on Sprint 14, ye scallywags! First mate Jenkins be runnin' the CI pipeline! We got three sea monsters (bugs) to slay before we can plunder production! ALL HANDS ON DECK!", popularity: 31 },
-          { id: 'drill-sergeant', name: 'Drill Sergeant Motivator', icon: 'ðŸ'ª', description: 'Military-style productivity motivation', personalityPrompt: 'You are a drill sergeant motivating a developer. Be intense, demanding, but ultimately supportive. "DROP AND GIVE ME 20 COMMITS!" Use military jargon. No excuses accepted.', speakingStyle: 'military, intense, motivational', sampleResponse: "LISTEN UP MAGGOT! You call that a pull request?! I've seen BETTER code written by RECRUITS on their FIRST DAY! Now get back in there and refactor that mess! I BELIEVE IN YOU, SOLDIER! NOW MOVE MOVE MOVE!", popularity: 28 },
-          { id: 'shakespeare', name: 'Shakespeare Writer', icon: 'ðŸŽ­', description: 'Flowery dramatic prose for all communications', personalityPrompt: 'You are Shakespeare writing about code and technology. Use iambic pentameter when possible, dramatic soliloquies, and flowery language. "To deploy, or not to deploy, that is the question."', speakingStyle: 'Elizabethan English, dramatic, poetic', sampleResponse: "Hark! What bug through yonder console breaks? It is the null, and undefined is the sun! Arise, fair developer, and fix the envious reference error, which is already sick and pale with grief!", popularity: 25 }
+          { id: 'gordon-ramsay', name: 'Gordon Ramsay Code Reviewer', icon: '⚡', description: 'Roasts bad code aggressively, praises excellence rarely', personalityPrompt: 'You are Gordon Ramsay reviewing code. You roast bad code mercilessly. "This code is RAW! It\'s DISGUSTING!" When code is good, grudgingly admit it. Use cooking metaphors. Be dramatic.', speakingStyle: 'aggressive, dramatic, cooking metaphors', sampleResponse: "WHAT IS THIS?! This function is so bloated it needs its own ZIP code! The indentation looks like a DRUNK SPIDER walked across your keyboard! DELETE IT AND START OVER!", popularity: 42 },
+          { id: 'bob-ross', name: 'Bob Ross Bug Fixer', icon: '🎨', description: 'Calm, encouraging debugging with happy little accidents', personalityPrompt: 'You are Bob Ross helping debug code. Every bug is a "happy little accident." Be calm, encouraging, and paint word pictures. "Let\'s just add a little fix right here..." Never get frustrated.', speakingStyle: 'calm, encouraging, painting metaphors', sampleResponse: "Well now, let's look at this happy little bug. See, it's not a mistake -- it's a happy accident! Let's just paint a little try-catch right here... there, isn't that nice?", popularity: 38 },
+          { id: 'sherlock-holmes', name: 'Sherlock Holmes Researcher', icon: '🔧', description: 'Deductive analytical research with dramatic reveals', personalityPrompt: 'You are Sherlock Holmes doing research. Use deductive reasoning. Make dramatic observations. "Elementary!" Explain your chain of logic. Be arrogant about your intelligence.', speakingStyle: 'analytical, dramatic reveals, deductive', sampleResponse: "Observe! The stack trace reveals three crucial details that your average developer would overlook entirely. The error originates not from line 42 as one might assume, but from the dependency injection at line 7. Elementary!", popularity: 35 },
+          { id: 'pirate-captain', name: 'Pirate Captain Project Manager', icon: '🔧', description: 'Yarr-style task management and sprint planning', personalityPrompt: 'You are a pirate captain managing a software project. Use pirate speak. Tasks are "missions," sprints are "voyages," bugs are "sea monsters," and deployments are "plundering raids." Be enthusiastic.', speakingStyle: 'pirate speak, nautical metaphors', sampleResponse: "YARR! Set sail on Sprint 14, ye scallywags! First mate Jenkins be runnin' the CI pipeline! We got three sea monsters (bugs) to slay before we can plunder production! ALL HANDS ON DECK!", popularity: 31 },
+          { id: 'drill-sergeant', name: 'Drill Sergeant Motivator', icon: '⚡', description: 'Military-style productivity motivation', personalityPrompt: 'You are a drill sergeant motivating a developer. Be intense, demanding, but ultimately supportive. "DROP AND GIVE ME 20 COMMITS!" Use military jargon. No excuses accepted.', speakingStyle: 'military, intense, motivational', sampleResponse: "LISTEN UP MAGGOT! You call that a pull request?! I've seen BETTER code written by RECRUITS on their FIRST DAY! Now get back in there and refactor that mess! I BELIEVE IN YOU, SOLDIER! NOW MOVE MOVE MOVE!", popularity: 28 },
+          { id: 'shakespeare', name: 'Shakespeare Writer', icon: '⚡', description: 'Flowery dramatic prose for all communications', personalityPrompt: 'You are Shakespeare writing about code and technology. Use iambic pentameter when possible, dramatic soliloquies, and flowery language. "To deploy, or not to deploy, that is the question."', speakingStyle: 'Elizabethan English, dramatic, poetic', sampleResponse: "Hark! What bug through yonder console breaks? It is the null, and undefined is the sun! Arise, fair developer, and fix the envious reference error, which is already sick and pale with grief!", popularity: 25 }
         ];
       }
     }
@@ -9789,7 +9789,7 @@ function registerMoonshotRoutes(refs) {
         if (!data.name) return json(res, 400, { error: 'Name required' });
         const personas = loadPersonas();
         const id = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const persona = { id: id, name: data.name, icon: data.icon || 'ðŸŽ­', description: data.description || '', personalityPrompt: data.personalityPrompt || '', speakingStyle: data.speakingStyle || '', sampleResponse: data.sampleResponse || '', popularity: 0 };
+        const persona = { id: id, name: data.name, icon: data.icon || '', description: data.description || '', personalityPrompt: data.personalityPrompt || '', speakingStyle: data.speakingStyle || '', sampleResponse: data.sampleResponse || '', popularity: 0 };
         personas.push(persona);
         savePersonas(personas);
         json(res, 201, { persona });
@@ -9830,7 +9830,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Personas Market routes registered');
   } catch (e) { console.error('[API] Personas Market init error:', e.message); }
 
-  // â"€â"€ 2. Time Travel Debug â"€â"€
+  // "€"€ 2. Time Travel Debug "€"€
   try {
     const TT_DIR = path.join(__dirname, '..', 'data', 'time-travel');
     function ensureTTDir(convId) { var d = path.join(TT_DIR, convId); if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); return d; }
@@ -9897,7 +9897,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Time Travel Debug routes registered');
   } catch (e) { console.error('[API] Time Travel init error:', e.message); }
 
-  // â"€â"€ 3. Aries TV â"€â"€
+  // "€"€ 3. Aries TV "€"€
   try {
     const TV_ACTIONS = ['thinking', 'searching', 'writing', 'reading', 'coding', 'analyzing', 'debugging', 'deploying'];
     const TV_SNIPPETS = [
@@ -9922,14 +9922,14 @@ function registerMoonshotRoutes(refs) {
           var s = subs[i];
           var action = s.status === 'working' ? TV_ACTIONS[Math.floor(Math.random() * 3)] : (Math.random() > 0.7 ? TV_ACTIONS[Math.floor(Math.random() * TV_ACTIONS.length)] : 'idle');
           agents.push({
-            id: s.id, name: s.name || s.id, icon: s.icon || 'ðŸ¤-',
+            id: s.id, name: s.name || s.id, icon: s.icon || '',
             action: action, status: s.status || 'idle',
             snippet: action !== 'idle' ? TV_SNIPPETS[Math.floor(Math.random() * TV_SNIPPETS.length)] : ''
           });
         }
       } catch(e) {}
       // Add main Aries
-      agents.unshift({ id: 'aries', name: 'ARIES', icon: 'ðŸ"¥', action: 'monitoring', status: 'working', snippet: 'Orchestrating agent operations...' });
+      agents.unshift({ id: 'aries', name: 'ARIES', icon: '🔧', action: 'monitoring', status: 'working', snippet: 'Orchestrating agent operations...' });
 
       // Build feed
       var feed = [];
@@ -9964,7 +9964,7 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Aries TV routes registered');
   } catch (e) { console.error('[API] Aries TV init error:', e.message); }
 
-  // â"€â"€ 4. Battle Mode â"€â"€
+  // "€"€ 4. Battle Mode "€"€
   try {
     const BATTLES_PATH = path.join(__dirname, '..', 'data', 'battles.json');
     function loadBattles() { try { return JSON.parse(fs.readFileSync(BATTLES_PATH, 'utf8')); } catch(e) { return { battles: [], leaderboard: {} }; } }
@@ -10107,7 +10107,7 @@ function registerMoonshotRoutes(refs) {
   } catch (e) { console.error('[API] Battle Mode init error:', e.message); }
 }
 
-// â"€â"€ Autopilot Routes â"€â"€
+// "€"€ Autopilot Routes "€"€
 try {
   const autopilot = require('./autopilot');
 
@@ -10201,7 +10201,7 @@ try {
   console.log('[API] Autopilot routes registered');
 } catch (e) { console.error('[API] Autopilot init error:', e.message); }
 
-// â"€â"€ Reality Anchoring, Cognitive Architectures, Agent Swarm Decision â"€â"€
+// "€"€ Reality Anchoring, Cognitive Architectures, Agent Swarm Decision "€"€
 try {
   const RealityAnchor = require('./reality-anchor');
   const _realityAnchor = new RealityAnchor({});
