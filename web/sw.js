@@ -1,6 +1,6 @@
-// ARIES Service Worker — PWA Support
-const CACHE_NAME = 'aries-v7';
-const STATIC_ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
+// ARIES Service Worker — PWA Support v2
+const CACHE_NAME = 'aries-v8';
+const STATIC_ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/features.js', '/features-v2.js', '/manifest.json'];
 
 self.addEventListener('install', function(event) {
   event.waitUntil(
@@ -26,4 +26,23 @@ self.addEventListener('fetch', function(event) {
       return caches.match(event.request);
     })
   );
+});
+
+// Push notification handler
+self.addEventListener('push', function(event) {
+  var data = { title: 'ARIES', body: 'Notification', icon: '/api/icon/192' };
+  try { data = event.data.json(); } catch(e) { data.body = event.data ? event.data.text() : 'New notification'; }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'ARIES', {
+      body: data.body || '',
+      icon: data.icon || '/api/icon/192',
+      badge: '/api/icon/192',
+      vibrate: [200, 100, 200]
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('/'));
 });

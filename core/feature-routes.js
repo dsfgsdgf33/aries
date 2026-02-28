@@ -103,6 +103,16 @@ function sendClose(socket) {
 }
 
 /**
+ * Broadcast presence list to all WS clients.
+ */
+function broadcastPresence() {
+  const users = [];
+  for (const c of wsClients) { if (c.collabUser) users.push(c.collabUser); }
+  const msg = JSON.stringify({ type: 'collab:presence', users, count: users.length });
+  for (const c of wsClients) { if (c.alive) sendWsFrame(c.socket, msg); }
+}
+
+/**
  * Broadcast a JSON event to all connected WS clients and log to ring buffer.
  */
 function broadcast(type, data) {
@@ -244,8 +254,23 @@ function registerFeatureRoutes(server, refs) {
           const text = frame.payload.toString('utf8');
           try {
             const msg = JSON.parse(text);
-            // Client can subscribe or send commands; for now just acknowledge
-            sendWsFrame(socket, JSON.stringify({ type: 'ack', data: msg, timestamp: Date.now() }));
+            // Collaboration: presence, cursor, chat
+            if (msg.type === 'collab:join') {
+              client.collabUser = { name: msg.name || 'Anonymous', panel: msg.panel || 'chat', joinedAt: Date.now(), color: msg.color || '#00e5ff' };
+              broadcastPresence();
+            } else if (msg.type === 'collab:panel') {
+              if (client.collabUser) client.collabUser.panel = msg.panel || 'chat';
+              broadcastPresence();
+            } else if (msg.type === 'collab:cursor') {
+              for (const other of wsClients) {
+                if (other !== client && other.alive) sendWsFrame(other.socket, JSON.stringify({ type: 'collab:cursor', name: client.collabUser ? client.collabUser.name : '?', x: msg.x, y: msg.y }));
+              }
+            } else if (msg.type === 'collab:chat') {
+              const chatMsg = { type: 'collab:chat', name: client.collabUser ? client.collabUser.name : 'Anonymous', text: msg.text, color: client.collabUser ? client.collabUser.color : '#fff', timestamp: Date.now() };
+              for (const c of wsClients) { if (c.alive) sendWsFrame(c.socket, JSON.stringify(chatMsg)); }
+            } else {
+              sendWsFrame(socket, JSON.stringify({ type: 'ack', data: msg, timestamp: Date.now() }));
+            }
           } catch (_) { /* ignore bad json */ }
         } else if (frame.opcode === 0x09) {
           // ping → pong
@@ -266,8 +291,8 @@ function registerFeatureRoutes(server, refs) {
       }
     });
 
-    socket.on('close', () => wsClients.delete(client));
-    socket.on('error', () => wsClients.delete(client));
+    socket.on('close', () => { wsClients.delete(client); broadcastPresence(); });
+    socket.on('error', () => { wsClients.delete(client); broadcastPresence(); });
   });
 
   // Ping interval
@@ -491,6 +516,323 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
     if (action === 'lineage' && method === 'GET') {
       json(res, 200, cloning.getLineage(handId)); return true;
+    }
+  }
+
+  // ── Agent Breeding ──
+  if (pathname.startsWith('/api/features/breeding')) {
+    let breeding;
+    try { const AgentBreeding = require('./agent-breeding'); breeding = new AgentBreeding(refs); } catch (e) {
+      json(res, 501, { error: 'Breeding module not available' }); return true;
+    }
+    if (pathname === '/api/features/breeding' && method === 'GET') {
+      json(res, 200, { lineage: breeding.getFullLineage(), fitness: breeding.getAllFitness() }); return true;
+    }
+    if (pathname === '/api/features/breeding' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = breeding.breed(body.parent1, body.parent2, body.childName);
+      json(res, 201, result); return true;
+    }
+  }
+
+  // ── Mesh Network ──
+  if (pathname.startsWith('/api/features/mesh')) {
+    let mesh;
+    try { const MeshNetwork = require('./mesh-network'); mesh = new MeshNetwork(refs); } catch (e) {
+      json(res, 501, { error: 'Mesh module not available' }); return true;
+    }
+    if (pathname === '/api/features/mesh/status' && method === 'GET') {
+      json(res, 200, mesh.getStatus()); return true;
+    }
+    if (pathname === '/api/features/mesh/peers' && method === 'GET') {
+      json(res, 200, { peers: mesh.listPeers() }); return true;
+    }
+    if (pathname === '/api/features/mesh/broadcast' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, mesh.getInfo()); return true;
+    }
+  }
+
+  // ── Self-Improve ──
+  if (pathname.startsWith('/api/features/improve')) {
+    let improve;
+    try { const SelfImprove = require('./self-improve'); improve = new SelfImprove(refs); } catch (e) {
+      json(res, 501, { error: 'Self-improve module not available' }); return true;
+    }
+    if (pathname === '/api/features/improve/status' && method === 'GET') {
+      json(res, 200, improve.getStats()); return true;
+    }
+    if (pathname === '/api/features/improve/analyze' && method === 'POST') {
+      const result = await improve.scan();
+      json(res, 200, result); return true;
+    }
+    if (pathname === '/api/features/improve/apply' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, improve.accept(body.id)); return true;
+    }
+  }
+
+  // ── Agent Dreams ──
+  if (pathname.startsWith('/api/features/dreams')) {
+    let dreams;
+    try { const AgentDreams = require('./agent-dreams'); dreams = new AgentDreams(refs); } catch (e) {
+      json(res, 501, { error: 'Dreams module not available' }); return true;
+    }
+    if (pathname === '/api/features/dreams' && method === 'GET') {
+      json(res, 200, dreams.getLatest()); return true;
+    }
+    if (pathname === '/api/features/dreams' && method === 'POST') {
+      const result = await dreams.dreamCycle();
+      json(res, 200, result); return true;
+    }
+  }
+
+  // ── Agent Journals ──
+  if (pathname.startsWith('/api/features/journals')) {
+    let journals;
+    try { const AgentJournals = require('./agent-journals'); journals = new AgentJournals(refs); } catch (e) {
+      json(res, 501, { error: 'Journals module not available' }); return true;
+    }
+    if (pathname === '/api/features/journals' && method === 'GET') {
+      const agentId = parsed.searchParams.get('agentId') || undefined;
+      json(res, 200, journals.getEntries(agentId)); return true;
+    }
+    if (pathname === '/api/features/journals' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = await journals.addEntry(body.agentId, body.task, body.result);
+      json(res, 201, result); return true;
+    }
+  }
+
+  // ── Emotion Engine ──
+  if (pathname.startsWith('/api/features/emotion')) {
+    let emotion;
+    try { const EmotionEngine = require('./emotion-engine'); emotion = new EmotionEngine(); } catch (e) {
+      json(res, 501, { error: 'Emotion module not available' }); return true;
+    }
+    if (pathname === '/api/features/emotion' && method === 'GET') {
+      json(res, 200, emotion.getMoodStats()); return true;
+    }
+    if (pathname === '/api/features/emotion' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = emotion.analyze(body.text);
+      json(res, 200, result); return true;
+    }
+  }
+
+  // ── Agent DNA ──
+  if (pathname.startsWith('/api/features/dna')) {
+    let dna;
+    try { dna = require('./agent-dna'); } catch (e) {
+      json(res, 501, { error: 'DNA module not available' }); return true;
+    }
+    if (pathname === '/api/features/dna/pool' && method === 'GET') {
+      json(res, 200, { pool: dna.listAll() }); return true;
+    }
+    if (pathname === '/api/features/dna/evolve' && method === 'POST') {
+      const body = await jsonBody(req);
+      const population = body.population || dna.listAll();
+      const result = dna.evolve(population, body.generations);
+      json(res, 200, { evolved: result }); return true;
+    }
+    if (pathname === '/api/features/dna/fitness' && method === 'GET') {
+      const agentId = parsed.searchParams.get('agentId');
+      if (agentId) {
+        const d = dna.getDna(agentId);
+        json(res, 200, d || { error: 'Not found' }); return true;
+      }
+      json(res, 200, { pool: dna.listAll() }); return true;
+    }
+  }
+
+  // ── Hive Mind ──
+  if (pathname.startsWith('/api/features/hive')) {
+    let hive;
+    try { const HiveMind = require('./hive-mind'); hive = new HiveMind(); } catch (e) {
+      json(res, 501, { error: 'Hive mind module not available' }); return true;
+    }
+    if (pathname === '/api/features/hive/status' && method === 'GET') {
+      json(res, 200, { sessions: hive.listActive() }); return true;
+    }
+    if (pathname === '/api/features/hive/join' && method === 'POST') {
+      const body = await jsonBody(req);
+      const session = hive.start(body.agents, body.goal);
+      json(res, 201, session.toJSON()); return true;
+    }
+    if (pathname === '/api/features/hive/consensus' && method === 'POST') {
+      const body = await jsonBody(req);
+      const session = hive.get(body.sessionId);
+      if (!session) { json(res, 404, { error: 'Session not found' }); return true; }
+      json(res, 200, session.toJSON()); return true;
+    }
+  }
+
+  // ── Agent Instincts ──
+  if (pathname.startsWith('/api/features/instincts')) {
+    let instincts;
+    try { const InstinctEngine = require('./agent-instincts'); instincts = new InstinctEngine(); } catch (e) {
+      json(res, 501, { error: 'Instincts module not available' }); return true;
+    }
+    if (pathname === '/api/features/instincts' && method === 'GET') {
+      json(res, 200, { instincts: instincts.getAll(), log: instincts.getLog() }); return true;
+    }
+    if (pathname === '/api/features/instincts' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = instincts.process(body.text, body.agentId);
+      json(res, 200, result); return true;
+    }
+  }
+
+  // ── Autopilot ──
+  if (pathname.startsWith('/api/features/autopilot')) {
+    let autopilot;
+    try { autopilot = require('./autopilot'); } catch (e) {
+      json(res, 501, { error: 'Autopilot module not available' }); return true;
+    }
+    if (pathname === '/api/features/autopilot/status' && method === 'GET') {
+      json(res, 200, { projects: autopilot.listProjects() }); return true;
+    }
+    if (pathname === '/api/features/autopilot/start' && method === 'POST') {
+      const body = await jsonBody(req);
+      const project = autopilot.createProject(body.goal, body.budget, body.timeline);
+      json(res, 201, project); return true;
+    }
+    if (pathname === '/api/features/autopilot/stop' && method === 'POST') {
+      const body = await jsonBody(req);
+      const project = autopilot.loadProject(body.projectId);
+      if (!project) { json(res, 404, { error: 'Project not found' }); return true; }
+      json(res, 200, autopilot.cancelProject(project)); return true;
+    }
+    if (pathname === '/api/features/autopilot/approve' && method === 'POST') {
+      const body = await jsonBody(req);
+      const project = autopilot.loadProject(body.projectId);
+      if (!project) { json(res, 404, { error: 'Project not found' }); return true; }
+      json(res, 200, autopilot.approvePhase(project, body.phaseId)); return true;
+    }
+  }
+
+  // ── Proxy Mode ──
+  if (pathname.startsWith('/api/features/proxy')) {
+    let proxy;
+    try { proxy = require('./proxy-mode'); } catch (e) {
+      json(res, 501, { error: 'Proxy module not available' }); return true;
+    }
+    if (pathname === '/api/features/proxy/status' && method === 'GET') {
+      json(res, 200, proxy.getStatus()); return true;
+    }
+    if (pathname === '/api/features/proxy/config' && method === 'GET') {
+      json(res, 200, proxy.getConfig()); return true;
+    }
+    if (pathname === '/api/features/proxy/config' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, proxy.updateConfig(body)); return true;
+    }
+  }
+
+  // ── Reality Anchor ──
+  if (pathname.startsWith('/api/features/reality')) {
+    let anchor;
+    try { const RealityAnchor = require('./reality-anchor'); anchor = new RealityAnchor(refs); } catch (e) {
+      json(res, 501, { error: 'Reality anchor module not available' }); return true;
+    }
+    if (pathname === '/api/features/reality/status' && method === 'GET') {
+      json(res, 200, { config: anchor.getConfig(), stats: anchor.getStats(), recent: anchor.getRecent() }); return true;
+    }
+    if (pathname === '/api/features/reality/check' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = await anchor.verify(body.text, body.agentId);
+      json(res, 200, result); return true;
+    }
+  }
+
+  // ── Cognitive Architectures ──
+  if (pathname.startsWith('/api/features/cognitive')) {
+    let cog;
+    try { const CogArch = require('./cognitive-architectures'); cog = new CogArch(); } catch (e) {
+      json(res, 501, { error: 'Cognitive architectures module not available' }); return true;
+    }
+    if (pathname === '/api/features/cognitive/architectures' && method === 'GET') {
+      json(res, 200, { architectures: cog.getAllArchitectures(), assignments: cog.getAssignments() }); return true;
+    }
+    if (pathname === '/api/features/cognitive/switch' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = cog.apply(body.agentId, body.architecture);
+      json(res, 200, result); return true;
+    }
+  }
+
+  // ── Agent Swarm Decision ──
+  if (pathname.startsWith('/api/features/swarm-decision')) {
+    let swarm;
+    try { const SwarmDecision = require('./agent-swarm-decision'); swarm = new SwarmDecision(refs); } catch (e) {
+      json(res, 501, { error: 'Swarm decision module not available' }); return true;
+    }
+    if (pathname === '/api/features/swarm-decision/status' && method === 'GET') {
+      json(res, 200, { history: swarm.getHistory() }); return true;
+    }
+    if (pathname === '/api/features/swarm-decision/vote' && method === 'POST') {
+      const body = await jsonBody(req);
+      if (body.question) {
+        const session = swarm.start(body.question, body.agents);
+        json(res, 201, session); return true;
+      }
+      const result = swarm.submitVote(body.sessionId, body.agentId, body.votedFor);
+      json(res, 200, result); return true;
+    }
+  }
+
+  // ── Cross-Session Memory ──
+  if (pathname.startsWith('/api/features/cross-memory')) {
+    let crossMem;
+    try { const CrossSessionMemory = require('./cross-session-memory'); crossMem = new CrossSessionMemory(refs); } catch (e) {
+      json(res, 501, { error: 'Cross-session memory module not available' }); return true;
+    }
+    if (pathname === '/api/features/cross-memory/search' && method === 'GET') {
+      const q = parsed.searchParams.get('q') || '';
+      json(res, 200, { context: crossMem.getPreviousContext(q), history: crossMem.getHistory() }); return true;
+    }
+    if (pathname === '/api/features/cross-memory/store' && method === 'POST') {
+      const body = await jsonBody(req);
+      const result = await crossMem.summarizeSession(body.messages);
+      json(res, 201, result); return true;
+    }
+  }
+
+  // ── Money Maker ──
+  if (pathname.startsWith('/api/features/money')) {
+    let money;
+    try { const MoneyMaker = require('./money-maker'); money = new MoneyMaker(refs); } catch (e) {
+      json(res, 501, { error: 'Money maker module not available' }); return true;
+    }
+    if (pathname === '/api/features/money/status' && method === 'GET') {
+      json(res, 200, money.getStats()); return true;
+    }
+    if (pathname === '/api/features/money/scan' && method === 'POST') {
+      const result = await money.scan();
+      json(res, 200, result); return true;
+    }
+    if (pathname === '/api/features/money/approve' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, money.approve(body.id)); return true;
+    }
+  }
+
+  // ── Desktop Control ──
+  if (pathname.startsWith('/api/features/desktop')) {
+    let desktop;
+    try { desktop = require('./desktop-control'); } catch (e) {
+      json(res, 501, { error: 'Desktop control module not available' }); return true;
+    }
+    if (pathname === '/api/features/desktop/screenshot' && method === 'GET') {
+      json(res, 200, desktop.takeScreenshot()); return true;
+    }
+    if (pathname === '/api/features/desktop/click' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, desktop.clickAt(body.x, body.y, body.button)); return true;
+    }
+    if (pathname === '/api/features/desktop/type' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, desktop.typeText(body.text)); return true;
     }
   }
 

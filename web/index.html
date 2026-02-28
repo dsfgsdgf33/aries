@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aries AI</title>
   <link rel="stylesheet" href="style.css">
+  <script src="features-devtools.js" defer></script>
   <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;&#x25B2;&lt;/text&gt;&lt;/svg&gt;">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#00fff7">
@@ -55,6 +56,7 @@
       <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Workers</span><span id="statWorkers" class="stat-val">--</span></div>
       <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Learnings</span><span id="statLearnings" class="stat-val">--</span></div>
       <div class="stat-chip" data-admin="true" style="display:none"><span class="stat-label">Knowledge</span><span id="statKnowledge" class="stat-val">--</span></div>
+      <div id="collabIndicator" onclick="window.aries&&window.aries.toggleCollabChat()" style="display:none;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;background:#0a4;color:#000;cursor:pointer;margin-right:6px" title="Click to open live chat">&#x1F465; <span id="collabCount">0</span> online</div>
       <div id="notifBell" class="notif-bell" onclick="window.aries.toggleNotifications()" title="Notifications" data-tooltip="Notifications" role="button" aria-label="Notifications" tabindex="0">
         &#x1F514;<span id="notifBadge" class="notif-badge" style="display:none">0</span>
       </div>
@@ -76,6 +78,10 @@
         <a class="nav-item" data-panel="todos">&#x2705; Tasks</a>
         <a class="nav-item" data-panel="bookmarks">&#x1F516; Bookmarks</a>
         <a class="nav-item" data-panel="git">&#x1F500; Git</a>
+        <a class="nav-item" data-panel="dataviewer">🗄️ Database</a>
+        <a class="nav-item" data-panel="playground">🧪 API Play</a>
+        <a class="nav-item" data-panel="plugin-ide">📦 Plugin IDE</a>
+        <a class="nav-item" data-panel="logstream">📡 Log Stream</a>
         <a class="nav-item" data-panel="aries-ai" id="navAriesAi" style="display:none">&#x1F9E0; Aries AI</a>
       </div>
       <!-- Admin-only tabs -->
@@ -88,10 +94,13 @@
         <div class="nav-group-label">INTELLIGENCE</div>
         <a class="nav-item" data-panel="memory">&#x1F9E0; Memory</a>
         <a class="nav-item" data-panel="skills">&#x1F527; Skills</a>
+        <a class="nav-item" data-panel="dreams">&#x1F4AD; Dreams</a>
+        <a class="nav-item" data-panel="journals">&#x1F4D3; Journals</a>
       </div>
       <div class="nav-group" data-admin="true" style="display:none">
         <div class="nav-group-label">TOOLS</div>
         <a class="nav-item" data-panel="browser">&#x1F310; Browser</a>
+        <a class="nav-item" data-panel="desktop">&#x1F5A5; Desktop</a>
         <a class="nav-item" data-panel="sandbox">&#x1F4E6; Sandbox</a>
         <a class="nav-item" data-panel="search">&#x1F50D; Search</a>
         <a class="nav-item" data-panel="toolgen">&#x1F6E0; Tool Gen</a>
@@ -142,6 +151,30 @@
         <a class="nav-item" data-panel="knowledge">🕸️ Knowledge</a>
         <a class="nav-item" data-panel="security">🛡️ Security</a>
         <a class="nav-item" data-panel="channels">💬 Channels</a>
+        <a class="nav-item" data-panel="agent-chat">💬 Agent Chat</a>
+        <a class="nav-item" data-panel="templates">📋 Templates</a>
+        <a class="nav-item" data-panel="webhooks">🔗 Webhooks</a>
+        <a class="nav-item" data-panel="training">🎯 Training</a>
+        <a class="nav-item" data-panel="breeding">🧬 Breeding</a>
+        <a class="nav-item" data-panel="mesh">🌐 Mesh</a>
+        <a class="nav-item" data-panel="money">💰 Money</a>
+        <a class="nav-item" data-panel="self-improve">🔧 Improve</a>
+        <a class="nav-item" data-panel="autopilot">🚀 Autopilot</a>
+      </div>
+      <div class="nav-group" data-admin="true" style="display:none">
+        <div class="nav-group-label">MADNESS</div>
+        <a class="nav-item" data-panel="personas">🎭 Personas</a>
+        <a class="nav-item" data-panel="timetravel">⏪ Time Travel</a>
+        <a class="nav-item" data-panel="aries-tv">📺 Aries TV</a>
+        <a class="nav-item" data-panel="battle">⚔️ Battle</a>
+        <a class="nav-item" data-panel="reputation">⭐ Reputation</a>
+        <a class="nav-item" data-panel="task-queue">📋 Task Queue</a>
+        <a class="nav-item" data-panel="health-monitor">💓 Health</a>
+        <a class="nav-item" data-panel="proxy-mode">🔀 Proxy</a>
+        <a class="nav-item" data-panel="swarm-intel">🐝 Swarm Intel</a>
+        <a class="nav-item" data-panel="agent-dna">🧬 Agent DNA</a>
+        <a class="nav-item" data-panel="hive-mind">🔗 Hive Mind</a>
+        <a class="nav-item" data-panel="instincts">⚡ Instincts</a>
       </div>
       <div class="sidebar-footer">
         <span id="loggedInUser" style="color:#00ffc8;font-size:11px"></span><br>
@@ -168,6 +201,18 @@
             <select id="chatModelSelect" style="background:var(--bg-card);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer;min-width:140px" title="Select AI model">
               <option value="">Loading models...</option>
             </select>
+          </div>
+          <div id="contextWindowViz" class="context-window-viz" title="Context window usage" style="display:flex;align-items:center;gap:6px;cursor:help">
+            <span style="font-size:11px;color:#888">CTX</span>
+            <div id="ctxBar" style="width:120px;height:14px;background:#1a1a2e;border-radius:7px;overflow:hidden;display:flex;position:relative">
+              <div id="ctxSystem" style="height:100%;background:#ef4444;transition:width 0.3s" title="System prompt"></div>
+              <div id="ctxMemories" style="height:100%;background:#3b82f6;transition:width 0.3s" title="Memories"></div>
+              <div id="ctxKnowledge" style="height:100%;background:#22c55e;transition:width 0.3s" title="Knowledge"></div>
+              <div id="ctxConvo" style="height:100%;background:#eab308;transition:width 0.3s" title="Conversation"></div>
+            </div>
+            <span id="ctxPercent" style="font-size:11px;color:#888">0%</span>
+            <span id="ctxWarning" style="display:none;color:#ef4444;font-size:13px" title="Context window >80% full">⚠️</span>
+            <span id="ctxTrimmed" style="display:none;font-size:11px;color:#666;cursor:pointer" title="Messages trimmed to fit context"></span>
           </div>
           <div class="chat-actions">
             <button class="btn-sm" onclick="window.aries.exportChat()" data-tooltip="Export chat as .md">&#x1F4E5; Export</button>
@@ -381,6 +426,18 @@
       <section id="panel-skills" class="panel">
         <div class="panel-header"><h2>&#x1F527; Skills</h2><button class="btn-sm" onclick="window.aries._loadedPanels.skills=false;window.aries.loadSkills()" title="Refresh skills">&#x1F504; Refresh</button></div>
         <div id="skillsContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Dreams Panel -->
+      <section id="panel-dreams" class="panel">
+        <div class="panel-header"><h2>&#x1F4AD; Agent Dreams</h2><button class="btn-sm" onclick="window.aries.loadDreams()">&#x1F504; Refresh</button> <button class="btn-primary" onclick="window.aries.triggerDream()">&#x1F31C; Trigger Dream Cycle</button></div>
+        <div id="dreamsContent" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Journals Panel -->
+      <section id="panel-journals" class="panel">
+        <div class="panel-header"><h2>&#x1F4D3; Agent Journals</h2><button class="btn-sm" onclick="window.aries.loadJournals()">&#x1F504; Refresh</button></div>
+        <div id="journalsContent" class="info-content">Loading...</div>
       </section>
 
       <!-- Browser Panel -->
@@ -785,6 +842,25 @@
       </section>
 
       <!-- System Monitor Panel -->
+      <!-- Desktop Control Panel -->
+      <section id="panel-desktop" class="panel">
+        <div class="panel-header"><h2>&#x1F5A5; Desktop Control</h2>
+          <div><button class="btn-sm" onclick="window.aries.desktopRefresh()">&#x1F4F7; Screenshot</button>
+          <button class="btn-sm" onclick="window.aries.desktopInfo()">&#x2139; Info</button></div>
+        </div>
+        <div style="padding:16px">
+          <div id="desktopPreview" style="position:relative;background:#000;border:2px solid var(--border);border-radius:8px;overflow:hidden;cursor:crosshair;max-width:100%">
+            <img id="desktopImg" style="width:100%;display:block" alt="Desktop preview" />
+            <div id="desktopClickMarker" style="display:none;position:absolute;width:20px;height:20px;border:2px solid #f00;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;animation:pulse 0.5s"></div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+            <input id="desktopTypeInput" type="text" class="input-field" placeholder="Type text to send..." style="flex:1" />
+            <button class="btn-primary" onclick="window.aries.desktopType()">&#x2328; Send Keys</button>
+          </div>
+          <div id="desktopStatus" style="font-size:12px;color:var(--text-dim);margin-top:8px"></div>
+        </div>
+      </section>
+
       <section id="panel-monitor" class="panel">
         <div class="panel-header">
           <h2>&#x1F4CA; System Monitor</h2>
@@ -923,8 +999,23 @@
 
       <!-- Task Marketplace Panel -->
       <section id="panel-task-marketplace" class="panel">
-        <div class="panel-header"><h2>&#x1F6D2; Task Marketplace</h2><button class="btn-sm" onclick="window.aries.refreshMarketplace()">&#x21BB; Refresh</button></div>
+        <div class="panel-header"><h2>&#x1F6D2; App Store / Marketplace</h2><button class="btn-sm" onclick="window.aries.refreshMarketplace()">&#x21BB; Refresh</button></div>
         <div style="padding:16px;">
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <input id="mpSearchInput" type="text" placeholder="Search marketplace..." style="flex:1;min-width:200px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;" oninput="window.aries.filterMarketplace()">
+            <select id="mpCategoryFilter" onchange="window.aries.filterMarketplace()" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+              <option value="all">All Categories</option>
+              <option value="agents">🤖 Agents</option>
+              <option value="plugins">🔌 Plugins</option>
+              <option value="workflows">⚡ Workflows</option>
+              <option value="tools">🛠️ Tools</option>
+            </select>
+          </div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">🔥 Featured & Trending</h3>
+          <div id="mpFeatured" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">📦 All Listings</h3>
+          <div id="mpListings" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent2);margin:16px 0 12px;font-size:14px;">📊 Your Stats</h3>
           <div id="mpEarningsCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px;"></div>
           <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">&#x1F4CB; Active Tasks</h3>
           <div id="mpActiveTasks" style="margin-bottom:16px;"></div>
@@ -934,6 +1025,233 @@
           <div id="mpRevenueChart" style="height:200px;background:var(--bg-card);border-radius:8px;padding:12px;overflow-x:auto;"></div>
           <h3 style="color:var(--accent2);margin:16px 0 12px;font-size:14px;">&#x1F4B0; Pricing</h3>
           <div id="mpPricing"></div>
+        </div>
+      </section>
+
+      <!-- Agent-to-Agent Chat Panel -->
+      <section id="panel-agent-chat" class="panel">
+        <div class="panel-header"><h2>💬 Agent-to-Agent Chat</h2><button class="btn-sm" onclick="window.aries.refreshAgentChats()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div style="display:flex;gap:16px;height:calc(100vh - 200px);min-height:400px;">
+            <div style="width:240px;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto;">
+              <h3 style="color:var(--accent2);font-size:13px;margin:0 0 8px;">Conversations</h3>
+              <div id="agentChatList" style="font-size:13px;"></div>
+              <button class="btn-sm" onclick="window.aries.showNewAgentChat()" style="margin-top:12px;width:100%;">+ New Chat</button>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div id="agentChatMessages" style="flex:1;overflow-y:auto;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);margin-bottom:8px;font-size:13px;"></div>
+              <div id="agentChatInputArea" style="display:none;gap:8px;">
+                <select id="agentChatFrom" style="padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;"></select>
+                <span style="color:var(--text-dim);font-size:12px;">→</span>
+                <select id="agentChatTo" style="padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;"></select>
+                <input id="agentChatMsg" type="text" placeholder="Type message..." style="flex:1;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;" onkeydown="if(event.key==='Enter')window.aries.sendAgentChat()">
+                <button class="btn-sm" onclick="window.aries.sendAgentChat()">Send</button>
+                <button class="btn-sm" onclick="window.aries.delegateAgentTask()" title="Delegate task">📋 Delegate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Agent Templates Gallery Panel -->
+      <section id="panel-templates" class="panel">
+        <div class="panel-header"><h2>📋 Agent Templates Gallery</h2></div>
+        <div style="padding:16px;">
+          <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;">One-click deploy pre-built agent configurations.</p>
+          <div id="templateGallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;"></div>
+        </div>
+      </section>
+
+      <!-- Webhook Builder Panel -->
+      <section id="panel-webhooks" class="panel">
+        <div class="panel-header"><h2>🔗 Webhook Builder</h2><button class="btn-sm" onclick="window.aries.refreshWebhooks()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <button class="btn-sm" onclick="window.aries.showCreateWebhook()" style="margin-bottom:16px;">+ Create Webhook</button>
+          <div id="webhookList" style="margin-bottom:20px;"></div>
+          <div id="webhookEditor" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
+            <h3 style="color:var(--accent2);font-size:14px;margin:0 0 12px;">Webhook Editor</h3>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;font-size:13px;">
+              <span style="color:var(--text);">When</span>
+              <select id="whkTrigger" style="padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+                <option value="http_post">HTTP POST received</option>
+                <option value="cron">Cron schedule</option>
+                <option value="file_changed">File changed</option>
+                <option value="manual">Manual trigger</option>
+              </select>
+              <span style="color:var(--text);">→</span>
+              <select id="whkAction" style="padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+                <option value="run_subagent">Run subagent</option>
+                <option value="execute_tool">Execute tool</option>
+                <option value="send_notification">Send notification</option>
+                <option value="chain_next">Chain to next step</option>
+              </select>
+              <span style="color:var(--text);">→</span>
+              <select id="whkOutput" style="padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+                <option value="respond">HTTP Response</option>
+                <option value="log">Log only</option>
+                <option value="notify">Send notification</option>
+                <option value="chain">Chain output</option>
+              </select>
+            </div>
+            <input id="whkName" type="text" placeholder="Webhook name..." style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;margin-bottom:8px;">
+            <input id="whkCron" type="text" placeholder="Cron expression (if cron trigger)..." style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;margin-bottom:8px;display:none;">
+            <input id="whkAgentId" type="text" placeholder="Agent/Tool ID..." style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;margin-bottom:12px;">
+            <div style="display:flex;gap:8px;">
+              <button class="btn-sm" onclick="window.aries.saveWebhook()">💾 Save</button>
+              <button class="btn-sm" onclick="document.getElementById('webhookEditor').style.display='none'">Cancel</button>
+            </div>
+          </div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">📜 Recent Webhook Fires</h3>
+          <div id="webhookLogs" style="max-height:300px;overflow-y:auto;"></div>
+        </div>
+      </section>
+
+      <!-- Training Mode Panel -->
+      <section id="panel-training" class="panel">
+        <div class="panel-header"><h2>🎯 Training Mode</h2><button class="btn-sm" onclick="window.aries.refreshTraining()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div id="trainingStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">📝 Recent Corrections</h3>
+          <div id="trainingCorrections" style="max-height:400px;overflow-y:auto;margin-bottom:16px;"></div>
+          <h3 style="color:var(--accent2);margin:0 0 12px;font-size:14px;">📊 Agent Improvement</h3>
+          <div id="trainingChart" style="height:200px;background:var(--bg-card);border-radius:8px;padding:12px;"></div>
+        </div>
+      </section>
+
+      <!-- Agent Breeding Panel -->
+      <section id="panel-breeding" class="panel">
+        <div class="panel-header"><h2>🧬 Agent Breeding</h2><button class="btn-sm" onclick="window.aries.refreshBreeding()">&#x21BB; Refresh</button></div>
+        <div style="padding:16px;">
+          <div id="breedingStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <div style="margin-bottom:20px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+            <h3 style="color:#06b6d4;margin:0 0 12px;font-size:14px;">🧪 Breed New Agent</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <select id="breedParent1" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;">
+                <option value="">Select Parent 1</option>
+              </select>
+              <select id="breedParent2" style="padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;">
+                <option value="">Select Parent 2</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <input id="breedChildName" placeholder="Child name..." style="flex:1;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;" />
+              <button onclick="window.aries.breedAgents()" class="btn-primary" style="padding:10px 20px;">🧬 Breed</button>
+            </div>
+          </div>
+          <h3 style="color:#06b6d4;margin:0 0 12px;font-size:14px;">🌳 Family Tree</h3>
+          <div id="breedingLineage" style="max-height:400px;overflow-y:auto;"></div>
+          <h3 style="color:#06b6d4;margin:16px 0 12px;font-size:14px;">🏆 Top Breeders (Fitness)</h3>
+          <div id="breedingFitness" style="max-height:300px;overflow-y:auto;"></div>
+        </div>
+      </section>
+
+      <!-- Mesh Network Panel -->
+      <section id="panel-mesh" class="panel">
+        <div class="panel-header">
+          <h2>🌐 Aries Mesh</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshMesh()">&#x21BB; Refresh</button>
+            <button class="btn-sm" onclick="window.aries.meshToggle()">⚡ Toggle</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <div id="meshStatus" style="margin-bottom:16px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;font-size:13px;"></div>
+          <div style="margin-bottom:20px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+            <h3 style="color:#06b6d4;margin:0 0 12px;font-size:14px;">➕ Add Peer Manually</h3>
+            <div style="display:flex;gap:10px;">
+              <input id="meshPeerHost" placeholder="Host/IP" style="flex:1;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;" />
+              <input id="meshPeerPort" placeholder="Port" style="width:100px;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;" value="3333" />
+              <button onclick="window.aries.meshAddPeer()" class="btn-primary" style="padding:10px 20px;">Add</button>
+            </div>
+          </div>
+          <h3 style="color:#06b6d4;margin:0 0 12px;font-size:14px;">📡 Connected Peers</h3>
+          <div id="meshPeerList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+          <div id="meshDelegateSection" style="display:none;margin-top:20px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+            <h3 style="color:#06b6d4;margin:0 0 12px;font-size:14px;">📨 Delegate Task</h3>
+            <select id="meshDelegatePeer" style="width:100%;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;margin-bottom:8px;"></select>
+            <select id="meshDelegateAgent" style="width:100%;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;margin-bottom:8px;"></select>
+            <textarea id="meshDelegateTask" placeholder="Task description..." rows="3" style="width:100%;padding:10px;background:#0a0a0a;color:#eee;border:1px solid #333;border-radius:8px;margin-bottom:8px;resize:vertical;"></textarea>
+            <button onclick="window.aries.meshDelegate()" class="btn-primary" style="padding:10px 20px;">🚀 Delegate</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Money Maker Panel -->
+      <section id="panel-money" class="panel">
+        <div class="panel-header">
+          <h2>💰 Money Maker</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshMoney()">&#x21BB; Refresh</button>
+            <button class="btn-sm" onclick="window.aries.moneyScan()">🔍 Scan</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <div id="moneyStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <button onclick="window.aries.moneyFilter('all')" class="btn-sm" style="background:#333;">All</button>
+            <button onclick="window.aries.moneyFilter('pending')" class="btn-sm" style="background:#8b5cf6;">Pending</button>
+            <button onclick="window.aries.moneyFilter('approved')" class="btn-sm" style="background:#10b981;">Approved</button>
+            <button onclick="window.aries.moneyFilter('rejected')" class="btn-sm" style="background:#ef4444;">Rejected</button>
+          </div>
+          <div id="moneyOpportunities" style="display:grid;gap:12px;"></div>
+        </div>
+      </section>
+
+      <!-- Self-Improve Panel -->
+      <section id="panel-self-improve" class="panel">
+        <div class="panel-header">
+          <h2>🔧 Self-Improve</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshImprove()">&#x21BB; Refresh</button>
+            <button class="btn-sm" onclick="window.aries.improveScan()">🔍 Scan</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <div id="improveStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <button onclick="window.aries.improveFilter('all')" class="btn-sm" style="background:#333;">All</button>
+            <button onclick="window.aries.improveFilter('Bug Fix')" class="btn-sm" style="background:#ef4444;">🐛 Bug Fix</button>
+            <button onclick="window.aries.improveFilter('Performance')" class="btn-sm" style="background:#f59e0b;">⚡ Performance</button>
+            <button onclick="window.aries.improveFilter('Security')" class="btn-sm" style="background:#8b5cf6;">🛡️ Security</button>
+            <button onclick="window.aries.improveFilter('Code Quality')" class="btn-sm" style="background:#06b6d4;">✨ Quality</button>
+          </div>
+          <div id="improveSuggestions" style="display:grid;gap:12px;"></div>
+        </div>
+      </section>
+
+      <!-- Autopilot Panel -->
+      <section id="panel-autopilot" class="panel">
+        <div class="panel-header">
+          <h2>🚀 Autopilot</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshAutopilot()">↻ Refresh</button>
+            <button class="btn-sm" style="background:var(--accent2);color:#000" onclick="window.aries.showNewAutopilotProject()">+ New Project</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <!-- New Project Form (hidden by default) -->
+          <div id="autopilotNewForm" style="display:none;margin-bottom:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+            <h3 style="color:var(--accent2);margin:0 0 12px;font-size:16px;">🎯 Describe Your Business Goal</h3>
+            <textarea id="autopilotGoalInput" placeholder="e.g. I want to launch a SaaS product that helps freelancers manage invoices..." style="width:100%;height:100px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-size:14px;resize:vertical;font-family:inherit"></textarea>
+            <div style="display:flex;gap:12px;margin-top:12px;">
+              <div style="flex:1">
+                <label style="color:var(--text-dim);font-size:11px;display:block;margin-bottom:4px">Budget (optional)</label>
+                <input id="autopilotBudgetInput" type="text" placeholder="e.g. $500" style="width:100%;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px">
+              </div>
+              <div style="flex:1">
+                <label style="color:var(--text-dim);font-size:11px;display:block;margin-bottom:4px">Timeline (optional)</label>
+                <input id="autopilotTimelineInput" type="text" placeholder="e.g. 2 weeks" style="width:100%;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+              <button class="btn-sm" onclick="document.getElementById('autopilotNewForm').style.display='none'">Cancel</button>
+              <button class="btn-sm" style="background:var(--accent2);color:#000;padding:8px 20px" onclick="window.aries.startAutopilotProject()">🚀 Launch Autopilot</button>
+            </div>
+          </div>
+          <!-- Projects List -->
+          <div id="autopilotProjectsList"></div>
+          <!-- Project Detail (hidden by default) -->
+          <div id="autopilotDetail" style="display:none;"></div>
         </div>
       </section>
 
@@ -1081,21 +1399,39 @@
 
       <!-- Git Panel -->
       <section id="panel-git" class="panel">
-        <div class="panel-header"><h2>&#x1F500; Git</h2><button class="btn-sm" onclick="window.aries.loadGit()">&#x1F504; Refresh</button></div>
-        <div style="padding:0 16px 12px">
+        <div class="panel-header"><h2>&#x1F500; Git Integration</h2><div><button class="btn-sm" onclick="window.devtools.loadGitPanel()">↻ Refresh</button> <button class="btn-sm" onclick="document.getElementById('gitLegacy').style.display=document.getElementById('gitLegacy').style.display==='none'?'':'none'">⌨ Raw</button></div></div>
+        <div id="gitPanelContent" style="padding:0 16px 12px"></div>
+        <div id="gitLegacy" style="display:none;padding:0 16px 12px">
           <div style="display:flex;gap:8px;margin-bottom:8px">
             <input id="gitCmd" placeholder="git command (e.g. status, log, diff)" style="flex:1;padding:10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px" onkeydown="if(event.key==='Enter')window.aries.runGit()" />
             <button class="btn-primary" onclick="window.aries.runGit()">Run</button>
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='status';window.aries.runGit()">Status</button>
-            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='log --oneline -20';window.aries.runGit()">Log</button>
-            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='diff';window.aries.runGit()">Diff</button>
-            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='branch -a';window.aries.runGit()">Branches</button>
-            <button class="btn-sm" onclick="document.getElementById('gitCmd').value='remote -v';window.aries.runGit()">Remotes</button>
-          </div>
+          <div id="gitContent" class="info-content" style="font-family:monospace;white-space:pre-wrap;font-size:12px"></div>
         </div>
-        <div id="gitContent" class="info-content" style="font-family:monospace;white-space:pre-wrap;font-size:12px"></div>
+      </section>
+
+      <!-- Database Viewer Panel -->
+      <section id="panel-dataviewer" class="panel">
+        <div class="panel-header"><h2>🗄️ Database Viewer</h2><button class="btn-sm" onclick="window.devtools.loadDataViewer()">↻ Refresh</button></div>
+        <div id="dataViewerContent" style="padding:0 16px 12px"></div>
+      </section>
+
+      <!-- API Playground Panel -->
+      <section id="panel-playground" class="panel">
+        <div class="panel-header"><h2>🧪 API Playground</h2><button class="btn-sm" onclick="window.devtools.loadPlayground()">↻ Refresh</button></div>
+        <div id="playgroundContent" style="padding:0 16px 12px"></div>
+      </section>
+
+      <!-- Plugin IDE Panel -->
+      <section id="panel-plugin-ide" class="panel">
+        <div class="panel-header"><h2>📦 Plugin IDE</h2><button class="btn-sm" onclick="window.devtools.loadPluginIDE()">↻ Refresh</button></div>
+        <div id="pluginIDEContent" style="padding:0 16px 12px"></div>
+      </section>
+
+      <!-- Log Streaming Panel -->
+      <section id="panel-logstream" class="panel">
+        <div class="panel-header"><h2>📡 Log Stream</h2><button class="btn-sm" onclick="window.devtools.loadLogStream()">↻ Refresh</button></div>
+        <div id="logStreamContent" style="padding:0 16px 12px"></div>
       </section>
 
       <!-- Users Panel -->
@@ -1128,9 +1464,57 @@
 
       <!-- Workflows Panel -->
       <section id="panel-workflows" class="panel" style="display:none">
-        <div class="panel-header"><h2>⚡ Workflows</h2><div><button class="btn-sm" onclick="window.aries.refreshWorkflows()">↻ Refresh</button> <button class="btn-sm" onclick="window.aries.showCreateWorkflow()">+ New</button></div></div>
-        <p style="color:#888;font-size:13px;margin:0 0 16px">Chain tools and agents into automated pipelines.</p>
-        <div id="workflowsList"></div>
+        <div class="panel-header"><h2>⚡ Workflows</h2><div><button class="btn-sm" onclick="window.aries.refreshWorkflows()">↻ Refresh</button> <button class="btn-sm" onclick="window.aries.showCreateWorkflow()">+ New Workflow</button></div></div>
+        <p style="color:#888;font-size:13px;margin:0 0 16px">Visual workflow builder — chain subagents into automated pipelines.</p>
+        <div style="display:flex;gap:16px;height:calc(100vh - 180px);min-height:500px">
+          <!-- Workflow List Sidebar -->
+          <div id="wfListPanel" style="width:280px;min-width:220px;background:var(--surface, #111);border:1px solid var(--border, #222);border-radius:10px;padding:12px;overflow-y:auto;flex-shrink:0">
+            <div style="font-weight:700;color:var(--accent, #0ff);margin-bottom:10px;font-size:13px">📋 Workflows</div>
+            <div id="wfListItems" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+          <!-- Visual Canvas -->
+          <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-width:0">
+            <!-- Workflow Editor Toolbar -->
+            <div id="wfEditorToolbar" style="display:none;background:var(--surface, #111);border:1px solid var(--border, #222);border-radius:10px;padding:10px 14px;display:none;align-items:center;gap:10px;flex-wrap:wrap">
+              <input id="wfEditName" type="text" placeholder="Workflow name" style="background:var(--bg, #0a0a0f);color:var(--text, #eee);border:1px solid var(--border, #222);border-radius:6px;padding:6px 10px;font-size:13px;width:200px" />
+              <select id="wfEditTrigger" style="background:var(--bg, #0a0a0f);color:var(--accent, #0ff);border:1px solid var(--border, #222);border-radius:6px;padding:6px 10px;font-size:12px">
+                <option value="manual">🖱 Manual</option>
+                <option value="cron">⏰ Cron</option>
+                <option value="webhook">🔗 Webhook</option>
+              </select>
+              <input id="wfEditCron" type="text" placeholder="Cron interval (ms)" style="display:none;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;width:140px" />
+              <label style="font-size:12px;color:var(--text, #aaa);display:flex;align-items:center;gap:4px"><input id="wfEditEnabled" type="checkbox" checked /> Enabled</label>
+              <div style="flex:1"></div>
+              <button class="btn-sm" onclick="window.aries.wfSave()" style="color:var(--accent, #0ff)">💾 Save</button>
+              <button class="btn-sm" onclick="window.aries.wfAddStep()" style="color:#0f0">+ Add Step</button>
+            </div>
+            <!-- SVG Visual Graph -->
+            <div id="wfCanvas" style="flex:1;background:var(--surface, #111);border:1px solid var(--border, #222);border-radius:10px;position:relative;overflow:hidden;min-height:300px">
+              <svg id="wfSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1">
+                <defs>
+                  <marker id="wfArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent, #0ff)" /></marker>
+                </defs>
+              </svg>
+              <div id="wfNodes" style="position:relative;z-index:2;width:100%;height:100%"></div>
+              <div id="wfEmptyState" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#555;font-size:14px;pointer-events:none">Select or create a workflow to begin</div>
+            </div>
+          </div>
+        </div>
+        <!-- Step Editor Modal -->
+        <div id="wfStepModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+          <div style="background:var(--surface, #111);border:1px solid var(--accent, #0ff);border-radius:12px;padding:20px;width:420px;max-width:90vw">
+            <h3 style="color:var(--accent, #0ff);margin:0 0 14px">Edit Step</h3>
+            <input id="wfStepName" type="text" placeholder="Step name" style="width:100%;margin-bottom:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;box-sizing:border-box" />
+            <select id="wfStepAgent" style="width:100%;margin-bottom:8px;background:var(--bg);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:8px"><option value="">Select subagent...</option></select>
+            <textarea id="wfStepInput" placeholder="Input template (use {{prevOutput}} for chaining)" rows="3" style="width:100%;margin-bottom:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:monospace;font-size:12px;resize:vertical;box-sizing:border-box"></textarea>
+            <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:4px;margin-bottom:12px"><input id="wfStepEnabled" type="checkbox" checked /> Enabled</label>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn-sm" style="color:var(--red, #f44)" onclick="window.aries.wfDeleteStep()">🗑 Delete</button>
+              <button class="btn-sm" onclick="document.getElementById('wfStepModal').style.display='none'">Cancel</button>
+              <button class="btn-sm" style="color:var(--accent, #0ff)" onclick="window.aries.wfSaveStep()">✓ Apply</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Analytics Panel -->
@@ -1159,6 +1543,30 @@
         <div id="channelsContent"></div>
       </section>
 
+      <!-- Personas Market Panel -->
+      <section id="panel-personas" class="panel">
+        <div class="panel-header"><h2>🎭 Agent Personas Market</h2><button class="btn-sm" onclick="window._loadPersonas()">↻ Refresh</button></div>
+        <div id="personasContent" style="padding:16px" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Time Travel Debug Panel -->
+      <section id="panel-timetravel" class="panel">
+        <div class="panel-header"><h2>⏪ Time Travel Debug</h2><button class="btn-sm" onclick="window._loadTimeTravel()">↻ Refresh</button></div>
+        <div id="timeTravelContent" style="padding:16px" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Aries TV Panel -->
+      <section id="panel-aries-tv" class="panel">
+        <div class="panel-header"><h2>📺 Aries TV</h2><button class="btn-sm" onclick="window._loadAriesTv()">↻ Refresh</button></div>
+        <div id="ariesTvContent" style="padding:16px" class="info-content">Loading...</div>
+      </section>
+
+      <!-- Battle Mode Panel -->
+      <section id="panel-battle" class="panel">
+        <div class="panel-header"><h2>⚔️ Battle Mode</h2><button class="btn-sm" onclick="window._loadBattle()">↻ Refresh</button></div>
+        <div id="battleContent" style="padding:16px" class="info-content">Loading...</div>
+      </section>
+
       <!-- Notification Panel (overlay) -->
       <div id="notifPanel" style="display:none;position:fixed;top:50px;right:16px;width:380px;max-height:500px;background:#0a0a1a;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:999;overflow-y:auto;padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1167,6 +1575,100 @@
         </div>
         <div id="notifList" style="font-size:13px"></div>
       </div>
+      <!-- Reputation Panel -->
+      <section id="panel-reputation" class="panel">
+        <div class="panel-header">
+          <h2>⭐ Agent Reputation</h2>
+          <button class="btn-sm" onclick="window.aries.refreshReputation()">&#x21BB; Refresh</button>
+        </div>
+        <div style="padding:16px;">
+          <div id="reputationLeaderboard"></div>
+          <div id="reputationRateForm" style="margin-top:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+            <h3 style="color:var(--accent);margin:0 0 12px;font-size:14px;">Rate an Agent</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+              <div><label style="font-size:11px;color:var(--text-dim);">Agent ID</label><br><input id="repAgentId" type="text" placeholder="agent-name" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:#fff;width:160px;"></div>
+              <div><label style="font-size:11px;color:var(--text-dim);">Score (1-5)</label><br>
+                <div id="repStars" style="font-size:24px;cursor:pointer;user-select:none;">
+                  <span onclick="window.aries._setRepScore(1)" data-star="1">☆</span>
+                  <span onclick="window.aries._setRepScore(2)" data-star="2">☆</span>
+                  <span onclick="window.aries._setRepScore(3)" data-star="3">☆</span>
+                  <span onclick="window.aries._setRepScore(4)" data-star="4">☆</span>
+                  <span onclick="window.aries._setRepScore(5)" data-star="5">☆</span>
+                </div>
+              </div>
+              <div><label style="font-size:11px;color:var(--text-dim);">Comment</label><br><input id="repComment" type="text" placeholder="Optional" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:#fff;width:200px;"></div>
+              <button class="btn-primary" onclick="window.aries.submitRating()">Submit</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Task Queue Panel -->
+      <section id="panel-task-queue" class="panel">
+        <div class="panel-header">
+          <h2>📋 Task Queue</h2>
+          <div>
+            <button class="btn-sm" onclick="window.aries.refreshTaskQueue()">&#x21BB; Refresh</button>
+            <button class="btn-sm" onclick="window.aries.showEnqueueTask()">+ Add Task</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <div id="taskQueueFilters" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <button onclick="window.aries.filterTasks('all')" class="btn-sm" style="background:#333;">All</button>
+            <button onclick="window.aries.filterTasks('queued')" class="btn-sm" style="background:#3b82f6;">Queued</button>
+            <button onclick="window.aries.filterTasks('active')" class="btn-sm" style="background:#f59e0b;">Active</button>
+            <button onclick="window.aries.filterTasks('completed')" class="btn-sm" style="background:#22c55e;">Completed</button>
+            <button onclick="window.aries.filterTasks('failed')" class="btn-sm" style="background:#ef4444;">Failed</button>
+          </div>
+          <div id="taskQueueKanban" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;min-height:300px;"></div>
+          <div id="enqueueForm" style="display:none;margin-top:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+            <h3 style="color:var(--accent);margin:0 0 12px;font-size:14px;">Enqueue Task</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+              <div><label style="font-size:11px;color:var(--text-dim);">Agent</label><br><input id="tqAgent" type="text" placeholder="agent-id" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:#fff;width:140px;"></div>
+              <div><label style="font-size:11px;color:var(--text-dim);">Description</label><br><input id="tqDesc" type="text" placeholder="Task description" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:#fff;width:240px;"></div>
+              <div><label style="font-size:11px;color:var(--text-dim);">Priority (1-10)</label><br><input id="tqPriority" type="number" value="5" min="1" max="10" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:#fff;width:80px;"></div>
+              <button class="btn-primary" onclick="window.aries.enqueueTask()">Enqueue</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Health Monitor Panel -->
+      <section id="panel-health-monitor" class="panel">
+        <div class="panel-header">
+          <h2>💓 Health Monitor</h2>
+          <button class="btn-sm" onclick="window.aries.refreshHealthMonitor()">&#x21BB; Refresh</button>
+        </div>
+        <div style="padding:16px;">
+          <div id="healthGauges" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:20px;"></div>
+          <div id="healthDisks" style="margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent);margin:0 0 12px;font-size:14px;">📈 History (last 60 readings)</h3>
+          <canvas id="healthChart" width="800" height="200" style="width:100%;max-width:800px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;"></canvas>
+          <div id="healthAlerts" style="margin-top:16px;"></div>
+        </div>
+      </section>
+
+      <!-- Proxy Mode Panel -->
+      <section id="panel-proxy-mode" class="panel">
+        <div class="panel-header">
+          <h2>🔀 Proxy Mode</h2>
+          <button class="btn-sm" onclick="window.aries.refreshProxyMode()">&#x21BB; Refresh</button>
+        </div>
+        <div style="padding:16px;">
+          <div id="proxyStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <h3 style="color:var(--accent);margin:0 0 12px;font-size:14px;">🔗 Endpoint</h3>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;font-family:monospace;font-size:13px;">
+            <div style="color:var(--text-dim);margin-bottom:4px;">Base URL:</div>
+            <code id="proxyEndpoint" style="color:var(--accent);"></code>
+            <button class="btn-sm" style="margin-left:8px;" onclick="navigator.clipboard.writeText(document.getElementById('proxyEndpoint').textContent)">📋 Copy</button>
+          </div>
+          <h3 style="color:var(--accent);margin:0 0 12px;font-size:14px;">🗺️ Route Config</h3>
+          <div id="proxyRoutes" style="margin-bottom:16px;"></div>
+          <h3 style="color:var(--accent);margin:0 0 12px;font-size:14px;">👥 Connected Clients</h3>
+          <div id="proxyClients"></div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -1194,6 +1696,9 @@
 
   <script src="app.js"></script>
 <script src="features.js"></script>
+<script src="features-v2.js"></script>
+<script src="features-v3.js"></script>
+<script src="features-v4.js"></script>
   <script>
   // Mobile hamburger menu toggle
   (function(){
@@ -1215,6 +1720,25 @@
     });
   })();
   </script>
+  <!-- Global Drop Overlay -->
+  <div id="globalDropOverlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,229,255,0.1);border:4px dashed #00e5ff;pointer-events:none;justify-content:center;align-items:center">
+    <div style="background:rgba(0,0,0,0.85);padding:40px 60px;border-radius:16px;text-align:center;font-size:24px;color:#00e5ff;pointer-events:none">&#x1F4C1; Drop files anywhere to upload</div>
+  </div>
+
+  <!-- Collab Chat Sidebar -->
+  <div id="collabChat" style="display:none;position:fixed;right:0;top:56px;bottom:0;width:280px;background:var(--bg-card,#1a1a2e);border-left:1px solid var(--border,#333);z-index:9000;display:none;flex-direction:column">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border,#333);font-weight:600;color:var(--accent,#00e5ff);display:flex;justify-content:space-between;align-items:center">
+      <span>&#x1F465; Live Chat</span>
+      <button onclick="document.getElementById('collabChat').style.display='none'" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">&times;</button>
+    </div>
+    <div id="collabChatMessages" style="flex:1;overflow-y:auto;padding:8px;font-size:13px"></div>
+    <div id="collabUsersList" style="padding:6px 10px;border-top:1px solid var(--border,#333);font-size:11px;color:var(--text-dim,#888)"></div>
+    <div style="display:flex;border-top:1px solid var(--border,#333)">
+      <input id="collabChatInput" type="text" placeholder="Message..." style="flex:1;background:transparent;border:none;color:#fff;padding:8px 12px;font-size:13px;outline:none" />
+      <button onclick="window.aries.sendCollabChat()" style="background:var(--accent,#00e5ff);border:none;color:#000;padding:8px 12px;font-weight:600;cursor:pointer">Send</button>
+    </div>
+  </div>
+
   <!-- Ollama Fallback Notification -->
   <div id="ollamaFallbackBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:linear-gradient(90deg,#ff6b00,#ff8c00);color:#000;padding:8px 16px;font-size:13px;font-weight:600;text-align:center;cursor:pointer" onclick="this.style.display='none'">
     ⚡ API limit reached — Seamlessly switched to local Ollama AI. Your data stays on your machine. <span style="opacity:0.7">(click to dismiss)</span>
@@ -1238,5 +1762,149 @@
         }).catch(function(){});
     }, 15000);
   </script>
+
+  <!-- ═══ Agent DNA Panel ═══ -->
+  <div id="panel-agent-dna" class="panel" style="display:none">
+    <h2 style="color:#00fff7;margin-bottom:16px">🧬 Agent DNA — Genetic Code</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:320px">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="dnaAgentId" placeholder="Agent ID..." style="flex:1;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:6px">
+          <button onclick="loadDna()" style="background:#00fff7;color:#000;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold">Load</button>
+          <button onclick="mutateDna()" style="background:#ff00ff;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold">Mutate</button>
+        </div>
+        <div id="dnaGenomeEditor" style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
+          <h3 style="color:#ff00ff;margin:0 0 12px">Personality</h3>
+          <div id="dnaPersonalitySliders"></div>
+          <h3 style="color:#00ff88;margin:12px 0">Skills</h3>
+          <div id="dnaSkillSliders"></div>
+          <h3 style="color:#ffaa00;margin:12px 0">Biases</h3>
+          <div id="dnaBiasSliders"></div>
+          <h3 style="color:#00aaff;margin:12px 0">Reasoning</h3>
+          <div id="dnaReasoningControls"></div>
+          <div style="margin-top:12px"><button onclick="saveDna()" style="background:#00ff88;color:#000;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:bold">💾 Save Genome</button></div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:320px">
+        <!-- DNA Helix Visualization -->
+        <div id="dnaHelixViz" style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;height:300px;position:relative;overflow:hidden">
+          <div style="text-align:center;color:#555;padding-top:100px" id="dnaHelixPlaceholder">Load an agent to see DNA helix</div>
+          <canvas id="dnaHelixCanvas" width="300" height="280" style="display:none;margin:0 auto;display:block"></canvas>
+        </div>
+        <!-- Crossover -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-top:12px">
+          <h3 style="color:#ff6600;margin:0 0 8px">🔀 Crossover</h3>
+          <div style="display:flex;gap:8px">
+            <input id="dnaCrossParent1" placeholder="Parent 1 ID" style="flex:1;background:#1a1a2e;border:1px solid #333;color:#fff;padding:6px;border-radius:4px">
+            <input id="dnaCrossParent2" placeholder="Parent 2 ID" style="flex:1;background:#1a1a2e;border:1px solid #333;color:#fff;padding:6px;border-radius:4px">
+            <button onclick="crossoverDna()" style="background:#ff6600;color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold">Breed</button>
+          </div>
+        </div>
+        <!-- Evolution -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-top:12px">
+          <h3 style="color:#ff0055;margin:0 0 8px">🧪 Evolution</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:#aaa">Generations:</span>
+            <input id="dnaEvolveGens" type="number" value="3" min="1" max="100" style="width:60px;background:#1a1a2e;border:1px solid #333;color:#fff;padding:6px;border-radius:4px">
+            <button onclick="evolveDna()" style="background:#ff0055;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-weight:bold">⚡ Evolve All</button>
+          </div>
+          <div id="dnaEvolveResult" style="color:#888;margin-top:8px;font-size:12px"></div>
+        </div>
+        <!-- Fitness -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-top:12px">
+          <h3 style="color:#00fff7;margin:0 0 8px">📊 Fitness</h3>
+          <div id="dnaFitnessInfo" style="color:#aaa;font-size:13px">Load an agent to see fitness data</div>
+        </div>
+      </div>
+    </div>
+    <div id="dnaPromptPreview" style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px;margin-top:12px;display:none">
+      <h3 style="color:#00fff7;margin:0 0 8px">📝 Compiled Prompt Modifier</h3>
+      <pre id="dnaPromptText" style="color:#00ff88;white-space:pre-wrap;font-size:12px"></pre>
+    </div>
+  </div>
+
+  <!-- ═══ Hive Mind Panel ═══ -->
+  <div id="panel-hive-mind" class="panel" style="display:none">
+    <h2 style="color:#00fff7;margin-bottom:16px">🔗 Hive Mind — Shared Consciousness</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:320px">
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-bottom:12px">
+          <h3 style="color:#ff00ff;margin:0 0 8px">Start New Hive</h3>
+          <input id="hiveAgents" placeholder="Agent IDs (comma-separated)" style="width:100%;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:4px;margin-bottom:8px;box-sizing:border-box">
+          <input id="hiveGoal" placeholder="Hive goal..." style="width:100%;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:4px;margin-bottom:8px;box-sizing:border-box">
+          <button onclick="startHive()" style="background:#ff00ff;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:bold">🐝 Start Hive</button>
+        </div>
+        <div id="hiveSessionsList" style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
+          <h3 style="color:#00ff88;margin:0 0 8px">Active Sessions</h3>
+          <div id="hiveSessionsContent" style="color:#888">Loading...</div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:320px">
+        <!-- Hive Network Visualization -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;height:250px;position:relative">
+          <canvas id="hiveNetCanvas" width="400" height="220" style="display:block;margin:0 auto"></canvas>
+        </div>
+        <!-- Shared Memory -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-top:12px">
+          <h3 style="color:#ffaa00;margin:0 0 8px">🧠 Shared Memory</h3>
+          <div id="hiveMemoryView" style="color:#aaa;font-size:13px;max-height:200px;overflow-y:auto">No active session selected</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="hiveWriteKey" placeholder="Key" style="flex:1;background:#1a1a2e;border:1px solid #333;color:#fff;padding:6px;border-radius:4px">
+            <input id="hiveWriteVal" placeholder="Value" style="flex:1;background:#1a1a2e;border:1px solid #333;color:#fff;padding:6px;border-radius:4px">
+            <button onclick="hiveWrite()" style="background:#ffaa00;color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold">Write</button>
+          </div>
+        </div>
+        <!-- Message Log -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-top:12px">
+          <h3 style="color:#00aaff;margin:0 0 8px">💬 Message Log</h3>
+          <div id="hiveMessageLog" style="color:#aaa;font-size:12px;max-height:150px;overflow-y:auto">No messages yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Instincts Panel ═══ -->
+  <div id="panel-instincts" class="panel" style="display:none">
+    <h2 style="color:#00fff7;margin-bottom:16px">⚡ Agent Instincts — Pre-AI Reactions</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:400px">
+        <div id="instinctsList" style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="color:#ff00ff;margin:0">Active Instincts</h3>
+            <button onclick="document.getElementById('instinctCreateForm').style.display='block'" style="background:#00ff88;color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold">+ New</button>
+          </div>
+          <div id="instinctsListContent">Loading...</div>
+        </div>
+        <!-- Create Form -->
+        <div id="instinctCreateForm" style="display:none;background:#0d0d1a;border:1px solid #ff00ff;border-radius:8px;padding:16px;margin-top:12px">
+          <h3 style="color:#ff00ff;margin:0 0 12px">Create Instinct</h3>
+          <input id="instNewName" placeholder="Name..." style="width:100%;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:4px;margin-bottom:8px;box-sizing:border-box">
+          <input id="instNewTrigger" placeholder="Trigger regex (e.g. password|secret)" style="width:100%;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:4px;margin-bottom:8px;box-sizing:border-box;font-family:monospace">
+          <input id="instNewAction" placeholder="Action text to inject..." style="width:100%;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:4px;margin-bottom:8px;box-sizing:border-box">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:#aaa">Priority:</span>
+            <input id="instNewPriority" type="number" value="5" min="1" max="10" style="width:60px;background:#1a1a2e;border:1px solid #333;color:#fff;padding:6px;border-radius:4px">
+            <button onclick="createInstinct()" style="background:#ff00ff;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold">Create</button>
+            <button onclick="document.getElementById('instinctCreateForm').style.display='none'" style="background:#333;color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div style="flex:0 0 320px">
+        <!-- Test -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-bottom:12px">
+          <h3 style="color:#ffaa00;margin:0 0 8px">🧪 Test Input</h3>
+          <textarea id="instTestInput" placeholder="Type a message to test instincts..." style="width:100%;height:60px;background:#1a1a2e;border:1px solid #333;color:#fff;padding:8px;border-radius:4px;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+          <button onclick="testInstincts()" style="background:#ffaa00;color:#000;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-weight:bold;margin-top:4px">Test</button>
+          <div id="instTestResult" style="color:#00ff88;margin-top:8px;font-size:12px;white-space:pre-wrap"></div>
+        </div>
+        <!-- Fire Stats -->
+        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
+          <h3 style="color:#00aaff;margin:0 0 8px">📊 Fire Frequency</h3>
+          <div id="instFireStats" style="color:#aaa;font-size:13px">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

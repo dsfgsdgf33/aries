@@ -1594,4 +1594,53 @@ async function chatNativeTools(messages, onToken, onToolExec, opts) {
 }
 
 
-module.exports = { chat, chatStream, chatStreamChunked, chatNativeTools, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop, spawnSubAgent, analyzeImage };
+
+// ── Usage Tracking ──
+const _usageLogPath = require('path').join(__dirname, '..', 'data', 'usage.json');
+const _MODEL_COSTS = { 'claude-sonnet-4-20250514': { in: 3, out: 15 }, 'claude-3-5-sonnet': { in: 3, out: 15 }, 'claude-3-haiku': { in: 0.25, out: 1.25 }, 'gpt-4o': { in: 2.5, out: 10 }, 'gpt-4.1': { in: 2, out: 8 }, 'llama3': { in: 0, out: 0 }, 'mistral': { in: 0, out: 0 } };
+function _estimateCost(model, tokensIn, tokensOut) {
+  var m = (model || '').replace(/^(anthropic|openai|groq|google)\//, '');
+  var rates = _MODEL_COSTS[m] || { in: 1, out: 3 }; // default ~$1/MTok in
+  if (m.includes('ollama') || m.includes('llama') || m.includes('mistral') || m.includes('tinyllama')) rates = { in: 0, out: 0 };
+  return (tokensIn * rates.in + tokensOut * rates.out) / 1000000;
+}
+function trackUsage(model, tokensIn, tokensOut, agent) {
+  try {
+    var cost = _estimateCost(model, tokensIn, tokensOut);
+    var entry = JSON.stringify({ ts: Date.now(), model: model || 'unknown', tokensIn: tokensIn, tokensOut: tokensOut, cost: cost, agent: agent || 'chat' });
+    var dir = require('path').dirname(_usageLogPath);
+    if (!require('fs').existsSync(dir)) require('fs').mkdirSync(dir, { recursive: true });
+    // Rotate if > 10MB
+    try { var stat = require('fs').statSync(_usageLogPath); if (stat.size > 10 * 1024 * 1024) { require('fs').renameSync(_usageLogPath, _usageLogPath + '.' + Date.now() + '.bak'); } } catch(e) {}
+    require('fs').appendFileSync(_usageLogPath, entry + '\n');
+    // Budget check
+    try {
+      var bp = require('path').join(__dirname, '..', 'data', 'usage-budget.json');
+      if (require('fs').existsSync(bp)) {
+        var budget = JSON.parse(require('fs').readFileSync(bp, 'utf8'));
+        if (budget.monthly_limit > 0) {
+          var raw = require('fs').readFileSync(_usageLogPath, 'utf8');
+          var monthCutoff = Date.now() - 2592000000;
+          var monthCost = raw.trim().split('\n').filter(Boolean).reduce(function(s, l) { try { var e = JSON.parse(l); return s + ((e.ts >= monthCutoff) ? (e.cost || 0) : 0); } catch(x) { return s; } }, 0);
+          if (monthCost >= budget.monthly_limit) console.warn('[USAGE] Budget limit reached: $' + monthCost.toFixed(4) + ' / $' + budget.monthly_limit);
+          else if (monthCost >= budget.monthly_limit * 0.8) console.warn('[USAGE] 80% budget warning: $' + monthCost.toFixed(4) + ' / $' + budget.monthly_limit);
+        }
+      }
+    } catch(e2) {}
+  } catch (e) { /* silent */ }
+}
+
+// Wrap callWithFallback to track usage
+var _origCallWithFallback = callWithFallback;
+callWithFallback = async function(messages, model, stream) {
+  var result = await _origCallWithFallback(messages, model, stream);
+  if (!stream && result && result.choices) {
+    var usage = result.usage || {};
+    var content = (result.choices[0] && result.choices[0].message && result.choices[0].message.content) || '';
+    var tokIn = usage.input_tokens || usage.prompt_tokens || Math.ceil(JSON.stringify(messages).length / 4);
+    var tokOut = usage.output_tokens || usage.completion_tokens || Math.ceil(content.length / 4);
+    trackUsage(model || 'default', tokIn, tokOut, 'chat');
+  }
+  return result;
+};
+module.exports = { chat, trackUsage, chatStream, chatStreamChunked, chatNativeTools, parseTools, stripToolTags, buildSystemPrompt, selectModel, callWithFallback, callSwarmOllama, agentLoop, spawnSubAgent, analyzeImage };

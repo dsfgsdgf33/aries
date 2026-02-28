@@ -145,7 +145,9 @@
     if (event === 'system' || event === 'stats') updateStats(data);
     else if (event === 'chat' || (data.type === 'chat')) {
       var chatData = event === 'chat' ? data : msg;
-      if (chatData.role === 'assistant') { hideChatTyping(); appendChatMessage('assistant', chatData.content); }
+      if (chatData.role === 'assistant') { hideChatTyping(); appendChatMessage('assistant', chatData.content); updateContextViz(); }
+    } else if (event === 'mood' || data.type === 'mood') {
+      showMoodBadge(data.mood || msg.mood, data.emoji || msg.emoji);
     } else if (event === 'swarm' || (data.type === 'swarm')) handleSwarmEvent(event === 'swarm' ? data : msg);
     else if (event === 'quickjoin-progress' || event === 'swarm-join-progress' || msg.type === 'quickjoin-progress' || msg.type === 'swarm-join-progress') {
       if (window._ariesQuickJoinHandler) window._ariesQuickJoinHandler(msg);
@@ -311,7 +313,11 @@
       case 'credits': loadCredits(); break;
       case 'todos': loadTodos(); break;
       case 'bookmarks': loadBookmarks(); break;
-      case 'git': loadGit(); break;
+      case 'git': if (window.devtools) window.devtools.loadGitPanel(); else loadGit(); break;
+      case 'dataviewer': if (window.devtools) window.devtools.loadDataViewer(); break;
+      case 'playground': if (window.devtools) window.devtools.loadPlayground(); break;
+      case 'plugin-ide': if (window.devtools) window.devtools.loadPluginIDE(); break;
+      case 'logstream': if (window.devtools) window.devtools.loadLogStream(); break;
       case 'projects': loadProjects(); break;
       case 'users': loadUsers(); break;
       case 'terminal': break;
@@ -321,6 +327,29 @@
       case 'knowledge': refreshKnowledge(); break;
       case 'security': refreshSecurity(); break;
       case 'channels': refreshChannels(); break;
+      case 'agent-chat': refreshAgentChats(); break;
+      case 'templates': loadTemplates(); break;
+      case 'webhooks': refreshWebhooks(); break;
+      case 'training': refreshTraining(); break;
+      case 'breeding': refreshBreeding(); break;
+      case 'mesh': refreshMesh(); break;
+      case 'money': refreshMoney(); break;
+      case 'self-improve': refreshImprove(); break;
+      case 'autopilot': refreshAutopilot(); break;
+      case 'personas': if (window._loadPersonas) window._loadPersonas(); break;
+      case 'timetravel': if (window._loadTimeTravel) window._loadTimeTravel(); break;
+      case 'aries-tv': if (window._loadAriesTv) window._loadAriesTv(); break;
+      case 'battle': if (window._loadBattle) window._loadBattle(); break;
+      case 'dreams': loadDreams(); break;
+      case 'journals': loadJournals(); break;
+      case 'reputation': refreshReputation(); break;
+      case 'task-queue': refreshTaskQueue(); break;
+      case 'health-monitor': refreshHealthMonitor(); break;
+      case 'proxy-mode': refreshProxyMode(); break;
+      case 'swarm-intel': if (window._renderSwarmIntelPanel) { var sc = document.getElementById('panel-swarm-intel'); if (!sc) { sc = document.createElement('div'); sc.id = 'panel-swarm-intel'; document.getElementById('content').appendChild(sc); } window._renderSwarmIntelPanel(sc); } break;
+      case 'agent-dna': loadAgentDnaPanel(); break;
+      case 'hive-mind': loadHiveMindPanel(); break;
+      case 'instincts': loadInstinctsPanel(); break;
     }
   }
 
@@ -379,7 +408,23 @@
         html += '<div class="activity-item"><span class="activity-time">' + (act.timestamp ? new Date(act.timestamp).toLocaleTimeString() : '') + '</span> ' + escapeHtml(act.description || act.type || 'Event') + '</div>';
       }
       html += '</div></div>';
+      // Dreams section
+      html += '<div class="dashboard-card" style="border-color:#7c3aed44;background:linear-gradient(135deg,#1a0a2e,#0d0d1a)"><h3 style="color:#a78bfa">💭 Agent Dreams</h3><div id="homeDreamsContent" style="color:#888;font-size:13px">Loading dreams...</div></div>';
+      html += '</div>';
       el.innerHTML = html;
+      // Load dreams into home
+      api('GET', 'dreams/latest').then(function(dd) {
+        var hd = document.getElementById('homeDreamsContent');
+        if (!hd) return;
+        if (!dd.dreams || dd.dreams.length === 0) { hd.innerHTML = '<span style="color:#666">No dreams yet. <a href="#" onclick="window.aries.triggerDream();return false" style="color:#a78bfa">Trigger a dream cycle</a></span>'; return; }
+        var last = dd.dreams[dd.dreams.length - 1];
+        var ins = last.insights || last;
+        var h = '';
+        if (ins.topTopics && ins.topTopics.length) h += '<div style="margin-bottom:4px">Topics: ' + ins.topTopics.slice(0, 5).map(function(t){ return '<span style="background:#7c3aed33;color:#a78bfa;padding:1px 6px;border-radius:8px;font-size:11px">' + t + '</span>'; }).join(' ') + '</div>';
+        if (ins.aiSummary && ins.aiSummary.keyInsight) h += '<div style="color:#c4b5fd;font-size:12px;margin-top:4px">💡 ' + escapeHtml(ins.aiSummary.keyInsight) + '</div>';
+        h += '<div style="color:#555;font-size:11px;margin-top:4px">' + (ins.totalMessages || 0) + ' messages analyzed</div>';
+        hd.innerHTML = h;
+      }).catch(function() { var hd = document.getElementById('homeDreamsContent'); if (hd) hd.innerHTML = '<span style="color:#555">Dreams unavailable</span>'; });
     });
   }
 
@@ -404,6 +449,8 @@
     api('GET', 'chat/history').then(function(data) {
       var history = data.history || [];
       for (var i = 0; i < history.length; i++) appendChatMessage(history[i].role, history[i].content);
+      updateContextViz();
+      if (history.length === 0) loadPreviousSession();
     }).catch(function() {});
     document.addEventListener('keydown', function(e) {
       if (e.ctrlKey && e.key === 'l' && currentPanel === 'chat') { e.preventDefault(); clearChat(); }
@@ -591,6 +638,7 @@
       _chatAttachments = []; renderAttachments();
     }
     appendChatMessage('user', msg);
+    updateContextViz();
     input.value = ''; input.style.height = 'auto';
     input.classList.add('thinking');
     _agentRunning = true;
@@ -639,6 +687,7 @@
           if (data === '[DONE]') return;
           try {
             var parsed = JSON.parse(data);
+            if (parsed.type === 'mood') { showMoodBadge(parsed.mood, parsed.emoji); }
             if (parsed.type === 'chunk' && parsed.text) {
               fullText += parsed.text;
               var div = ensureMsgDiv();
@@ -752,6 +801,10 @@
     div.appendChild(body);
     container.appendChild(div);
     scrollChatToBottom();
+    // Reality Anchoring: annotate assistant messages
+    if (role === 'assistant' && window._annotateWithAnchoring && content) {
+      window._annotateWithAnchoring(content, body);
+    }
   }
 
   function scrollChatToBottom() { var c = document.getElementById('chatMessages'); if (c) c.scrollTop = c.scrollHeight; }
@@ -985,6 +1038,14 @@
     html += '<div id="agentTaskResult" style="margin-top:12px"></div>';
     html += '</div>';
     document.getElementById('agentDetailContent').innerHTML = html;
+    // Inject Cognitive Architecture selector
+    if (window._renderCognitiveSelector) {
+      var cogContainer = document.createElement('div');
+      cogContainer.style.cssText = 'margin-bottom:16px;';
+      window._renderCognitiveSelector(a.id || a.name || agentId, cogContainer);
+      var detailContent = document.getElementById('agentDetailContent');
+      detailContent.insertBefore(cogContainer, detailContent.children[2] || null);
+    }
     var modal = document.getElementById('agentDetailModal');
     modal.style.display = 'flex';
     modal.onclick = function(e) { if (e.target === modal) closeAgentDetail(); };
@@ -1940,10 +2001,17 @@
       var html = '';
       // Theme
       html += '<div class="card" style="margin:0 0 16px;border:2px solid var(--accent)"><h3 style="margin:0 0 12px;color:var(--accent)">&#x1F3A8; Theme</h3><div style="display:flex;gap:8px;flex-wrap:wrap">';
-      var themes = [{id:'cyber-cyan',name:'Cyber Cyan',color:'#00e5ff'},{id:'blood-red',name:'Blood Red',color:'#ff2244'},{id:'matrix-green',name:'Matrix Green',color:'#00ff41'},{id:'neon-purple',name:'Neon Purple',color:'#a855f7'}];
+      var themes = [{id:'cyber-cyan',name:'Cyber Cyan',color:'#00e5ff'},{id:'blood-red',name:'Blood Red',color:'#ff2244'},{id:'matrix-green',name:'Matrix Green',color:'#00ff41'},{id:'neon-purple',name:'Neon Purple',color:'#a855f7'},{id:'auto',name:'Auto (OS)',color:'#888'}];
       var cur = localStorage.getItem('aries-theme') || 'cyber-cyan';
       for (var ti = 0; ti < themes.length; ti++) { var t = themes[ti]; var a = t.id === cur ? 'border-color:' + t.color + ';box-shadow:0 0 12px ' + t.color : ''; html += '<button class="btn-sm" onclick="window.aries.setTheme(\'' + t.id + '\')" style="padding:8px 16px;' + a + '"><span style="color:' + t.color + '">\u25CF</span> ' + t.name + '</button>'; }
       html += '</div></div>';
+      // Export Everything
+      html += '<div class="card" style="margin:0 0 16px"><h3 style="margin:0 0 12px;color:var(--accent)">&#x1F4E6; Export / Import Everything</h3>';
+      html += '<p style="color:#888;font-size:12px;margin:0 0 12px">Download all agents, workflows, memory, knowledge, config as a single JSON bundle.</p>';
+      html += '<div style="display:flex;gap:8px"><button class="btn-primary" onclick="window.aries.exportAll()">&#x1F4E5; Export All</button>';
+      html += '<button class="btn-sm" onclick="window.aries.importAll()">&#x1F4E4; Import</button>';
+      html += '<input type="file" id="importAllFile" accept=".json" style="display:none" onchange="window.aries.importAllFile(this)" /></div>';
+      html += '<div id="exportStatus" style="font-size:12px;margin-top:6px;color:var(--text-dim)"></div></div>';
       // AI Token
       html += '<div class="card" style="margin:0 0 16px"><h3 style="margin:0 0 8px;color:var(--accent)">&#x1F511; AI Token</h3>';
       html += '<div style="display:flex;gap:8px"><input id="settingAiToken" type="password" class="input-field" style="flex:1;font-family:monospace" placeholder="sk-ant-..." value="' + escapeHtml(tokens.aiToken || '') + '" />';
@@ -2008,6 +2076,9 @@
         html += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px">' + (torStatus.running ? '\u{1F7E2} Tor running' : '\u{1F534} Tor stopped') + '</div></div>';
       }
       el.innerHTML = html;
+      // Inject Reality Anchor settings + Cognitive Architecture creator
+      if (window._renderAnchorSettings) window._renderAnchorSettings(el);
+      if (window._renderArchitectureCreator) window._renderArchitectureCreator(el);
     }).catch(function() { el.innerHTML = '<p style="color:var(--red)">Failed.</p>'; });
   }
 
@@ -2054,7 +2125,24 @@
 
   function refreshAriesAi() { _loadedPanels['aries-ai'] = false; loadAriesAi(); }
 
-  function setTheme(name) { document.documentElement.setAttribute('data-theme', name); localStorage.setItem('aries-theme', name); toast('Theme: ' + name, 'success'); _loadedPanels['settings'] = false; loadSettings(); }
+  function setTheme(name) {
+    localStorage.setItem('aries-theme', name);
+    if (name === 'auto') {
+      var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', isDark ? 'cyber-cyan' : 'matrix-green');
+    } else {
+      document.documentElement.setAttribute('data-theme', name);
+    }
+    toast('Theme: ' + name, 'success'); _loadedPanels['settings'] = false; loadSettings();
+  }
+  // Auto-theme listener
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (localStorage.getItem('aries-theme') === 'auto') {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'cyber-cyan' : 'matrix-green');
+      }
+    });
+  }
   function testAiToken() { var t = document.getElementById('settingAiToken').value.trim(); if (!t) return; var btn = document.getElementById('settingTestTokenBtn'); btn.textContent = '...'; btn.disabled = true; api('POST', 'settings/test-token', { token: t }).then(function(d) { btn.textContent = 'Test'; btn.disabled = false; document.getElementById('settingTokenStatus').innerHTML = d.valid ? '<span style="color:var(--green)">\u2705 Valid!</span>' : '<span style="color:var(--red)">\u274C Invalid</span>'; }).catch(function() { btn.textContent = 'Test'; btn.disabled = false; }); }
   function saveAiToken() { var t = document.getElementById('settingAiToken').value.trim(); if (!t) return; api('POST', 'settings/tokens', { aiToken: t }).then(function() { toast('Saved!', 'success'); }).catch(function() {}); }
   function saveSettings() { var updates = [{ key: 'userName', value: document.getElementById('settingUserName').value }, { key: 'swarm.concurrency', value: parseInt(document.getElementById('settingConcurrency').value) }]; Promise.all(updates.map(function(u) { return api('PUT', 'config', u).catch(function() {}); })).then(function() { toast('Saved!', 'success'); }); }
@@ -3918,9 +4006,14 @@
   }
 
   function init() {
-    // Apply saved theme
+    // Apply saved theme (with auto support)
     var savedTheme = localStorage.getItem('aries-theme');
-    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    if (savedTheme === 'auto') {
+      var _isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', _isDark ? 'cyber-cyan' : 'matrix-green');
+    } else if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
 
     // Run boot animation first
     runBootAnimation();
@@ -4558,6 +4651,12 @@
     //  TASK MARKETPLACE
     // ═══════════════════════════════
     function refreshMarketplace() {
+      // Render app store listings
+      renderMarketplaceListings('', 'all');
+      // Also fetch marketplace store listings from API
+      api('GET', 'marketplace/listings').then(function(data) {
+        if (data.listings && data.listings.length) { _marketplaceListings = data.listings; renderMarketplaceListings('', 'all'); }
+      }).catch(function() {});
       api('GET', 'marketplace/earnings').then(function(data) {
         var cards = document.getElementById('mpEarningsCards');
         if (cards) {
@@ -7482,45 +7581,364 @@
     // ═══════════════════════════════
     //  WORKFLOWS
     // ═══════════════════════════════
+    // ═══════════════════════════════
+    //  VISUAL WORKFLOW BUILDER
+    // ═══════════════════════════════
+    var _wfList = [];
+    var _wfCurrent = null;
+    var _wfSubagents = [];
+    var _wfEditingStepIdx = -1;
+    var _wfDrag = null;
+    var _wfNodePositions = {};
+    var _wfRunningSteps = {};
+
     function refreshWorkflows() {
-      var el = document.getElementById('workflowsList');
-      if (!el) return;
-      el.innerHTML = '<div class="spinner"></div> Loading workflows...';
-      api('GET', 'workflows').then(function(data) {
-        var workflows = data.workflows || data || [];
-        if (!Array.isArray(workflows)) workflows = [];
-        if (workflows.length === 0) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:8px">⚡</div><p>No workflows yet. Create one to get started.</p></div>'; return; }
-        var html = '<table class="data-table"><thead><tr><th>Name</th><th>Trigger</th><th>Steps</th><th>Last Run</th><th>Actions</th></tr></thead><tbody>';
-        for (var i = 0; i < workflows.length; i++) {
-          var w = workflows[i];
-          var lastRun = w.lastRun ? new Date(w.lastRun).toLocaleString() : 'Never';
-          html += '<tr>';
-          html += '<td style="color:var(--accent, #0ff);font-weight:600">' + escapeHtml(w.name || 'Workflow ' + i) + '</td>';
-          html += '<td>' + escapeHtml(w.trigger || 'manual') + '</td>';
-          html += '<td>' + (w.steps ? w.steps.length : 0) + '</td>';
-          html += '<td style="color:var(--text-dim, #888)">' + lastRun + '</td>';
-          html += '<td><button class="btn-sm" onclick="window.aries.runWorkflow(\'' + escapeHtml(w.id || w.name) + '\')">▶ Run</button> ';
-          html += '<button class="btn-sm" style="color:var(--red, #f44)" onclick="window.aries.deleteWorkflow(\'' + escapeHtml(w.id || w.name) + '\')">🗑</button></td>';
-          html += '</tr>';
+      Promise.all([
+        api('GET', 'workflows').catch(function() { return { workflows: [] }; }),
+        api('GET', 'subagents').catch(function() { return { subagents: [] }; })
+      ]).then(function(r) {
+        _wfList = r[0].workflows || r[0] || [];
+        if (!Array.isArray(_wfList)) _wfList = [];
+        var sa = r[1].subagents || r[1] || [];
+        _wfSubagents = Array.isArray(sa) ? sa : [];
+        _wfRenderList();
+        if (_wfCurrent) {
+          var found = _wfList.find(function(w) { return w.id === _wfCurrent.id; });
+          if (found) { _wfCurrent = found; _wfOpenWorkflow(found); }
+          else { _wfCurrent = null; _wfClearCanvas(); }
         }
-        html += '</tbody></table>';
-        el.innerHTML = html;
-      }).catch(function(e) { el.innerHTML = '<div style="color:var(--red, #f44)">Failed to load workflows: ' + escapeHtml(e.message) + '</div>'; });
+      });
     }
 
-    function runWorkflow(id) {
-      api('POST', 'workflows/' + encodeURIComponent(id) + '/run').then(function() { toast('Workflow started', 'success'); refreshWorkflows(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    function _wfRenderList() {
+      var el = document.getElementById('wfListItems');
+      if (!el) return;
+      if (_wfList.length === 0) {
+        el.innerHTML = '<div style="color:#555;font-size:12px;text-align:center;padding:20px">No workflows yet.<br>Click + New to create one.</div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < _wfList.length; i++) {
+        var w = _wfList[i];
+        var active = _wfCurrent && _wfCurrent.id === w.id;
+        var trigType = (w.trigger && typeof w.trigger === 'object') ? w.trigger.type : (w.trigger || 'manual');
+        var trigIcon = trigType === 'cron' ? '⏰' : trigType === 'webhook' ? '🔗' : '🖱';
+        var steps = w.actions ? w.actions.length : (w.steps ? w.steps.length : 0);
+        var lastRun = w.lastTriggered ? new Date(w.lastTriggered).toLocaleString() : 'Never';
+        html += '<div onclick="window.aries.wfSelect(\'' + escapeHtml(w.id) + '\')" style="padding:10px;border-radius:8px;cursor:pointer;border:1px solid ' + (active ? 'var(--accent, #0ff)' : 'var(--border, #222)') + ';background:' + (active ? 'rgba(0,255,255,.08)' : 'var(--bg, #0a0a0f)') + ';transition:all .2s">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+        html += '<span style="color:' + (active ? 'var(--accent, #0ff)' : 'var(--text, #eee)') + ';font-weight:600;font-size:13px">' + escapeHtml(w.name || 'Unnamed') + '</span>';
+        html += '<span style="font-size:10px;color:' + (w.enabled !== false ? '#0f0' : '#666') + '">●</span>';
+        html += '</div>';
+        html += '<div style="font-size:11px;color:#666;margin-top:4px">' + trigIcon + ' ' + escapeHtml(trigType) + ' · ' + steps + ' steps</div>';
+        html += '<div style="font-size:10px;color:#444;margin-top:2px">Last: ' + lastRun + '</div>';
+        html += '<div style="margin-top:6px;display:flex;gap:4px">';
+        html += '<button class="btn-sm" style="font-size:10px;padding:2px 6px" onclick="event.stopPropagation();window.aries.runWorkflow(\'' + escapeHtml(w.id) + '\')">▶</button>';
+        html += '<button class="btn-sm" style="font-size:10px;padding:2px 6px;color:var(--red, #f44)" onclick="event.stopPropagation();window.aries.deleteWorkflow(\'' + escapeHtml(w.id) + '\')">🗑</button>';
+        html += '</div></div>';
+      }
+      el.innerHTML = html;
     }
 
-    function deleteWorkflow(id) {
-      if (!confirm('Delete workflow ' + id + '?')) return;
-      api('DELETE', 'workflows/' + encodeURIComponent(id)).then(function() { toast('Workflow deleted', 'success'); refreshWorkflows(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    function wfSelect(id) {
+      var wf = _wfList.find(function(w) { return w.id === id; });
+      if (!wf) return;
+      _wfCurrent = wf;
+      _wfRenderList();
+      _wfOpenWorkflow(wf);
+    }
+
+    function _wfOpenWorkflow(wf) {
+      var toolbar = document.getElementById('wfEditorToolbar');
+      if (toolbar) toolbar.style.display = 'flex';
+      document.getElementById('wfEditName').value = wf.name || '';
+      var trigType = (wf.trigger && typeof wf.trigger === 'object') ? wf.trigger.type : (wf.trigger || 'manual');
+      document.getElementById('wfEditTrigger').value = trigType;
+      var cronInput = document.getElementById('wfEditCron');
+      cronInput.style.display = trigType === 'cron' ? 'inline-block' : 'none';
+      if (wf.trigger && wf.trigger.intervalMs) cronInput.value = wf.trigger.intervalMs;
+      document.getElementById('wfEditEnabled').checked = wf.enabled !== false;
+      document.getElementById('wfEditTrigger').onchange = function() {
+        cronInput.style.display = this.value === 'cron' ? 'inline-block' : 'none';
+      };
+      document.getElementById('wfEmptyState').style.display = 'none';
+      _wfRenderGraph(wf);
+    }
+
+    function _wfClearCanvas() {
+      var toolbar = document.getElementById('wfEditorToolbar');
+      if (toolbar) toolbar.style.display = 'none';
+      var nodes = document.getElementById('wfNodes');
+      if (nodes) nodes.innerHTML = '';
+      var svg = document.getElementById('wfSvg');
+      var lines = svg.querySelectorAll('.wf-line');
+      for (var i = 0; i < lines.length; i++) lines[i].remove();
+      document.getElementById('wfEmptyState').style.display = 'flex';
+    }
+
+    function _wfRenderGraph(wf) {
+      var nodesEl = document.getElementById('wfNodes');
+      var svg = document.getElementById('wfSvg');
+      nodesEl.innerHTML = '';
+      var lines = svg.querySelectorAll('.wf-line');
+      for (var i = 0; i < lines.length; i++) lines[i].remove();
+
+      var steps = wf.actions || wf.steps || [];
+      if (steps.length === 0) {
+        nodesEl.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#444;font-size:13px">No steps yet. Click "+ Add Step" to begin.</div>';
+        return;
+      }
+
+      // Layout: Aries trigger node + step nodes in a flow
+      var startX = 60, startY = 80, gapX = 220, gapY = 0;
+      var allNodes = [];
+
+      // Trigger node
+      var trigType = (wf.trigger && typeof wf.trigger === 'object') ? wf.trigger.type : (wf.trigger || 'manual');
+      var trigIcon = trigType === 'cron' ? '⏰' : trigType === 'webhook' ? '🔗' : '🖱';
+      allNodes.push({ id: '_trigger', label: 'Trigger', sublabel: trigType, icon: trigIcon, x: startX, y: startY, isTrigger: true });
+
+      for (var i = 0; i < steps.length; i++) {
+        var step = steps[i];
+        var agent = _wfSubagents.find(function(a) { return a.id === step.agentId || a.name === step.agentId; });
+        var icon = (agent && agent.icon) ? agent.icon : (step.icon || '🤖');
+        var label = step.name || (agent ? agent.name : 'Step ' + (i + 1));
+        var sublabel = agent ? (agent.model || '') : (step.type || '');
+        var posKey = wf.id + '_' + i;
+        var nx = _wfNodePositions[posKey + '_x'] || (startX + (i + 1) * gapX);
+        var ny = _wfNodePositions[posKey + '_y'] || (startY + (i) * gapY);
+        var running = _wfRunningSteps[wf.id + '_' + i];
+        allNodes.push({ id: i, label: label, sublabel: sublabel, icon: icon, x: nx, y: ny, enabled: step.enabled !== false, running: running, stepIdx: i });
+      }
+
+      // Render nodes
+      for (var n = 0; n < allNodes.length; n++) {
+        var node = allNodes[n];
+        var div = document.createElement('div');
+        div.className = 'wf-node';
+        div.setAttribute('data-idx', node.id);
+        div.style.cssText = 'position:absolute;left:' + node.x + 'px;top:' + node.y + 'px;width:160px;padding:12px;background:' + (node.isTrigger ? 'linear-gradient(135deg,#1a0a2e,#0a1a2e)' : 'var(--bg, #0a0a0f)') + ';border:2px solid ' + (node.running ? '#ff0' : node.isTrigger ? 'var(--accent, #0ff)' : node.enabled !== false ? 'var(--border, #333)' : '#333') + ';border-radius:12px;cursor:' + (node.isTrigger ? 'default' : 'grab') + ';user-select:none;z-index:10;transition:border-color .3s,box-shadow .3s;' + (node.running ? 'box-shadow:0 0 20px rgba(255,255,0,.3);animation:wfPulse 1.5s infinite' : '');
+        div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+          '<span style="font-size:20px">' + node.icon + '</span>' +
+          '<span style="color:var(--accent, #0ff);font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(node.label) + '</span>' +
+          (node.enabled === false ? '<span style="font-size:9px;color:#666">OFF</span>' : '') +
+          '</div>' +
+          '<div style="font-size:11px;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(node.sublabel || '') + '</div>' +
+          (node.running ? '<div style="font-size:10px;color:#ff0;margin-top:4px">⚡ Running...</div>' : '');
+
+        if (!node.isTrigger) {
+          (function(idx) {
+            div.addEventListener('dblclick', function() { window.aries.wfEditStep(idx); });
+            div.addEventListener('mousedown', function(e) {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              var rect = div.parentElement.getBoundingClientRect();
+              _wfDrag = { el: div, idx: idx, offX: e.clientX - div.offsetLeft, offY: e.clientY - div.offsetTop, parentRect: rect };
+              div.style.cursor = 'grabbing';
+              div.style.zIndex = 100;
+            });
+          })(node.stepIdx);
+        }
+        nodesEl.appendChild(div);
+      }
+
+      // Draw SVG arrows
+      _wfDrawArrows(allNodes);
+
+      // Mouse move/up for dragging
+      if (!nodesEl._wfDragBound) {
+        nodesEl._wfDragBound = true;
+        document.addEventListener('mousemove', function(e) {
+          if (!_wfDrag) return;
+          var nx = e.clientX - _wfDrag.offX;
+          var ny = e.clientY - _wfDrag.offY;
+          _wfDrag.el.style.left = nx + 'px';
+          _wfDrag.el.style.top = ny + 'px';
+          var posKey = (_wfCurrent ? _wfCurrent.id : '') + '_' + _wfDrag.idx;
+          _wfNodePositions[posKey + '_x'] = nx;
+          _wfNodePositions[posKey + '_y'] = ny;
+          if (_wfCurrent) _wfDrawArrowsFromDom();
+        });
+        document.addEventListener('mouseup', function() {
+          if (_wfDrag) { _wfDrag.el.style.cursor = 'grab'; _wfDrag.el.style.zIndex = 10; _wfDrag = null; }
+        });
+      }
+    }
+
+    function _wfDrawArrows(nodes) {
+      var svg = document.getElementById('wfSvg');
+      var old = svg.querySelectorAll('.wf-line');
+      for (var i = 0; i < old.length; i++) old[i].remove();
+      for (var i = 0; i < nodes.length - 1; i++) {
+        var from = nodes[i], to = nodes[i + 1];
+        var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        var fx = from.x + 160, fy = from.y + 24;
+        var tx = to.x, ty = to.y + 24;
+        var mx = (fx + tx) / 2;
+        line.setAttribute('d', 'M ' + fx + ' ' + fy + ' C ' + mx + ' ' + fy + ' ' + mx + ' ' + ty + ' ' + tx + ' ' + ty);
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke', 'var(--accent, #0ff)');
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-opacity', '0.5');
+        line.setAttribute('marker-end', 'url(#wfArrow)');
+        line.classList.add('wf-line');
+        svg.appendChild(line);
+      }
+    }
+
+    function _wfDrawArrowsFromDom() {
+      var nodesEl = document.getElementById('wfNodes');
+      var divs = nodesEl.querySelectorAll('.wf-node');
+      var nodes = [];
+      for (var i = 0; i < divs.length; i++) {
+        nodes.push({ x: divs[i].offsetLeft, y: divs[i].offsetTop });
+      }
+      var svg = document.getElementById('wfSvg');
+      var old = svg.querySelectorAll('.wf-line');
+      for (var i = 0; i < old.length; i++) old[i].remove();
+      for (var i = 0; i < nodes.length - 1; i++) {
+        var from = nodes[i], to = nodes[i + 1];
+        var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        var fx = from.x + 160, fy = from.y + 24;
+        var tx = to.x, ty = to.y + 24;
+        var mx = (fx + tx) / 2;
+        line.setAttribute('d', 'M ' + fx + ' ' + fy + ' C ' + mx + ' ' + fy + ' ' + mx + ' ' + ty + ' ' + tx + ' ' + ty);
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke', 'var(--accent, #0ff)');
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-opacity', '0.5');
+        line.setAttribute('marker-end', 'url(#wfArrow)');
+        line.classList.add('wf-line');
+        svg.appendChild(line);
+      }
     }
 
     function showCreateWorkflow() {
       var name = prompt('Workflow name:');
       if (!name) return;
-      api('POST', 'workflows', { name: name, steps: [], trigger: 'manual' }).then(function() { toast('Workflow created', 'success'); refreshWorkflows(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+      api('POST', 'workflows', { name: name, actions: [], trigger: { type: 'manual' }, enabled: true }).then(function(d) {
+        toast('Workflow created', 'success');
+        refreshWorkflows();
+        if (d && d.workflow) { _wfCurrent = d.workflow; }
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function runWorkflow(id) {
+      // Mark steps as running for visual feedback
+      var wf = _wfList.find(function(w) { return w.id === id; });
+      if (wf) {
+        var steps = wf.actions || wf.steps || [];
+        for (var i = 0; i < steps.length; i++) _wfRunningSteps[id + '_' + i] = true;
+        if (_wfCurrent && _wfCurrent.id === id) _wfRenderGraph(wf);
+      }
+      api('POST', 'workflows/' + encodeURIComponent(id) + '/run').then(function() {
+        toast('Workflow started', 'success');
+        // Simulate step completion
+        if (wf) {
+          var steps2 = wf.actions || wf.steps || [];
+          for (var j = 0; j < steps2.length; j++) {
+            (function(idx) {
+              setTimeout(function() {
+                delete _wfRunningSteps[id + '_' + idx];
+                if (_wfCurrent && _wfCurrent.id === id) _wfRenderGraph(_wfCurrent);
+              }, (idx + 1) * 2000);
+            })(j);
+          }
+        }
+        refreshWorkflows();
+      }).catch(function(e) {
+        toast('Error: ' + e.message, 'error');
+        _wfRunningSteps = {};
+        if (_wfCurrent) _wfRenderGraph(_wfCurrent);
+      });
+    }
+
+    function deleteWorkflow(id) {
+      if (!confirm('Delete this workflow?')) return;
+      api('DELETE', 'workflows/' + encodeURIComponent(id)).then(function() {
+        toast('Workflow deleted', 'success');
+        if (_wfCurrent && _wfCurrent.id === id) { _wfCurrent = null; _wfClearCanvas(); }
+        refreshWorkflows();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function wfSave() {
+      if (!_wfCurrent) return;
+      var trigType = document.getElementById('wfEditTrigger').value;
+      var trigger = { type: trigType };
+      if (trigType === 'cron') {
+        var ms = parseInt(document.getElementById('wfEditCron').value);
+        if (ms > 0) trigger.intervalMs = ms;
+      }
+      var updates = {
+        name: document.getElementById('wfEditName').value || _wfCurrent.name,
+        trigger: trigger,
+        enabled: document.getElementById('wfEditEnabled').checked
+      };
+      api('PUT', 'workflows/' + encodeURIComponent(_wfCurrent.id), updates).then(function() {
+        toast('Workflow saved', 'success');
+        refreshWorkflows();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function wfAddStep() {
+      if (!_wfCurrent) return;
+      var steps = _wfCurrent.actions || [];
+      steps.push({ name: 'Step ' + (steps.length + 1), type: 'chat', agentId: '', prompt: '', enabled: true });
+      api('PUT', 'workflows/' + encodeURIComponent(_wfCurrent.id), { actions: steps }).then(function() {
+        toast('Step added', 'success');
+        refreshWorkflows();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function wfEditStep(idx) {
+      if (!_wfCurrent) return;
+      var steps = _wfCurrent.actions || [];
+      if (idx < 0 || idx >= steps.length) return;
+      _wfEditingStepIdx = idx;
+      var step = steps[idx];
+      document.getElementById('wfStepName').value = step.name || '';
+      document.getElementById('wfStepInput').value = step.prompt || '';
+      document.getElementById('wfStepEnabled').checked = step.enabled !== false;
+      // Populate agent dropdown
+      var sel = document.getElementById('wfStepAgent');
+      sel.innerHTML = '<option value="">— No agent (AI chat) —</option>';
+      for (var i = 0; i < _wfSubagents.length; i++) {
+        var a = _wfSubagents[i];
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = (a.icon || '🤖') + ' ' + a.name + (a.model ? ' (' + a.model + ')' : '');
+        if (step.agentId === a.id || step.agentId === a.name) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      document.getElementById('wfStepModal').style.display = 'flex';
+    }
+
+    function wfSaveStep() {
+      if (!_wfCurrent || _wfEditingStepIdx < 0) return;
+      var steps = _wfCurrent.actions || [];
+      var step = steps[_wfEditingStepIdx];
+      step.name = document.getElementById('wfStepName').value || step.name;
+      step.agentId = document.getElementById('wfStepAgent').value;
+      step.prompt = document.getElementById('wfStepInput').value;
+      step.enabled = document.getElementById('wfStepEnabled').checked;
+      document.getElementById('wfStepModal').style.display = 'none';
+      api('PUT', 'workflows/' + encodeURIComponent(_wfCurrent.id), { actions: steps }).then(function() {
+        toast('Step updated', 'success');
+        refreshWorkflows();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+    }
+
+    function wfDeleteStep() {
+      if (!_wfCurrent || _wfEditingStepIdx < 0) return;
+      if (!confirm('Delete this step?')) return;
+      var steps = _wfCurrent.actions || [];
+      steps.splice(_wfEditingStepIdx, 1);
+      document.getElementById('wfStepModal').style.display = 'none';
+      api('PUT', 'workflows/' + encodeURIComponent(_wfCurrent.id), { actions: steps }).then(function() {
+        toast('Step deleted', 'success');
+        refreshWorkflows();
+      }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
     }
 
     // ═══════════════════════════════
@@ -7739,6 +8157,1447 @@
       }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
     }
 
+  // ═══════════════════════════════
+  //  FEATURE 1: APP STORE / MARKETPLACE (Enhanced)
+  // ═══════════════════════════════
+  var _marketplaceListings = [];
+  var _marketplaceBuiltins = [
+    { id: 'web-scraper', name: 'Web Scraper Agent', category: 'agents', author: 'Aries Team', rating: 4.8, installs: 1240, description: 'Autonomous web scraping with anti-detection', featured: true, icon: '🕷️' },
+    { id: 'slack-plugin', name: 'Slack Integration', category: 'plugins', author: 'Community', rating: 4.5, installs: 890, description: 'Connect Aries to Slack channels', featured: true, icon: '💬' },
+    { id: 'data-pipeline', name: 'Data Pipeline', category: 'workflows', author: 'Aries Team', rating: 4.7, installs: 670, description: 'ETL workflow for structured data processing', featured: true, icon: '🔄' },
+    { id: 'pdf-extractor', name: 'PDF Extractor', category: 'tools', author: 'Community', rating: 4.3, installs: 1560, description: 'Extract text, tables, images from PDFs', featured: false, icon: '📄' },
+    { id: 'email-responder', name: 'Email Auto-Responder', category: 'agents', author: 'Aries Team', rating: 4.6, installs: 980, description: 'AI-powered email drafting and responses', featured: true, icon: '📧' },
+    { id: 'notion-sync', name: 'Notion Sync', category: 'plugins', author: 'Community', rating: 4.2, installs: 430, description: 'Bi-directional sync with Notion databases', featured: false, icon: '📝' },
+    { id: 'code-review-wf', name: 'Code Review Pipeline', category: 'workflows', author: 'Community', rating: 4.4, installs: 520, description: 'Automated PR review with multi-agent analysis', featured: false, icon: '🔍' },
+    { id: 'api-tester', name: 'API Tester', category: 'tools', author: 'Aries Team', rating: 4.1, installs: 780, description: 'Automated API endpoint testing and validation', featured: false, icon: '🧪' },
+    { id: 'discord-bot', name: 'Discord Bot Agent', category: 'agents', author: 'Community', rating: 4.9, installs: 2100, description: 'Full-featured Discord bot with AI responses', featured: true, icon: '🎮' },
+    { id: 'cron-scheduler', name: 'Smart Scheduler', category: 'tools', author: 'Aries Team', rating: 4.0, installs: 340, description: 'Intelligent task scheduling with dependencies', featured: false, icon: '⏰' },
+    { id: 'sentiment-analyzer', name: 'Sentiment Analyzer', category: 'agents', author: 'Community', rating: 4.3, installs: 610, description: 'Real-time sentiment analysis on text streams', featured: false, icon: '😊' },
+    { id: 'github-actions', name: 'GitHub Actions Bridge', category: 'plugins', author: 'Community', rating: 4.6, installs: 750, description: 'Trigger and monitor GitHub Actions from Aries', featured: false, icon: '🐙' }
+  ];
+
+  function filterMarketplace() {
+    var search = (document.getElementById('mpSearchInput') || {}).value || '';
+    var cat = (document.getElementById('mpCategoryFilter') || {}).value || 'all';
+    renderMarketplaceListings(search.toLowerCase(), cat);
+  }
+
+  function renderMarketplaceListings(search, cat) {
+    var listings = _marketplaceListings.length ? _marketplaceListings : _marketplaceBuiltins;
+    var featured = listings.filter(function(l) { return l.featured; });
+    var filtered = listings.filter(function(l) {
+      if (cat !== 'all' && l.category !== cat) return false;
+      if (search && l.name.toLowerCase().indexOf(search) === -1 && l.description.toLowerCase().indexOf(search) === -1) return false;
+      return true;
+    });
+
+    var featDiv = document.getElementById('mpFeatured');
+    if (featDiv && (!search && cat === 'all')) {
+      featDiv.innerHTML = featured.map(function(l) { return _renderListingCard(l, true); }).join('');
+      featDiv.parentElement.querySelector('h3').style.display = '';
+    } else if (featDiv) {
+      featDiv.innerHTML = '';
+      featDiv.parentElement.querySelector('h3').style.display = 'none';
+    }
+
+    var listDiv = document.getElementById('mpListings');
+    if (listDiv) {
+      if (filtered.length === 0) { listDiv.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No listings found.</div>'; }
+      else { listDiv.innerHTML = filtered.map(function(l) { return _renderListingCard(l, false); }).join(''); }
+    }
+  }
+
+  function _renderListingCard(l, isFeatured) {
+    var stars = '';
+    for (var i = 0; i < 5; i++) stars += i < Math.round(l.rating) ? '★' : '☆';
+    var catColors = { agents: '#0ff', plugins: '#f0f', workflows: '#ff0', tools: '#0f0' };
+    return '<div style="background:var(--surface);border:1px solid ' + (isFeatured ? 'var(--accent)' : 'var(--border)') + ';border-radius:10px;padding:16px;' + (isFeatured ? 'box-shadow:0 0 15px rgba(0,255,200,.1);' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+      '<span style="font-size:24px;">' + (l.icon || '📦') + '</span>' +
+      '<div><div style="font-weight:700;color:var(--text);font-size:14px;">' + escapeHtml(l.name) + '</div>' +
+      '<span style="font-size:10px;padding:2px 6px;background:' + (catColors[l.category] || '#666') + '22;color:' + (catColors[l.category] || '#666') + ';border-radius:4px;">' + l.category + '</span></div></div>' +
+      '<div style="color:var(--text-dim);font-size:12px;margin-bottom:8px;">' + escapeHtml(l.description) + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">' +
+      '<span style="color:#ffa500;">' + stars + ' ' + l.rating + '</span>' +
+      '<span style="color:var(--text-dim);">by ' + escapeHtml(l.author) + ' · ' + (l.installs || 0) + ' installs</span>' +
+      '</div>' +
+      '<button class="btn-sm" onclick="window.aries.installMarketplaceItem(\'' + l.id + '\')" style="margin-top:10px;width:100%;">⬇️ Install</button>' +
+      '</div>';
+  }
+
+  function installMarketplaceItem(id) {
+    api('POST', 'marketplace/install', { id: id }).then(function(data) {
+      toast((data.message || 'Installed!'), 'success');
+      refreshMarketplace();
+    }).catch(function(e) { toast('Install error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE 2: AGENT-TO-AGENT CHAT
+  // ═══════════════════════════════
+  var _agentChatConversations = [];
+  var _agentChatCurrent = null;
+
+  function refreshAgentChats() {
+    api('GET', 'agents/chat/conversations').then(function(data) {
+      _agentChatConversations = data.conversations || [];
+      var listDiv = document.getElementById('agentChatList');
+      if (!listDiv) return;
+      if (_agentChatConversations.length === 0) {
+        listDiv.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No conversations yet.</div>';
+      } else {
+        listDiv.innerHTML = _agentChatConversations.map(function(c) {
+          var active = _agentChatCurrent === c.id ? 'border-color:var(--accent);' : '';
+          return '<div onclick="window.aries.openAgentConversation(\'' + c.id + '\')" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;' + active + '">' +
+            '<div style="font-size:12px;font-weight:600;color:var(--text);">' + escapeHtml(c.agents.join(' ↔ ')) + '</div>' +
+            '<div style="font-size:10px;color:var(--text-dim);">' + (c.messageCount || 0) + ' messages</div></div>';
+        }).join('');
+      }
+      // Populate agent selects
+      api('GET', 'subagents').then(function(sd) {
+        var agents = sd.agents || sd.subagents || [];
+        var fromSel = document.getElementById('agentChatFrom');
+        var toSel = document.getElementById('agentChatTo');
+        if (fromSel && toSel) {
+          var opts = agents.map(function(a) { return '<option value="' + a.id + '">' + escapeHtml(a.name || a.id) + '</option>'; }).join('');
+          fromSel.innerHTML = opts;
+          toSel.innerHTML = opts;
+        }
+      }).catch(function() {});
+    }).catch(function() {
+      var listDiv = document.getElementById('agentChatList');
+      if (listDiv) listDiv.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Failed to load.</div>';
+    });
+  }
+
+  function showNewAgentChat() {
+    var inputArea = document.getElementById('agentChatInputArea');
+    if (inputArea) inputArea.style.display = 'flex';
+    _agentChatCurrent = null;
+    var msgDiv = document.getElementById('agentChatMessages');
+    if (msgDiv) msgDiv.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:40px;">Start a new agent-to-agent conversation.</div>';
+  }
+
+  function openAgentConversation(id) {
+    _agentChatCurrent = id;
+    var inputArea = document.getElementById('agentChatInputArea');
+    if (inputArea) inputArea.style.display = 'flex';
+    api('GET', 'agents/chat/messages/' + id).then(function(data) {
+      var msgs = data.messages || [];
+      var msgDiv = document.getElementById('agentChatMessages');
+      if (!msgDiv) return;
+      if (msgs.length === 0) { msgDiv.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:40px;">No messages yet.</div>'; return; }
+      msgDiv.innerHTML = msgs.map(function(m) {
+        var isDelegate = m.type === 'delegate';
+        return '<div style="padding:8px 12px;margin-bottom:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;' + (isDelegate ? 'border-left:3px solid #ff0;' : '') + '">' +
+          '<div style="font-size:11px;color:var(--accent);font-weight:600;">' + escapeHtml(m.from) + ' → ' + escapeHtml(m.to) + (isDelegate ? ' [DELEGATE]' : '') + '</div>' +
+          '<div style="font-size:13px;color:var(--text);margin-top:4px;">' + escapeHtml(m.message) + '</div>' +
+          '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + new Date(m.timestamp).toLocaleString() + '</div></div>';
+      }).join('');
+      msgDiv.scrollTop = msgDiv.scrollHeight;
+    }).catch(function() {});
+    refreshAgentChats();
+  }
+
+  function sendAgentChat() {
+    var from = (document.getElementById('agentChatFrom') || {}).value;
+    var to = (document.getElementById('agentChatTo') || {}).value;
+    var msg = (document.getElementById('agentChatMsg') || {}).value;
+    if (!from || !to || !msg) { toast('Fill all fields', 'error'); return; }
+    api('POST', 'agents/chat', { from: from, to: to, message: msg, conversationId: _agentChatCurrent }).then(function(data) {
+      document.getElementById('agentChatMsg').value = '';
+      if (data.conversationId) _agentChatCurrent = data.conversationId;
+      openAgentConversation(_agentChatCurrent);
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function delegateAgentTask() {
+    var from = (document.getElementById('agentChatFrom') || {}).value;
+    var to = (document.getElementById('agentChatTo') || {}).value;
+    var task = prompt('Describe the task to delegate:');
+    if (!task) return;
+    api('POST', 'agents/chat', { from: from, to: to, message: task, type: 'delegate', conversationId: _agentChatCurrent }).then(function(data) {
+      if (data.conversationId) _agentChatCurrent = data.conversationId;
+      openAgentConversation(_agentChatCurrent);
+      toast('Task delegated!', 'success');
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE 3: AGENT TEMPLATES GALLERY
+  // ═══════════════════════════════
+  var _agentTemplates = [
+    { id: 'youtube-researcher', name: 'YouTube Researcher', icon: '📺', model: 'gpt-4o', description: 'Researches YouTube videos, extracts transcripts, summarizes content, and finds trending topics.', systemPrompt: 'You are a YouTube research specialist. Analyze videos, extract key insights, summarize transcripts, and identify trends. Provide structured reports with timestamps and key takeaways.', tools: ['web-search', 'web-scraper', 'summarizer'] },
+    { id: 'stock-analyst', name: 'Stock Analyst', icon: '📈', model: 'gpt-4o', description: 'Analyzes stock market data, provides technical analysis, tracks earnings, and generates investment reports.', systemPrompt: 'You are a professional stock market analyst. Analyze market data, perform technical analysis, track earnings reports, and provide well-reasoned investment insights. Always include risk disclaimers.', tools: ['web-search', 'calculator', 'data-analyzer'] },
+    { id: 'customer-support', name: 'Customer Support', icon: '🎧', model: 'gpt-4o-mini', description: 'Handles customer inquiries, resolves issues, escalates when needed, and maintains support tickets.', systemPrompt: 'You are a friendly and efficient customer support agent. Help resolve customer issues, provide clear instructions, and escalate complex problems. Always be polite and solution-oriented.', tools: ['knowledge-base', 'ticket-system'] },
+    { id: 'code-reviewer', name: 'Code Reviewer', icon: '🔍', model: 'gpt-4o', description: 'Reviews code for bugs, security issues, performance problems, and style consistency.', systemPrompt: 'You are an expert code reviewer. Analyze code for bugs, security vulnerabilities, performance issues, and style consistency. Provide actionable feedback with specific line references and suggested fixes.', tools: ['code-sandbox', 'linter'] },
+    { id: 'content-writer', name: 'Content Writer', icon: '✍️', model: 'gpt-4o', description: 'Creates blog posts, articles, social media content, and marketing copy with SEO optimization.', systemPrompt: 'You are a professional content writer. Create engaging, well-structured content optimized for SEO. Adapt your tone and style to the target audience. Include relevant keywords naturally.', tools: ['web-search', 'seo-analyzer'] },
+    { id: 'data-analyst', name: 'Data Analyst', icon: '📊', model: 'gpt-4o', description: 'Processes datasets, generates visualizations, performs statistical analysis, and creates reports.', systemPrompt: 'You are a data analysis expert. Process datasets, perform statistical analysis, identify patterns and trends, and create clear visualizations. Present findings in actionable business terms.', tools: ['calculator', 'data-processor', 'chart-generator'] },
+    { id: 'seo-optimizer', name: 'SEO Optimizer', icon: '🔎', model: 'gpt-4o-mini', description: 'Audits websites for SEO, suggests improvements, tracks rankings, and optimizes content strategy.', systemPrompt: 'You are an SEO optimization specialist. Audit websites for SEO issues, suggest improvements for meta tags, content structure, and technical SEO. Track keyword rankings and competitor analysis.', tools: ['web-scraper', 'seo-analyzer', 'web-search'] },
+    { id: 'social-media-mgr', name: 'Social Media Manager', icon: '📱', model: 'gpt-4o-mini', description: 'Creates social media posts, schedules content, analyzes engagement, and manages brand presence.', systemPrompt: 'You are a social media management expert. Create engaging posts for multiple platforms, optimize posting schedules, analyze engagement metrics, and maintain consistent brand voice across channels.', tools: ['content-generator', 'scheduler', 'analytics'] }
+  ];
+
+  function loadTemplates() {
+    var gallery = document.getElementById('templateGallery');
+    if (!gallery) return;
+    gallery.innerHTML = _agentTemplates.map(function(t) {
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;transition:border-color .3s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">' +
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">' +
+        '<span style="font-size:32px;">' + t.icon + '</span>' +
+        '<div><div style="font-weight:700;color:var(--text);font-size:16px;">' + escapeHtml(t.name) + '</div>' +
+        '<div style="font-size:11px;color:var(--accent);margin-top:2px;">Recommended: ' + t.model + '</div></div></div>' +
+        '<div style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.5;">' + escapeHtml(t.description) + '</div>' +
+        '<div style="margin-bottom:12px;"><span style="font-size:10px;color:var(--text-dim);">Tools: </span>' +
+        t.tools.map(function(tool) { return '<span style="font-size:10px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;margin-right:4px;color:var(--text-dim);">' + tool + '</span>'; }).join('') + '</div>' +
+        '<button class="btn-sm" onclick="window.aries.useTemplate(\'' + t.id + '\')" style="width:100%;">🚀 Use Template</button></div>';
+    }).join('');
+  }
+
+  function useTemplate(id) {
+    var t = _agentTemplates.find(function(t) { return t.id === id; });
+    if (!t) return;
+    var name = prompt('Name for this agent:', t.name);
+    if (!name) return;
+    api('POST', 'subagents', { name: name, model: t.model, systemPrompt: t.systemPrompt, icon: t.icon, tools: t.tools, template: t.id }).then(function() {
+      toast('Agent "' + name + '" created from template!', 'success');
+      switchPanel('subagents');
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE 4: WEBHOOK BUILDER
+  // ═══════════════════════════════
+  var _webhooks = [];
+  var _editingWebhookId = null;
+
+  function refreshWebhooks() {
+    api('GET', 'webhooks').then(function(data) {
+      _webhooks = data.webhooks || [];
+      var listDiv = document.getElementById('webhookList');
+      if (!listDiv) return;
+      if (_webhooks.length === 0) {
+        listDiv.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No webhooks configured.</div>';
+      } else {
+        listDiv.innerHTML = _webhooks.map(function(w) {
+          var trigIcons = { http_post: '🌐', cron: '⏰', file_changed: '📁', manual: '👆' };
+          var actIcons = { run_subagent: '🤖', execute_tool: '🛠️', send_notification: '🔔', chain_next: '🔗' };
+          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<div style="font-weight:600;color:var(--text);font-size:14px;">' + escapeHtml(w.name || w.id) + '</div>' +
+            '<div style="display:flex;gap:4px;">' +
+            '<button class="btn-sm" onclick="window.aries.testWebhook(\'' + w.id + '\')" title="Test">🧪</button>' +
+            '<button class="btn-sm" onclick="window.aries.deleteWebhook(\'' + w.id + '\')" title="Delete" style="color:#f44;">✕</button></div></div>' +
+            '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;display:flex;align-items:center;gap:6px;">' +
+            '<span>' + (trigIcons[w.trigger] || '❓') + ' ' + (w.trigger || 'unknown') + '</span>' +
+            '<span style="color:var(--accent);">→</span>' +
+            '<span>' + (actIcons[w.action] || '❓') + ' ' + (w.action || 'unknown') + '</span>' +
+            '<span style="color:var(--accent);">→</span><span>' + (w.output || 'respond') + '</span></div>' +
+            '<div style="font-size:11px;color:var(--accent);margin-top:4px;font-family:monospace;">URL: /api/webhooks/' + w.id + '</div>' +
+            '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Fires: ' + (w.fireCount || 0) + ' | Last: ' + (w.lastFire ? new Date(w.lastFire).toLocaleString() : 'never') + '</div></div>';
+        }).join('');
+      }
+    }).catch(function() {});
+
+    api('GET', 'webhooks/logs').then(function(data) {
+      var logsDiv = document.getElementById('webhookLogs');
+      if (!logsDiv) return;
+      var logs = data.logs || [];
+      if (logs.length === 0) { logsDiv.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No fires yet.</div>'; return; }
+      logsDiv.innerHTML = logs.slice(0, 50).map(function(l) {
+        var statusColor = l.success ? '#0f0' : '#f44';
+        return '<div style="padding:6px 10px;margin-bottom:4px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+          '<span style="color:' + statusColor + ';">●</span> <strong>' + escapeHtml(l.webhookName || l.webhookId) + '</strong> - ' +
+          new Date(l.timestamp).toLocaleString() + ' - ' + (l.duration || 0) + 'ms</div>';
+      }).join('');
+    }).catch(function() {});
+  }
+
+  function showCreateWebhook() {
+    _editingWebhookId = null;
+    document.getElementById('webhookEditor').style.display = 'block';
+    document.getElementById('whkName').value = '';
+    document.getElementById('whkAgentId').value = '';
+    var trigSel = document.getElementById('whkTrigger');
+    if (trigSel) { trigSel.value = 'http_post'; trigSel.onchange = function() { document.getElementById('whkCron').style.display = this.value === 'cron' ? '' : 'none'; }; }
+  }
+
+  function saveWebhook() {
+    var name = (document.getElementById('whkName') || {}).value;
+    var trigger = (document.getElementById('whkTrigger') || {}).value;
+    var action = (document.getElementById('whkAction') || {}).value;
+    var output = (document.getElementById('whkOutput') || {}).value;
+    var agentId = (document.getElementById('whkAgentId') || {}).value;
+    var cron = (document.getElementById('whkCron') || {}).value;
+    if (!name) { toast('Name required', 'error'); return; }
+    var payload = { name: name, trigger: trigger, action: action, output: output, agentId: agentId };
+    if (trigger === 'cron') payload.cron = cron;
+    var method = _editingWebhookId ? 'PUT' : 'POST';
+    var url = _editingWebhookId ? 'webhooks/' + _editingWebhookId : 'webhooks';
+    api(method, url, payload).then(function() {
+      toast('Webhook saved!', 'success');
+      document.getElementById('webhookEditor').style.display = 'none';
+      refreshWebhooks();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function testWebhook(id) {
+    api('POST', 'webhooks/' + id + '/test', { test: true, payload: { message: 'Test fire from dashboard' } }).then(function(data) {
+      toast('Webhook fired! ' + (data.result || ''), 'success');
+      refreshWebhooks();
+    }).catch(function(e) { toast('Test error: ' + e.message, 'error'); });
+  }
+
+  function deleteWebhook(id) {
+    if (!confirm('Delete this webhook?')) return;
+    api('DELETE', 'webhooks/' + id).then(function() {
+      toast('Webhook deleted', 'success');
+      refreshWebhooks();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE 5: TRAINING MODE
+  // ═══════════════════════════════
+  function refreshTraining() {
+    api('GET', 'training/stats').then(function(data) {
+      var statsDiv = document.getElementById('trainingStats');
+      if (!statsDiv) return;
+      var stats = data.stats || {};
+      statsDiv.innerHTML = '<div class="stat-card"><div class="stat-card-val">' + (stats.totalCorrections || 0) + '</div><div class="stat-card-label">Total Corrections</div></div>' +
+        '<div class="stat-card"><div class="stat-card-val">' + (stats.totalThumbsUp || 0) + '</div><div class="stat-card-label">👍 Thumbs Up</div></div>' +
+        '<div class="stat-card"><div class="stat-card-val">' + (stats.totalThumbsDown || 0) + '</div><div class="stat-card-label">👎 Thumbs Down</div></div>' +
+        '<div class="stat-card"><div class="stat-card-val">' + (stats.agentCount || 0) + '</div><div class="stat-card-label">Agents Trained</div></div>';
+
+      // Per-agent breakdown
+      var chartDiv = document.getElementById('trainingChart');
+      if (chartDiv && stats.perAgent) {
+        var agents = Object.keys(stats.perAgent);
+        if (agents.length === 0) { chartDiv.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:40px;">No training data yet</div>'; return; }
+        var maxVal = Math.max.apply(null, agents.map(function(a) { return stats.perAgent[a].corrections || 0; })) || 1;
+        chartDiv.innerHTML = '<div style="display:flex;align-items:flex-end;gap:8px;height:160px;">' +
+          agents.map(function(a) {
+            var d = stats.perAgent[a];
+            var pct = Math.max(5, ((d.corrections || 0) / maxVal) * 100);
+            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;">' +
+              '<div style="background:linear-gradient(to top,#00ffc8,#0af);width:100%;height:' + pct + '%;border-radius:4px 4px 0 0;min-height:4px;"></div>' +
+              '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;overflow:hidden;text-overflow:ellipsis;max-width:80px;text-align:center;">' + escapeHtml(a) + '</div></div>';
+          }).join('') + '</div>';
+      }
+    }).catch(function() {});
+
+    api('GET', 'training/corrections').then(function(data) {
+      var corrDiv = document.getElementById('trainingCorrections');
+      if (!corrDiv) return;
+      var corrections = data.corrections || [];
+      if (corrections.length === 0) { corrDiv.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No corrections yet. Use 👍/👎 buttons on chat messages.</div>'; return; }
+      corrDiv.innerHTML = corrections.slice(0, 30).map(function(c) {
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;font-size:12px;">' +
+          '<div style="display:flex;justify-content:space-between;"><strong style="color:var(--accent);">' + escapeHtml(c.agentId || 'unknown') + '</strong>' +
+          '<span style="color:var(--text-dim);">' + new Date(c.timestamp).toLocaleString() + '</span></div>' +
+          '<div style="color:#f44;margin-top:4px;">Bad: ' + escapeHtml((c.badOutput || '').substring(0, 100)) + '</div>' +
+          '<div style="color:#0f0;margin-top:2px;">Fix: ' + escapeHtml((c.correctedOutput || '').substring(0, 100)) + '</div></div>';
+      }).join('');
+    }).catch(function() {});
+  }
+
+  function submitTrainingFeedback(agentId, messageId, rating, correction) {
+    var payload = { agentId: agentId, messageId: messageId, rating: rating };
+    if (correction) payload.correction = correction;
+    api('POST', 'training/feedback', payload).then(function() {
+      toast(rating === 'up' ? '👍 Feedback recorded!' : '👎 Feedback recorded!', 'success');
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Desktop Control
+  // ═══════════════════════════════
+  function desktopRefresh() {
+    var img = document.getElementById('desktopImg');
+    var status = document.getElementById('desktopStatus');
+    if (status) status.textContent = 'Capturing...';
+    api('GET', 'desktop/screenshot').then(function(d) {
+      if (d.success && d.base64) {
+        img.src = 'data:image/png;base64,' + d.base64;
+        if (status) status.textContent = 'Resolution: ' + d.resolution + ' | Size: ' + Math.round(d.size/1024) + 'KB';
+      } else {
+        if (status) status.textContent = 'Error: ' + (d.error || 'Unknown');
+      }
+    }).catch(function(e) { if (status) status.textContent = 'Error: ' + e.message; });
+  }
+  function desktopInfo() {
+    api('GET', 'desktop/info').then(function(d) {
+      var status = document.getElementById('desktopStatus');
+      if (status) status.textContent = d.success ? 'Screen: ' + d.width + 'x' + d.height : 'Error: ' + d.error;
+    });
+  }
+  function desktopType() {
+    var inp = document.getElementById('desktopTypeInput');
+    if (!inp || !inp.value.trim()) return;
+    api('POST', 'desktop/type', { text: inp.value }).then(function(d) {
+      if (d.success) { toast('Typed: ' + inp.value, 'success'); inp.value = ''; }
+      else toast('Type failed: ' + d.error, 'error');
+    });
+  }
+  // Desktop click-to-interact
+  (function() {
+    document.addEventListener('click', function(e) {
+      var preview = document.getElementById('desktopPreview');
+      var img = document.getElementById('desktopImg');
+      if (!preview || !img || !preview.contains(e.target)) return;
+      var rect = img.getBoundingClientRect();
+      var scaleX = img.naturalWidth / rect.width;
+      var scaleY = img.naturalHeight / rect.height;
+      var x = Math.round((e.clientX - rect.left) * scaleX);
+      var y = Math.round((e.clientY - rect.top) * scaleY);
+      // Show click marker
+      var marker = document.getElementById('desktopClickMarker');
+      if (marker) { marker.style.display = 'block'; marker.style.left = (e.clientX - rect.left) + 'px'; marker.style.top = (e.clientY - rect.top) + 'px'; setTimeout(function() { marker.style.display = 'none'; }, 500); }
+      api('POST', 'desktop/click', { x: x, y: y }).then(function(d) {
+        if (d.success) { toast('Clicked (' + x + ',' + y + ')', 'info'); setTimeout(desktopRefresh, 300); }
+      });
+    });
+  })();
+
+  // ═══════════════════════════════
+  //  FEATURE: Drag & Drop File Upload
+  // ═══════════════════════════════
+  (function() {
+    var dragCounter = 0;
+    var overlay = document.getElementById('globalDropOverlay');
+    document.addEventListener('dragenter', function(e) {
+      e.preventDefault(); dragCounter++;
+      if (overlay) overlay.style.display = 'flex';
+    });
+    document.addEventListener('dragleave', function(e) {
+      e.preventDefault(); dragCounter--;
+      if (dragCounter <= 0) { dragCounter = 0; if (overlay) overlay.style.display = 'none'; }
+    });
+    document.addEventListener('dragover', function(e) { e.preventDefault(); });
+    document.addEventListener('drop', function(e) {
+      e.preventDefault(); dragCounter = 0;
+      if (overlay) overlay.style.display = 'none';
+      var files = e.dataTransfer ? e.dataTransfer.files : [];
+      if (!files.length) return;
+      for (var i = 0; i < files.length; i++) { uploadDroppedFile(files[i]); }
+    });
+  })();
+  function uploadDroppedFile(file) {
+    var formData = new FormData();
+    formData.append('file', file);
+    var token = localStorage.getItem('aries-auth-token') || '';
+    fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'x-aries-key': 'aries-api-2026', 'Authorization': 'Bearer ' + token },
+      body: formData
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.uploaded && d.uploaded.length) {
+        var f = d.uploaded[0];
+        toast('Uploaded: ' + f.originalName + ' (' + Math.round(f.size/1024) + 'KB)', 'success');
+        // If in chat, add as attachment preview
+        var attachDiv = document.getElementById('chatAttachments');
+        if (attachDiv) {
+          var ext = f.originalName.split('.').pop().toLowerCase();
+          var isImg = ['jpg','jpeg','png','gif','webp'].indexOf(ext) >= 0;
+          var el = document.createElement('div');
+          el.className = 'chat-attachment-item';
+          el.style.cssText = 'display:inline-block;margin:4px;padding:6px 10px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#333);border-radius:8px;font-size:12px';
+          if (isImg) {
+            el.innerHTML = '<img src="/data/uploads/' + f.filename + '" style="max-width:120px;max-height:80px;border-radius:4px;display:block;margin-bottom:4px" />' + f.originalName;
+          } else {
+            el.innerHTML = '&#x1F4CE; <a href="/data/uploads/' + f.filename + '" target="_blank" style="color:var(--accent)">' + f.originalName + '</a>';
+          }
+          attachDiv.appendChild(el);
+        }
+      } else {
+        toast('Upload failed or file type not allowed', 'error');
+      }
+    }).catch(function(e) { toast('Upload error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Export/Import Everything
+  // ═══════════════════════════════
+  function exportAll() {
+    var status = document.getElementById('exportStatus');
+    if (status) status.textContent = 'Exporting...';
+    api('GET', 'export/all').then(function(d) {
+      var blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'aries-export-' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      if (status) status.textContent = 'Export complete!';
+      toast('Export downloaded!', 'success');
+    }).catch(function(e) { if (status) status.textContent = 'Error: ' + e.message; toast('Export failed', 'error'); });
+  }
+  function importAll() { document.getElementById('importAllFile').click(); }
+  function importAllFile(input) {
+    if (!input.files || !input.files[0]) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        if (!confirm('Import ' + Object.keys(data).length + ' sections? This will overwrite existing data.')) return;
+        api('POST', 'import/all', data).then(function(d) {
+          toast('Imported ' + d.count + ' sections: ' + d.imported.join(', '), 'success');
+          var status = document.getElementById('exportStatus');
+          if (status) status.textContent = 'Imported: ' + d.imported.join(', ');
+        }).catch(function(e) { toast('Import failed: ' + e.message, 'error'); });
+      } catch(e) { toast('Invalid JSON file', 'error'); }
+    };
+    reader.readAsText(input.files[0]);
+    input.value = '';
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Live Collaboration
+  // ═══════════════════════════════
+  var _collabWs = null;
+  var _collabName = localStorage.getItem('aries-collab-name') || ('User-' + Math.random().toString(36).slice(2,6));
+  var _collabColor = '#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0');
+  function initCollab() {
+    try {
+      var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      _collabWs = new WebSocket(proto + '//' + location.host + '/ws');
+      _collabWs.onopen = function() {
+        _collabWs.send(JSON.stringify({ type: 'collab:join', name: _collabName, color: _collabColor }));
+      };
+      _collabWs.onmessage = function(e) {
+        try {
+          var msg = JSON.parse(e.data);
+          if (msg.type === 'collab:presence') {
+            var ind = document.getElementById('collabIndicator');
+            var cnt = document.getElementById('collabCount');
+            if (ind && cnt) { cnt.textContent = msg.count; ind.style.display = msg.count > 0 ? 'inline-block' : 'none'; }
+            var ul = document.getElementById('collabUsersList');
+            if (ul) ul.innerHTML = (msg.users || []).map(function(u) { return '<span style="color:' + (u.color||'#fff') + ';margin-right:8px">\u25CF ' + u.name + ' (' + u.panel + ')</span>'; }).join('');
+          } else if (msg.type === 'collab:chat') {
+            var div = document.getElementById('collabChatMessages');
+            if (div) {
+              var m = document.createElement('div');
+              m.style.cssText = 'margin-bottom:6px;';
+              m.innerHTML = '<span style="color:' + (msg.color||'#fff') + ';font-weight:600">' + msg.name + ':</span> ' + msg.text;
+              div.appendChild(m);
+              div.scrollTop = div.scrollHeight;
+            }
+          }
+        } catch(_) {}
+      };
+      _collabWs.onclose = function() { setTimeout(initCollab, 3000); };
+    } catch(e) {}
+  }
+  function sendCollabChat() {
+    var inp = document.getElementById('collabChatInput');
+    if (!inp || !inp.value.trim() || !_collabWs) return;
+    _collabWs.send(JSON.stringify({ type: 'collab:chat', text: inp.value.trim() }));
+    inp.value = '';
+  }
+  function toggleCollabChat() {
+    var el = document.getElementById('collabChat');
+    if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+  }
+  // Notify panel switches to collab
+  var _origSwitchPanel2 = typeof switchPanel === 'function' ? switchPanel : null;
+
+  // Init collab on load
+  setTimeout(initCollab, 2000);
+  // Collab chat enter key
+  document.addEventListener('keydown', function(e) {
+    if (e.target && e.target.id === 'collabChatInput' && e.key === 'Enter') { sendCollabChat(); e.preventDefault(); }
+    if (e.target && e.target.id === 'desktopTypeInput' && e.key === 'Enter') { desktopType(); e.preventDefault(); }
+  });
+
+  // ═══════════════════════════════
+  //  MOONSHOT: Agent Breeding
+  // ═══════════════════════════════
+  function refreshBreeding() {
+    // Populate parent selects
+    api('GET', 'subagents').then(function(d) {
+      var agents = d.agents || d || [];
+      var html1 = '<option value="">Select Parent 1</option>';
+      var html2 = '<option value="">Select Parent 2</option>';
+      for (var i = 0; i < agents.length; i++) {
+        var a = agents[i];
+        html1 += '<option value="' + a.id + '">' + (a.icon || '🤖') + ' ' + escapeHtml(a.name) + '</option>';
+        html2 += '<option value="' + a.id + '">' + (a.icon || '🤖') + ' ' + escapeHtml(a.name) + '</option>';
+      }
+      var s1 = document.getElementById('breedParent1'); if (s1) s1.innerHTML = html1;
+      var s2 = document.getElementById('breedParent2'); if (s2) s2.innerHTML = html2;
+    }).catch(function() {});
+
+    // Load lineage
+    api('GET', 'agents/lineage').then(function(d) {
+      var el = document.getElementById('breedingLineage');
+      if (!el) return;
+      var agents = d.agents || {};
+      var keys = Object.keys(agents);
+      if (keys.length === 0) { el.innerHTML = '<div style="color:#666;padding:20px;text-align:center;">No bred agents yet. Select two parents and breed!</div>'; return; }
+      var html = '';
+      for (var i = 0; i < keys.length; i++) {
+        var a = agents[keys[i]];
+        html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid #8b5cf6;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<strong style="color:#06b6d4;">🧬 ' + escapeHtml(a.name || a.id) + '</strong>';
+        html += '<span style="color:#666;font-size:11px;">Gen ' + (a.generation || 0) + (a.mutation ? ' | Mutation: ' + a.mutation : '') + '</span>';
+        html += '</div>';
+        if (a.parents) html += '<div style="color:#888;font-size:12px;margin-top:4px;">Parents: ' + a.parents.join(' × ') + '</div>';
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() {});
+
+    // Load fitness
+    api('GET', 'agents/fitness').then(function(d) {
+      var el = document.getElementById('breedingFitness');
+      if (!el) return;
+      var keys = Object.keys(d || {});
+      if (keys.length === 0) { el.innerHTML = '<div style="color:#666;padding:12px;text-align:center;">No fitness data yet.</div>'; return; }
+      var html = '';
+      var sorted = keys.map(function(k) { return { id: k, score: d[k].score || 0, tasks: d[k].tasks || 0 }; }).sort(function(a, b) { return b.score - a.score; });
+      for (var i = 0; i < sorted.length; i++) {
+        var f = sorted[i];
+        html += '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-card,#111);border-radius:6px;margin-bottom:4px;">';
+        html += '<span style="color:#eee;">' + escapeHtml(f.id) + '</span>';
+        html += '<span style="color:#06b6d4;font-weight:700;">Score: ' + f.score + ' | Tasks: ' + f.tasks + '</span></div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() {});
+  }
+
+  function breedAgents() {
+    var p1 = document.getElementById('breedParent1').value;
+    var p2 = document.getElementById('breedParent2').value;
+    var name = document.getElementById('breedChildName').value;
+    if (!p1 || !p2) return toast('Select both parents', 'error');
+    if (p1 === p2) return toast('Parents must be different', 'error');
+    api('POST', 'agents/breed', { parent1: p1, parent2: p2, name: name || undefined }).then(function(d) {
+      toast('🧬 Bred: ' + (d.child && d.child.name || 'New Agent'), 'success');
+      refreshBreeding();
+    }).catch(function(e) { toast('Breed error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  MOONSHOT: Mesh Network
+  // ═══════════════════════════════
+  function refreshMesh() {
+    api('GET', 'mesh/status').then(function(d) {
+      var el = document.getElementById('meshStatus');
+      if (el) {
+        el.innerHTML = '<span style="color:' + (d.running ? '#10b981' : '#ef4444') + ';font-weight:700;">' +
+          (d.running ? '● ONLINE' : '○ OFFLINE') + '</span>' +
+          ' | ID: <span style="color:#06b6d4">' + (d.id || '?') + '</span>' +
+          ' | Host: ' + escapeHtml(d.hostname || '?') +
+          ' | Peers: <span style="color:#f59e0b;font-weight:700">' + (d.peerCount || 0) + '</span>';
+      }
+    }).catch(function() {
+      var el = document.getElementById('meshStatus');
+      if (el) el.innerHTML = '<span style="color:#ef4444;">Mesh not available</span>';
+    });
+
+    api('GET', 'mesh/peers').then(function(d) {
+      var el = document.getElementById('meshPeerList');
+      if (!el) return;
+      var peers = d.peers || [];
+      if (peers.length === 0) { el.innerHTML = '<div style="color:#666;padding:20px;text-align:center;">No peers discovered. Waiting for broadcasts or add manually.</div>'; return; }
+      var html = '';
+      for (var i = 0; i < peers.length; i++) {
+        var p = peers[i];
+        html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:12px;padding:16px;border-left:3px solid #10b981;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+        html += '<strong style="color:#06b6d4;">📡 ' + escapeHtml(p.hostname || p.host) + '</strong>';
+        html += '<span style="color:#666;font-size:11px;">' + escapeHtml(p.host) + ':' + p.port + '</span></div>';
+        html += '<div style="color:#888;font-size:12px;">Agents: ' + (p.agents || []).length + ' | Discovery: ' + (p.discovered || 'auto') + '</div>';
+        if (p.agents && p.agents.length > 0) {
+          html += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">';
+          for (var j = 0; j < p.agents.length; j++) {
+            html += '<span style="background:#06b6d422;color:#06b6d4;padding:2px 8px;border-radius:4px;font-size:11px;">' + (p.agents[j].icon || '🤖') + ' ' + escapeHtml(p.agents[j].name || p.agents[j].id) + '</span>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      el.innerHTML = html;
+
+      // Show delegate section if peers
+      var ds = document.getElementById('meshDelegateSection');
+      if (ds) ds.style.display = peers.length > 0 ? 'block' : 'none';
+      // Populate peer select
+      var ps = document.getElementById('meshDelegatePeer');
+      if (ps) {
+        var ph = '<option value="">Select peer...</option>';
+        for (var k = 0; k < peers.length; k++) ph += '<option value="' + peers[k].id + '">' + escapeHtml(peers[k].hostname) + ' (' + peers[k].host + ':' + peers[k].port + ')</option>';
+        ps.innerHTML = ph;
+      }
+    }).catch(function() {});
+  }
+
+  function meshToggle() {
+    api('POST', 'mesh/start').then(function() { toast('Mesh toggled', 'success'); refreshMesh(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function meshAddPeer() {
+    var host = document.getElementById('meshPeerHost').value;
+    var port = parseInt(document.getElementById('meshPeerPort').value) || 3333;
+    if (!host) return toast('Enter host', 'error');
+    api('POST', 'mesh/peers', { host: host, port: port }).then(function() {
+      toast('Peer added!', 'success');
+      refreshMesh();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function meshDelegate() {
+    var peerId = document.getElementById('meshDelegatePeer').value;
+    var agentId = document.getElementById('meshDelegateAgent').value;
+    var task = document.getElementById('meshDelegateTask').value;
+    if (!peerId || !task) return toast('Select peer and enter task', 'error');
+    api('POST', 'mesh/delegate', { peerId: peerId, agentId: agentId || 'codex', task: task }).then(function(d) {
+      toast('Task delegated!', 'success');
+    }).catch(function(e) { toast('Delegation error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  MOONSHOT: Money Maker
+  // ═══════════════════════════════
+  var _moneyFilter = 'all';
+  function refreshMoney() { loadMoney(_moneyFilter); }
+  function moneyFilter(f) { _moneyFilter = f; loadMoney(f); }
+
+  function loadMoney(filter) {
+    var query = filter && filter !== 'all' ? '?status=' + filter : '';
+    api('GET', 'money/opportunities' + query).then(function(d) {
+      var stats = d.stats || {};
+      var el = document.getElementById('moneyStats');
+      if (el) {
+        el.innerHTML =
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#f59e0b;font-size:20px;font-weight:700;">' + (stats.total || 0) + '</div><div style="color:#888;font-size:11px;">Total</div></div>' +
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#8b5cf6;font-size:20px;font-weight:700;">' + (stats.pending || 0) + '</div><div style="color:#888;font-size:11px;">Pending</div></div>' +
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#10b981;font-size:20px;font-weight:700;">' + (stats.approved || 0) + '</div><div style="color:#888;font-size:11px;">Approved</div></div>' +
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#06b6d4;font-size:20px;font-weight:700;">$' + (stats.totalEstimated || 0) + '</div><div style="color:#888;font-size:11px;">Est. Earnings</div></div>';
+      }
+
+      var opps = d.opportunities || [];
+      var oel = document.getElementById('moneyOpportunities');
+      if (!oel) return;
+      if (opps.length === 0) { oel.innerHTML = '<div style="color:#666;padding:20px;text-align:center;">No opportunities found. Click Scan to search.</div>'; return; }
+      var html = '';
+      for (var i = 0; i < opps.length; i++) {
+        var o = opps[i];
+        var statusColor = o.status === 'pending' ? '#8b5cf6' : o.status === 'approved' ? '#10b981' : '#ef4444';
+        html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:12px;padding:16px;border-left:3px solid ' + statusColor + ';">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">';
+        html += '<div><strong style="color:#eee;font-size:14px;">' + escapeHtml(o.title) + '</strong>';
+        html += '<div style="color:#888;font-size:12px;margin-top:2px;">' + escapeHtml(o.platform || '') + ' | ' + escapeHtml(o.budget || '?') + ' | Score: ' + (o.matchScore || 0) + '%</div></div>';
+        html += '<span style="background:' + statusColor + '22;color:' + statusColor + ';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">' + (o.status || 'pending').toUpperCase() + '</span></div>';
+        if (o.matchedCapabilities && o.matchedCapabilities.length > 0) {
+          html += '<div style="margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap;">';
+          for (var j = 0; j < o.matchedCapabilities.length; j++) html += '<span style="background:#06b6d422;color:#06b6d4;padding:2px 6px;border-radius:4px;font-size:10px;">' + o.matchedCapabilities[j] + '</span>';
+          html += '</div>';
+        }
+        if (o.status === 'pending') {
+          html += '<div style="display:flex;gap:8px;margin-top:8px;">';
+          html += '<button onclick="window.aries.moneyApprove(\'' + o.id + '\')" style="padding:6px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">✅ Approve</button>';
+          html += '<button onclick="window.aries.moneyReject(\'' + o.id + '\')" style="padding:6px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">❌ Reject</button>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      oel.innerHTML = html;
+    }).catch(function(e) { toast('Failed to load opportunities: ' + e.message, 'error'); });
+  }
+
+  function moneyScan() {
+    toast('🔍 Scanning for opportunities...', 'info');
+    api('POST', 'money/scan').then(function(d) {
+      toast('Found ' + (d.found || 0) + ' new opportunities!', 'success');
+      refreshMoney();
+    }).catch(function(e) { toast('Scan error: ' + e.message, 'error'); });
+  }
+
+  function moneyApprove(id) {
+    api('POST', 'money/approve/' + id).then(function() { toast('Approved!', 'success'); refreshMoney(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+  function moneyReject(id) {
+    api('POST', 'money/reject/' + id).then(function() { toast('Rejected', 'info'); refreshMoney(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  MOONSHOT: Self-Improve
+  // ═══════════════════════════════
+  var _improveFilter = 'all';
+  // ── Autopilot ──
+  var _autopilotCurrentProject = null;
+
+  function refreshAutopilot() {
+    api('GET', 'autopilot/projects').then(function(d) {
+      var el = document.getElementById('autopilotProjectsList');
+      if (!el) return;
+      var projects = d.projects || [];
+      if (projects.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:#666;padding:40px"><div style="font-size:48px;margin-bottom:16px">🚀</div><div style="font-size:16px;margin-bottom:8px">No Autopilot Projects Yet</div><div style="font-size:13px">Click <b>+ New Project</b> to start building your business</div></div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < projects.length; i++) {
+        var p = projects[i];
+        var completed = p.phases.filter(function(ph) { return ph.status === 'complete'; }).length;
+        var pct = Math.round((completed / p.phases.length) * 100);
+        var statusColors = { active: '#00ff88', paused: '#f59e0b', completed: '#06b6d4', cancelled: '#ef4444' };
+        var sc = statusColors[p.status] || '#888';
+        html += '<div onclick="window.aries.openAutopilotProject(\'' + p.id + '\')" style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;border-left:3px solid ' + sc + ';transition:all 0.2s" onmouseover="this.style.borderColor=\'' + sc + '\'" onmouseout="this.style.borderColor=\'var(--border,#222)\'">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">';
+        html += '<div style="flex:1"><strong style="color:#eee;font-size:14px">' + escapeHtml(p.goal.substring(0, 80)) + (p.goal.length > 80 ? '...' : '') + '</strong>';
+        html += '<div style="color:#888;font-size:11px;margin-top:4px">' + new Date(p.createdAt).toLocaleDateString() + ' • ' + p.currentPhase + '</div></div>';
+        html += '<span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">' + p.status.toUpperCase() + '</span></div>';
+        html += '<div style="background:#1a1a2e;border-radius:6px;height:6px;overflow:hidden;margin-top:8px"><div style="background:linear-gradient(90deg,' + sc + ',#00fff7);height:100%;width:' + pct + '%;transition:width 0.5s;border-radius:6px"></div></div>';
+        html += '<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">';
+        for (var j = 0; j < p.phases.length; j++) {
+          var ph = p.phases[j];
+          var phc = ph.status === 'complete' ? '#10b981' : ph.status === 'active' ? '#00fff7' : ph.status === 'review' ? '#f59e0b' : '#333';
+          html += '<span style="width:8px;height:8px;border-radius:50%;background:' + phc + ';display:inline-block" title="' + ph.name + ': ' + ph.status + '"></span>';
+        }
+        html += ' <span style="color:#666;font-size:11px;margin-left:4px">' + pct + '%</span></div></div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() {});
+  }
+
+  function showNewAutopilotProject() {
+    document.getElementById('autopilotNewForm').style.display = 'block';
+    document.getElementById('autopilotDetail').style.display = 'none';
+    document.getElementById('autopilotGoalInput').focus();
+  }
+
+  function startAutopilotProject() {
+    var goal = document.getElementById('autopilotGoalInput').value.trim();
+    if (!goal) { toast('Please describe your business goal', 'error'); return; }
+    var budget = document.getElementById('autopilotBudgetInput').value.trim();
+    var timeline = document.getElementById('autopilotTimelineInput').value.trim();
+    toast('Launching Autopilot...', 'info');
+    api('POST', 'autopilot/start', { goal: goal, budget: budget || null, timeline: timeline || null }).then(function(d) {
+      toast('Project launched!', 'success');
+      document.getElementById('autopilotNewForm').style.display = 'none';
+      document.getElementById('autopilotGoalInput').value = '';
+      document.getElementById('autopilotBudgetInput').value = '';
+      document.getElementById('autopilotTimelineInput').value = '';
+      openAutopilotProject(d.project.id);
+      refreshAutopilot();
+    }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+  }
+
+  function openAutopilotProject(id) {
+    api('GET', 'autopilot/' + id).then(function(d) {
+      _autopilotCurrentProject = d.project;
+      document.getElementById('autopilotProjectsList').style.display = 'none';
+      document.getElementById('autopilotNewForm').style.display = 'none';
+      var el = document.getElementById('autopilotDetail');
+      el.style.display = 'block';
+      renderAutopilotDetail(d.project);
+    }).catch(function(e) { toast('Failed to load project', 'error'); });
+  }
+
+  function renderAutopilotDetail(p) {
+    var el = document.getElementById('autopilotDetail');
+    var statusColors = { active: '#00ff88', paused: '#f59e0b', completed: '#06b6d4', cancelled: '#ef4444' };
+    var sc = statusColors[p.status] || '#888';
+    var completed = p.phases.filter(function(ph) { return ph.status === 'complete'; }).length;
+    var pct = Math.round((completed / p.phases.length) * 100);
+
+    var html = '<div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">';
+    html += '<button class="btn-sm" onclick="document.getElementById(\'autopilotDetail\').style.display=\'none\';document.getElementById(\'autopilotProjectsList\').style.display=\'block\';window.aries.refreshAutopilot()">← Back</button>';
+    html += '<div style="display:flex;gap:6px">';
+    if (p.status === 'active') html += '<button class="btn-sm" onclick="window.aries.autopilotAction(\'' + p.id + '\',\'pause\')" style="background:#f59e0b22;color:#f59e0b">⏸ Pause</button>';
+    if (p.status === 'paused') html += '<button class="btn-sm" onclick="window.aries.autopilotAction(\'' + p.id + '\',\'resume\')" style="background:#10b98122;color:#10b981">▶ Resume</button>';
+    if (p.status !== 'cancelled' && p.status !== 'completed') html += '<button class="btn-sm" onclick="if(confirm(\'Cancel this project?\'))window.aries.autopilotAction(\'' + p.id + '\',\'cancel\')" style="background:#ef444422;color:#ef4444">✕ Cancel</button>';
+    html += '</div></div>';
+
+    html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:12px;padding:20px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px"><div>';
+    html += '<h3 style="color:#eee;margin:0;font-size:16px">' + escapeHtml(p.goal) + '</h3>';
+    html += '<div style="color:#888;font-size:11px;margin-top:4px">Created ' + new Date(p.createdAt).toLocaleString() + (p.budget ? ' • Budget: ' + escapeHtml(p.budget) : '') + (p.timeline ? ' • Timeline: ' + escapeHtml(p.timeline) : '') + '</div>';
+    html += '</div><span style="background:' + sc + '22;color:' + sc + ';padding:4px 12px;border-radius:8px;font-size:12px;font-weight:600">' + p.status.toUpperCase() + '</span></div>';
+    html += '<div style="background:#1a1a2e;border-radius:8px;height:8px;overflow:hidden"><div style="background:linear-gradient(90deg,' + sc + ',#00fff7);height:100%;width:' + pct + '%;transition:width 0.5s;border-radius:8px"></div></div>';
+    html += '<div style="color:#888;font-size:11px;text-align:right;margin-top:4px">' + pct + '% complete (' + completed + '/' + p.phases.length + ' phases)</div></div>';
+
+    // Phase stepper
+    html += '<div style="display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding:4px 0">';
+    for (var i = 0; i < p.phases.length; i++) {
+      var ph = p.phases[i];
+      var bg = ph.status === 'complete' ? '#10b981' : ph.status === 'active' ? '#00fff7' : ph.status === 'review' ? '#f59e0b' : '#333';
+      var fg = ph.status === 'active' || ph.status === 'review' ? '#000' : ph.status === 'complete' ? '#000' : '#888';
+      var pulse = ph.status === 'active' ? 'animation:pulse 2s infinite;' : '';
+      html += '<div style="flex:1;min-width:80px;background:' + bg + '22;border:1px solid ' + bg + ';border-radius:8px;padding:8px;text-align:center;' + pulse + '">';
+      html += '<div style="font-size:16px">' + ph.icon + '</div>';
+      html += '<div style="font-size:10px;color:' + bg + ';font-weight:600;margin-top:2px">' + ph.name + '</div>';
+      html += '<div style="font-size:9px;color:#888;margin-top:2px">' + ph.status + '</div></div>';
+      if (i < p.phases.length - 1) html += '<div style="display:flex;align-items:center;color:#333">→</div>';
+    }
+    html += '</div>';
+
+    // Phase details
+    for (var i = 0; i < p.phases.length; i++) {
+      var ph = p.phases[i];
+      if (ph.status === 'pending') continue;
+      var bg2 = ph.status === 'complete' ? '#10b981' : ph.status === 'active' ? '#00fff7' : ph.status === 'review' ? '#f59e0b' : '#888';
+      html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:12px;padding:16px;margin-bottom:12px;border-left:3px solid ' + bg2 + '">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      html += '<h4 style="margin:0;color:#eee;font-size:14px">' + ph.icon + ' ' + ph.name + '</h4>';
+      html += '<div style="display:flex;gap:4px">';
+      if (ph.status === 'active' || ph.status === 'review') {
+        html += '<button class="btn-sm" onclick="window.aries.autopilotApprove(\'' + p.id + '\',\'' + ph.id + '\')" style="background:#10b98133;color:#10b981;font-size:11px">✓ Approve</button>';
+        html += '<button class="btn-sm" onclick="window.aries.autopilotFeedback(\'' + p.id + '\',\'' + ph.id + '\')" style="background:#f59e0b33;color:#f59e0b;font-size:11px">✎ Feedback</button>';
+      }
+      html += '</div></div>';
+      html += '<div style="color:#888;font-size:12px">' + ph.description + '</div>';
+
+      // Milestones
+      if (ph.milestones && ph.milestones.length) {
+        html += '<div style="margin-top:8px">';
+        for (var m = 0; m < ph.milestones.length; m++) {
+          var ml = ph.milestones[m];
+          html += '<div style="color:#aaa;font-size:11px;padding:2px 0">' + (ml.done ? '✅' : '⬜') + ' ' + escapeHtml(ml.text || ml) + '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Deliverables
+      if (ph.deliverables && ph.deliverables.length) {
+        html += '<div style="margin-top:8px;border-top:1px solid #222;padding-top:8px"><div style="color:#00fff7;font-size:11px;font-weight:600;margin-bottom:4px">📦 Deliverables</div>';
+        for (var d2 = 0; d2 < ph.deliverables.length; d2++) {
+          var dl = ph.deliverables[d2];
+          html += '<div style="color:#aaa;font-size:11px;padding:2px 0">• ' + escapeHtml(dl.name || dl.description || 'Untitled') + (dl.path ? ' <span style="color:#666">(' + escapeHtml(dl.path) + ')</span>' : '') + '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Feedback
+      if (ph.feedback && ph.feedback.length) {
+        html += '<div style="margin-top:8px;border-top:1px solid #222;padding-top:8px"><div style="color:#f59e0b;font-size:11px;font-weight:600;margin-bottom:4px">💬 Feedback</div>';
+        for (var f = 0; f < ph.feedback.length; f++) {
+          html += '<div style="color:#aaa;font-size:11px;padding:2px 0;font-style:italic">"' + escapeHtml(ph.feedback[f].text) + '"</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Activity log
+    html += '<details style="margin-top:16px"><summary style="color:#888;font-size:12px;cursor:pointer">📋 Activity Log (' + (p.log || []).length + ' entries)</summary>';
+    html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;margin-top:8px;max-height:300px;overflow-y:auto">';
+    var logs = (p.log || []).slice().reverse();
+    for (var i = 0; i < logs.length; i++) {
+      html += '<div style="font-size:11px;color:#888;padding:3px 0;border-bottom:1px solid #1a1a2e"><span style="color:#555">' + new Date(logs[i].ts).toLocaleString() + '</span> ' + escapeHtml(logs[i].message) + '</div>';
+    }
+    html += '</div></details>';
+
+    el.innerHTML = html;
+  }
+
+  function autopilotAction(id, action) {
+    api('POST', 'autopilot/' + id + '/' + action, {}).then(function(d) {
+      toast('Project ' + action + 'd', 'success');
+      if (action === 'cancel') {
+        document.getElementById('autopilotDetail').style.display = 'none';
+        document.getElementById('autopilotProjectsList').style.display = 'block';
+        refreshAutopilot();
+      } else {
+        renderAutopilotDetail(d.project);
+      }
+    }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+  }
+
+  function autopilotApprove(id, phase) {
+    api('POST', 'autopilot/' + id + '/approve', { phase: phase }).then(function(d) {
+      toast('Phase approved!', 'success');
+      renderAutopilotDetail(d.project);
+    }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+  }
+
+  function autopilotFeedback(id, phase) {
+    var fb = prompt('Enter feedback for this phase:');
+    if (!fb) return;
+    api('POST', 'autopilot/' + id + '/feedback', { phase: phase, feedback: fb }).then(function(d) {
+      toast('Feedback sent', 'success');
+      renderAutopilotDetail(d.project);
+    }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
+  }
+
+  function refreshImprove() { loadImprove(_improveFilter); }
+  function improveFilter(f) { _improveFilter = f; loadImprove(f); }
+
+  function loadImprove(filter) {
+    var query = filter && filter !== 'all' ? '?category=' + encodeURIComponent(filter) : '';
+    api('GET', 'improve/suggestions' + query).then(function(d) {
+      var stats = d.stats || {};
+      var el = document.getElementById('improveStats');
+      if (el) {
+        el.innerHTML =
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#f59e0b;font-size:20px;font-weight:700;">' + (stats.pending || 0) + '</div><div style="color:#888;font-size:11px;">Pending</div></div>' +
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#10b981;font-size:20px;font-weight:700;">' + (stats.accepted || 0) + '</div><div style="color:#888;font-size:11px;">Accepted</div></div>' +
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#ef4444;font-size:20px;font-weight:700;">' + (stats.rejected || 0) + '</div><div style="color:#888;font-size:11px;">Rejected</div></div>' +
+          '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:8px;padding:12px;text-align:center;"><div style="color:#06b6d4;font-size:20px;font-weight:700;">' + (stats.total || 0) + '</div><div style="color:#888;font-size:11px;">Total</div></div>';
+      }
+
+      var suggs = (d.suggestions || []).filter(function(s) { return filter === 'all' || !filter || s.category === filter || s.status === 'pending'; });
+      var sel = document.getElementById('improveSuggestions');
+      if (!sel) return;
+      if (suggs.length === 0) { sel.innerHTML = '<div style="color:#666;padding:20px;text-align:center;">No suggestions. Click Scan to analyze codebase.</div>'; return; }
+      var html = '';
+      var sevColors = { high: '#ef4444', medium: '#f59e0b', low: '#06b6d4' };
+      var catIcons = { 'Bug Fix': '🐛', 'Performance': '⚡', 'Security': '🛡️', 'Code Quality': '✨', 'New Feature Idea': '💡' };
+      for (var i = 0; i < suggs.length; i++) {
+        var s = suggs[i];
+        var sc = sevColors[s.severity] || '#888';
+        html += '<div style="background:var(--bg-card,#111);border:1px solid var(--border,#222);border-radius:12px;padding:16px;border-left:3px solid ' + sc + ';">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">';
+        html += '<div><strong style="color:#eee;font-size:13px;">' + (catIcons[s.category] || '📝') + ' ' + escapeHtml(s.message) + '</strong>';
+        html += '<div style="color:#888;font-size:11px;margin-top:2px;">' + escapeHtml(s.file) + (s.line ? ':' + s.line : '') + ' | ' + escapeHtml(s.category) + '</div></div>';
+        html += '<span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">' + (s.severity || 'medium').toUpperCase() + '</span></div>';
+        if (s.diff && s.diff.description) html += '<div style="color:#888;font-size:12px;margin-bottom:8px;font-style:italic;">' + escapeHtml(s.diff.description) + '</div>';
+        if (s.diff && s.diff.oldText) {
+          html += '<pre style="background:#0a0a0a;padding:8px;border-radius:6px;font-size:11px;overflow-x:auto;margin-bottom:8px;border:1px solid #222;"><span style="color:#ef4444;">- ' + escapeHtml(s.diff.oldText) + '</span>';
+          if (s.diff.newText) html += '\n<span style="color:#10b981;">+ ' + escapeHtml(s.diff.newText) + '</span>';
+          html += '</pre>';
+        }
+        if (s.status === 'pending') {
+          html += '<div style="display:flex;gap:8px;">';
+          html += '<button onclick="window.aries.improveAccept(\'' + s.id + '\')" style="padding:6px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">✅ Accept</button>';
+          html += '<button onclick="window.aries.improveReject(\'' + s.id + '\')" style="padding:6px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">❌ Reject</button>';
+          html += '</div>';
+        } else {
+          html += '<span style="color:#666;font-size:11px;">' + s.status.toUpperCase() + '</span>';
+        }
+        html += '</div>';
+      }
+      sel.innerHTML = html;
+    }).catch(function(e) { toast('Failed to load suggestions: ' + e.message, 'error'); });
+  }
+
+  function improveScan() {
+    toast('🔍 Scanning codebase...', 'info');
+    api('POST', 'improve/scan').then(function(d) {
+      toast('Found ' + (d.found || 0) + ' new suggestions!', 'success');
+      refreshImprove();
+    }).catch(function(e) { toast('Scan error: ' + e.message, 'error'); });
+  }
+
+  function improveAccept(id) {
+    api('POST', 'improve/accept/' + id).then(function(d) { toast(d.message || 'Accepted!', 'success'); refreshImprove(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+  function improveReject(id) {
+    api('POST', 'improve/reject/' + id).then(function() { toast('Rejected', 'info'); refreshImprove(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  AGENT DREAMS
+  // ═══════════════════════════════
+  function loadDreams() {
+    var el = document.getElementById('dreamsContent');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div> Loading dreams...';
+    api('GET', 'dreams/latest').then(function(data) {
+      var html = '';
+      if (!data.dreams || data.dreams.length === 0) {
+        html = '<div style="text-align:center;padding:40px;color:#a78bfa"><span style="font-size:48px">🌙</span><h3 style="color:#a78bfa">No Dreams Yet</h3><p style="color:#666">Trigger a dream cycle or wait for idle time</p></div>';
+      } else {
+        html += '<div style="color:#a78bfa;font-size:13px;margin-bottom:12px">Dream date: ' + escapeHtml(data.date || '') + '</div>';
+        for (var i = 0; i < data.dreams.length; i++) {
+          var d = data.dreams[i];
+          var ins = d.insights || d;
+          html += '<div style="background:linear-gradient(135deg,#1a0a2e,#0a0a1a);border:1px solid #7c3aed44;border-radius:12px;padding:16px;margin-bottom:12px">';
+          html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:20px">💭</span><span style="color:#a78bfa;font-weight:700">Dream Insight</span><span style="color:#555;font-size:11px">' + new Date(ins.timestamp || d.timestamp).toLocaleString() + '</span></div>';
+          if (ins.topTopics && ins.topTopics.length) html += '<div style="margin-bottom:6px"><span style="color:#888;font-size:12px">Topics:</span> ' + ins.topTopics.map(function(t) { return '<span style="background:#7c3aed33;color:#a78bfa;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px">' + escapeHtml(t) + '</span>'; }).join(' ') + '</div>';
+          if (ins.topTools && ins.topTools.length) html += '<div style="margin-bottom:6px"><span style="color:#888;font-size:12px">Tools:</span> ' + ins.topTools.map(function(t) { return '<span style="background:#06b6d433;color:#06b6d4;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px">' + escapeHtml(t) + '</span>'; }).join(' ') + '</div>';
+          html += '<div style="color:#666;font-size:12px">' + (ins.conversationsAnalyzed || 0) + ' convos analyzed, ' + (ins.totalMessages || 0) + ' messages</div>';
+          if (ins.aiSummary) {
+            var ai = ins.aiSummary;
+            if (ai.keyInsight) html += '<div style="margin-top:8px;padding:8px 12px;background:#7c3aed22;border-left:3px solid #7c3aed;border-radius:4px;color:#c4b5fd;font-size:13px">💡 ' + escapeHtml(ai.keyInsight) + '</div>';
+          }
+          html += '</div>';
+        }
+      }
+      el.innerHTML = html;
+    }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load dreams</div>'; });
+  }
+
+  function triggerDream() {
+    toast('Starting dream cycle...', 'info');
+    api('POST', 'dreams/trigger').then(function(data) {
+      toast('Dream cycle complete!', 'success');
+      loadDreams();
+    }).catch(function(e) { toast('Dream error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  EMOTION ENGINE (mood indicator in chat)
+  // ═══════════════════════════════
+  var _lastMood = null;
+  function showMoodBadge(mood, emoji) {
+    _lastMood = { mood: mood, emoji: emoji };
+    // Add badge to last user message
+    var msgs = document.querySelectorAll('.chat-msg.user');
+    if (msgs.length > 0) {
+      var last = msgs[msgs.length - 1];
+      var existing = last.querySelector('.mood-badge');
+      if (existing) existing.remove();
+      if (mood && mood !== 'neutral') {
+        var badge = document.createElement('span');
+        badge.className = 'mood-badge';
+        badge.style.cssText = 'position:absolute;top:4px;right:8px;font-size:16px;opacity:0.8;cursor:help';
+        badge.title = 'Detected mood: ' + mood;
+        badge.textContent = emoji;
+        last.style.position = 'relative';
+        last.appendChild(badge);
+      }
+    }
+  }
+
+  // ═══════════════════════════════
+  //  CONTEXT WINDOW VISUALIZER
+  // ═══════════════════════════════
+  var _ctxMaxTokens = 128000; // default, adjustable
+  var _ctxTrimmedCount = 0;
+
+  function updateContextViz() {
+    var msgs = document.querySelectorAll('.chat-msg');
+    var systemTokens = 500; // estimate for system prompt
+    var memoryTokens = 200;
+    var knowledgeTokens = 100;
+    var convoTokens = 0;
+    for (var i = 0; i < msgs.length; i++) {
+      var text = msgs[i].textContent || '';
+      convoTokens += Math.ceil(text.length / 4);
+    }
+    var totalUsed = systemTokens + memoryTokens + knowledgeTokens + convoTokens;
+    var pct = Math.min(Math.round(totalUsed / _ctxMaxTokens * 100), 100);
+
+    var bar = document.getElementById('ctxBar');
+    if (!bar) return;
+    document.getElementById('ctxSystem').style.width = (systemTokens / _ctxMaxTokens * 100) + '%';
+    document.getElementById('ctxMemories').style.width = (memoryTokens / _ctxMaxTokens * 100) + '%';
+    document.getElementById('ctxKnowledge').style.width = (knowledgeTokens / _ctxMaxTokens * 100) + '%';
+    document.getElementById('ctxConvo').style.width = (convoTokens / _ctxMaxTokens * 100) + '%';
+    document.getElementById('ctxPercent').textContent = pct + '%';
+    document.getElementById('ctxPercent').style.color = pct > 80 ? '#ef4444' : pct > 60 ? '#eab308' : '#888';
+    document.getElementById('ctxWarning').style.display = pct > 80 ? 'inline' : 'none';
+    var trimEl = document.getElementById('ctxTrimmed');
+    if (_ctxTrimmedCount > 0) { trimEl.style.display = 'inline'; trimEl.textContent = _ctxTrimmedCount + ' trimmed'; }
+    else trimEl.style.display = 'none';
+  }
+
+  // ═══════════════════════════════
+  //  CROSS-SESSION MEMORY
+  // ═══════════════════════════════
+  function loadPreviousSession() {
+    api('GET', 'sessions/context').then(function(data) {
+      if (!data.sessions || data.sessions.length === 0) return;
+      var container = document.getElementById('chatMessages');
+      if (!container) return;
+      // Don't show if already has messages
+      if (container.children.length > 1) return;
+      var card = document.createElement('div');
+      card.className = 'previous-session-card';
+      card.style.cssText = 'background:linear-gradient(135deg,#0a1628,#0a0a1a);border:1px solid #3b82f644;border-radius:12px;padding:14px 18px;margin:8px 0 16px;max-width:600px';
+      var s = data.sessions[0];
+      var html = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:16px">🔄</span><span style="color:#3b82f6;font-weight:700;font-size:13px">Previously discussed</span></div>';
+      html += '<div style="color:#94a3b8;font-size:13px;line-height:1.5">' + escapeHtml(s.summary || '') + '</div>';
+      if (s.topics && s.topics.length) html += '<div style="margin-top:6px">' + s.topics.slice(0, 5).map(function(t) { return '<span style="background:#3b82f622;color:#60a5fa;padding:1px 6px;border-radius:8px;font-size:11px;margin-right:4px">' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
+      card.innerHTML = html;
+      container.insertBefore(card, container.firstChild);
+    }).catch(function() {});
+  }
+
+  // ═══════════════════════════════
+  //  AGENT JOURNALS
+  // ═══════════════════════════════
+  function loadJournals() {
+    var el = document.getElementById('journalsContent');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div> Loading journals...';
+    api('GET', 'journals/').then(function(data) {
+      var agents = data.agents || [];
+      if (agents.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:40px;color:#888"><span style="font-size:48px">📓</span><h3>No Journal Entries Yet</h3><p style="color:#666">Agents will write diary entries after completing tasks</p></div>';
+        return;
+      }
+      var html = '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
+      for (var i = 0; i < agents.length; i++) {
+        html += '<button class="btn-sm" onclick="window.aries.loadAgentJournal(\'' + escapeHtml(agents[i]) + '\')" style="text-transform:capitalize">' + escapeHtml(agents[i]) + '</button>';
+      }
+      html += '</div><div id="journalEntries"></div>';
+      el.innerHTML = html;
+      if (agents.length > 0) loadAgentJournal(agents[0]);
+    }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load journals</div>'; });
+  }
+
+  function loadAgentJournal(agentId) {
+    var el = document.getElementById('journalEntries');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div>';
+    api('GET', 'journals/' + agentId).then(function(data) {
+      var entries = data.entries || [];
+      if (entries.length === 0) { el.innerHTML = '<div style="color:#666;padding:20px">No entries for ' + escapeHtml(agentId) + '</div>'; return; }
+      var html = '<h3 style="color:var(--accent);margin-bottom:12px">📓 ' + escapeHtml(agentId) + '\'s Journal</h3>';
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        html += '<div style="background:#111;border:1px solid #333;border-radius:10px;padding:14px;margin-bottom:10px">';
+        html += '<div style="color:var(--accent);font-size:12px;margin-bottom:6px">📅 ' + escapeHtml(e.date) + '</div>';
+        html += '<div style="color:#ccc;font-size:13px;line-height:1.6;white-space:pre-wrap">' + formatMessage(e.content || '') + '</div>';
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load journal</div>'; });
+  }
+
+  // ── Dreams section in Home dashboard ──
+  var _origLoadDashboard = null;
+
+  // ═══════════════════════════════
+  //  AGENT REPUTATION
+  // ═══════════════════════════════
+  var _repScore = 0;
+  function _setRepScore(n) {
+    _repScore = n;
+    var stars = document.querySelectorAll('#repStars span');
+    for (var i = 0; i < stars.length; i++) stars[i].textContent = (i < n) ? '★' : '☆';
+    for (var i = 0; i < stars.length; i++) stars[i].style.color = (i < n) ? '#fbbf24' : '#666';
+  }
+  function _getBadge(total) {
+    if (total >= 500) return { label: 'LEGENDARY', color: '#f59e0b', icon: '👑' };
+    if (total >= 100) return { label: 'GOLD', color: '#fbbf24', icon: '🥇' };
+    if (total >= 50) return { label: 'SILVER', color: '#9ca3af', icon: '🥈' };
+    if (total >= 10) return { label: 'BRONZE', color: '#b45309', icon: '🥉' };
+    return { label: 'NEW', color: '#666', icon: '🆕' };
+  }
+  function _renderStars(avg) {
+    var html = '';
+    for (var i = 1; i <= 5; i++) {
+      html += '<span style="color:' + (i <= Math.round(avg) ? '#fbbf24' : '#333') + '">★</span>';
+    }
+    return html;
+  }
+  function refreshReputation() {
+    var el = document.getElementById('reputationLeaderboard');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div> Loading leaderboard...';
+    api('GET', 'reputation/leaderboard').then(function(d) {
+      var list = d.leaderboard || [];
+      if (list.length === 0) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#666"><span style="font-size:48px">⭐</span><h3>No Ratings Yet</h3><p>Rate agents after task completion</p></div>'; return; }
+      var html = '<div style="display:grid;gap:10px;">';
+      for (var i = 0; i < list.length; i++) {
+        var a = list[i];
+        var badge = _getBadge(a.totalRatings);
+        html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;">';
+        html += '<div style="font-size:24px;font-weight:800;color:' + (i < 3 ? 'var(--accent)' : '#666') + ';width:36px;text-align:center;">#' + (i+1) + '</div>';
+        html += '<div style="flex:1"><div style="font-weight:600;color:#fff">' + escapeHtml(a.agentId) + ' ' + _renderStars(a.avgScore) + ' <span style="color:#888;font-size:12px">(' + a.avgScore + '/5)</span></div>';
+        html += '<div style="font-size:11px;color:#888;margin-top:2px">' + a.totalRatings + ' ratings</div></div>';
+        html += '<span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:' + badge.color + '22;color:' + badge.color + '">' + badge.icon + ' ' + badge.label + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      el.innerHTML = html;
+    }).catch(function(e) { el.innerHTML = '<div style="color:#f44">Error: ' + e.message + '</div>'; });
+  }
+  function submitRating() {
+    var agentId = document.getElementById('repAgentId').value.trim();
+    var comment = document.getElementById('repComment').value.trim();
+    if (!agentId || !_repScore) { toast('Enter agent ID and select stars', 'error'); return; }
+    api('POST', 'reputation/rate', { agentId: agentId, score: _repScore, comment: comment }).then(function(d) {
+      toast('Rated ' + agentId + ' ' + _repScore + ' stars!', 'success');
+      _setRepScore(0);
+      document.getElementById('repAgentId').value = '';
+      document.getElementById('repComment').value = '';
+      refreshReputation();
+    }).catch(function(e) { toast('Rating failed: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  TASK QUEUE
+  // ═══════════════════════════════
+  var _taskFilter = 'all';
+  function refreshTaskQueue() {
+    var el = document.getElementById('taskQueueKanban');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div>';
+    api('GET', 'tasks/queue').then(function(d) {
+      var tasks = d.tasks || [];
+      var cols = { queued: [], active: [], completed: [], failed: [] };
+      for (var i = 0; i < tasks.length; i++) { var t = tasks[i]; if (cols[t.status]) cols[t.status].push(t); }
+      var colColors = { queued: '#3b82f6', active: '#f59e0b', completed: '#22c55e', failed: '#ef4444' };
+      var html = '';
+      var colNames = ['queued', 'active', 'completed', 'failed'];
+      for (var c = 0; c < colNames.length; c++) {
+        var col = colNames[c];
+        if (_taskFilter !== 'all' && _taskFilter !== col) continue;
+        html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:200px;">';
+        html += '<div style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:1px;color:' + colColors[col] + ';margin-bottom:10px;border-bottom:2px solid ' + colColors[col] + ';padding-bottom:6px">' + col + ' (' + cols[col].length + ')</div>';
+        var sorted = cols[col].sort(function(a,b) { return a.priority - b.priority; });
+        for (var j = 0; j < sorted.length; j++) {
+          var t = sorted[j];
+          html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;" draggable="true" data-task-id="' + t.id + '">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-weight:600;color:#fff">' + escapeHtml(t.agentId) + '</span><span style="color:#888;font-size:10px">P' + t.priority + '</span></div>';
+          html += '<div style="color:#aaa;margin-bottom:6px">' + escapeHtml(t.description || 'No description') + '</div>';
+          html += '<div style="color:#666;font-size:10px">' + (t.createdAt ? new Date(t.createdAt).toLocaleString() : '') + (t.duration ? ' • ' + t.duration + 's' : '') + '</div>';
+          if (col === 'queued' || col === 'active') html += '<button class="btn-sm" style="margin-top:6px;background:#ef4444;font-size:10px" onclick="window.aries.cancelTask(' + t.id + ')">✕ Cancel</button>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      el.style.gridTemplateColumns = 'repeat(' + (_taskFilter === 'all' ? 4 : 1) + ',1fr)';
+      el.innerHTML = html;
+    }).catch(function(e) { el.innerHTML = '<div style="color:#f44">Error: ' + e.message + '</div>'; });
+  }
+  function filterTasks(f) { _taskFilter = f; refreshTaskQueue(); }
+  function showEnqueueTask() { var el = document.getElementById('enqueueForm'); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+  function enqueueTask() {
+    var agentId = document.getElementById('tqAgent').value.trim();
+    var desc = document.getElementById('tqDesc').value.trim();
+    var pri = parseInt(document.getElementById('tqPriority').value) || 5;
+    if (!desc) { toast('Description required', 'error'); return; }
+    api('POST', 'tasks/enqueue', { agentId: agentId || 'manual', description: desc, priority: pri }).then(function() {
+      toast('Task enqueued!', 'success');
+      document.getElementById('tqDesc').value = '';
+      refreshTaskQueue();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+  function cancelTask(id) {
+    api('DELETE', 'tasks/' + id).then(function() { toast('Task cancelled', 'info'); refreshTaskQueue(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  HEALTH MONITOR
+  // ═══════════════════════════════
+  var _healthRefreshTimer = null;
+  function refreshHealthMonitor() {
+    var gEl = document.getElementById('healthGauges');
+    if (!gEl) return;
+    gEl.innerHTML = '<div class="spinner"></div>';
+    api('GET', 'health/metrics').then(function(m) {
+      var cpuColor = m.cpu > 90 ? '#ef4444' : m.cpu > 70 ? '#f59e0b' : '#22c55e';
+      var ramColor = m.ramPct > 90 ? '#ef4444' : m.ramPct > 70 ? '#f59e0b' : '#22c55e';
+      var html = '';
+      // CPU gauge
+      html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">';
+      html += '<div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">CPU</div>';
+      html += '<div style="position:relative;width:120px;height:120px;margin:0 auto">';
+      html += '<svg width="120" height="120" style="transform:rotate(-90deg)"><circle cx="60" cy="60" r="50" fill="none" stroke="#222" stroke-width="10"/>';
+      html += '<circle cx="60" cy="60" r="50" fill="none" stroke="' + cpuColor + '" stroke-width="10" stroke-dasharray="' + (m.cpu * 3.14) + ' 314" stroke-linecap="round"/></svg>';
+      html += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:' + cpuColor + '">' + m.cpu + '%</div>';
+      html += '</div></div>';
+      // RAM gauge
+      html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">';
+      html += '<div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">RAM</div>';
+      html += '<div style="position:relative;width:120px;height:120px;margin:0 auto">';
+      html += '<svg width="120" height="120" style="transform:rotate(-90deg)"><circle cx="60" cy="60" r="50" fill="none" stroke="#222" stroke-width="10"/>';
+      html += '<circle cx="60" cy="60" r="50" fill="none" stroke="' + ramColor + '" stroke-width="10" stroke-dasharray="' + (m.ramPct * 3.14) + ' 314" stroke-linecap="round"/></svg>';
+      html += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column"><span style="font-size:28px;font-weight:800;color:' + ramColor + '">' + m.ramPct + '%</span><span style="font-size:10px;color:#888">' + m.ramUsed + '/' + m.ramTotal + ' MB</span></div>';
+      html += '</div></div>';
+      gEl.innerHTML = html;
+      // Disks
+      var dEl = document.getElementById('healthDisks');
+      if (dEl && m.disks && m.disks.length) {
+        var dh = '<h3 style="color:var(--accent);margin:0 0 12px;font-size:14px">💾 Disk Usage</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
+        for (var i = 0; i < m.disks.length; i++) {
+          var d = m.disks[i];
+          var dc = d.usedPct > 90 ? '#ef4444' : d.usedPct > 70 ? '#f59e0b' : '#22c55e';
+          dh += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px">';
+          dh += '<div style="font-weight:600;margin-bottom:8px;color:#fff">' + escapeHtml(d.drive) + '</div>';
+          dh += '<div style="height:8px;background:#222;border-radius:4px;overflow:hidden"><div style="height:100%;width:' + d.usedPct + '%;background:' + dc + ';border-radius:4px"></div></div>';
+          dh += '<div style="font-size:11px;color:#888;margin-top:4px">' + (d.totalGB - d.freeGB) + '/' + d.totalGB + ' GB (' + d.usedPct + '%)</div></div>';
+        }
+        dh += '</div>';
+        dEl.innerHTML = dh;
+      }
+    }).catch(function(e) { gEl.innerHTML = '<div style="color:#f44">Error: ' + e.message + '</div>'; });
+    // History chart
+    api('GET', 'health/history').then(function(d) {
+      var history = d.history || [];
+      var canvas = document.getElementById('healthChart');
+      if (!canvas || history.length < 2) return;
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, w, h);
+      // Grid
+      ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+      for (var y = 0; y <= 100; y += 25) { var py = h - 20 - ((y / 100) * (h - 40)); ctx.beginPath(); ctx.moveTo(40, py); ctx.lineTo(w - 10, py); ctx.stroke(); ctx.fillStyle = '#666'; ctx.font = '10px monospace'; ctx.fillText(y + '%', 5, py + 4); }
+      // CPU line
+      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.beginPath();
+      for (var i = 0; i < history.length; i++) { var x = 40 + (i / (history.length - 1)) * (w - 50); var y = h - 20 - ((history[i].cpu / 100) * (h - 40)); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.stroke();
+      // RAM line
+      ctx.strokeStyle = '#22c55e'; ctx.beginPath();
+      for (var i = 0; i < history.length; i++) { var x = 40 + (i / (history.length - 1)) * (w - 50); var y = h - 20 - ((history[i].ramPct / 100) * (h - 40)); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.stroke();
+      // Legend
+      ctx.fillStyle = '#3b82f6'; ctx.fillRect(w - 100, 10, 10, 10); ctx.fillStyle = '#aaa'; ctx.fillText('CPU', w - 86, 19);
+      ctx.fillStyle = '#22c55e'; ctx.fillRect(w - 100, 26, 10, 10); ctx.fillStyle = '#aaa'; ctx.fillText('RAM', w - 86, 35);
+      // Threshold lines
+      var thresholds = d.thresholds || {};
+      if (thresholds.cpuRed) { ctx.strokeStyle = 'rgba(239,68,68,0.3)'; ctx.setLineDash([5,5]); ctx.beginPath(); var ty = h - 20 - ((thresholds.cpuRed / 100) * (h - 40)); ctx.moveTo(40, ty); ctx.lineTo(w - 10, ty); ctx.stroke(); ctx.setLineDash([]); }
+    }).catch(function() {});
+    // Auto-refresh every 30s
+    if (_healthRefreshTimer) clearInterval(_healthRefreshTimer);
+    _healthRefreshTimer = setInterval(refreshHealthMonitor, 30000);
+  }
+
+  // ═══════════════════════════════
+  //  PROXY MODE
+  // ═══════════════════════════════
+  function refreshProxyMode() {
+    var sEl = document.getElementById('proxyStats');
+    if (!sEl) return;
+    sEl.innerHTML = '<div class="spinner"></div>';
+    document.getElementById('proxyEndpoint').textContent = location.protocol + '//' + location.host + '/v1/chat/completions';
+    api('GET', 'proxy/status').then(function(d) {
+      var html = '';
+      var cards = [
+        { label: 'STATUS', val: d.enabled ? '🟢 ACTIVE' : '🔴 OFF', color: d.enabled ? '#22c55e' : '#ef4444' },
+        { label: 'REQUESTS', val: d.totalRequests, color: 'var(--accent)' },
+        { label: 'CACHE HITS', val: d.cacheHits, color: '#a78bfa' },
+        { label: 'CACHE SIZE', val: d.cacheSize, color: '#f59e0b' },
+        { label: 'TOTAL COST', val: '$' + d.totalCost, color: '#22c55e' },
+        { label: 'CLIENTS', val: d.activeClients, color: '#3b82f6' },
+        { label: 'RATE LIMIT', val: d.rateLimit + '/min', color: '#888' }
+      ];
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i];
+        html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">';
+        html += '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">' + c.label + '</div>';
+        html += '<div style="font-size:22px;font-weight:800;color:' + c.color + ';margin:4px 0">' + c.val + '</div></div>';
+      }
+      sEl.innerHTML = html;
+      // Routes
+      var rEl = document.getElementById('proxyRoutes');
+      if (rEl && d.routes) {
+        var rh = '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="border-bottom:1px solid var(--border)">';
+        rh += '<th style="text-align:left;padding:8px;color:var(--text-dim)">Pattern</th><th style="text-align:left;padding:8px;color:var(--text-dim)">Provider</th><th style="text-align:left;padding:8px;color:var(--text-dim)">Model</th></tr>';
+        for (var i = 0; i < d.routes.length; i++) {
+          var r = d.routes[i];
+          rh += '<tr style="border-bottom:1px solid #222"><td style="padding:8px;color:#fff;font-family:monospace">' + escapeHtml(r.pattern) + '</td><td style="padding:8px;color:var(--accent)">' + escapeHtml(r.provider) + '</td><td style="padding:8px;color:#aaa">' + escapeHtml(r.model) + '</td></tr>';
+        }
+        rh += '</table>';
+        rEl.innerHTML = rh;
+      }
+      // Clients
+      var cEl = document.getElementById('proxyClients');
+      if (cEl) {
+        if (!d.clients || d.clients.length === 0) { cEl.innerHTML = '<div style="color:#666;font-size:13px">No connected clients yet</div>'; }
+        else {
+          var ch = '<div style="display:grid;gap:8px">';
+          for (var i = 0; i < d.clients.length; i++) {
+            var cl = d.clients[i];
+            ch += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;font-size:12px;display:flex;justify-content:space-between">';
+            ch += '<span style="color:#fff;font-family:monospace">' + escapeHtml(cl.key) + '</span>';
+            ch += '<span style="color:#888">' + cl.requests + ' reqs</span></div>';
+          }
+          ch += '</div>';
+          cEl.innerHTML = ch;
+        }
+      }
+    }).catch(function(e) { sEl.innerHTML = '<div style="color:#f44">Error: ' + e.message + '</div>'; });
+  }
+
     window.aries = {
       switchPanel: switchPanel, refreshAgents: refreshAgents, openAgentDetail: openAgentDetail, closeAgentDetail: closeAgentDetail, sendAgentTask: sendAgentTask,
       refreshSubagents: refreshSubagents, openSubagentChat: openSubagentChat, closeSubagentChat: closeSubagentChat, sendSubagentTask: sendSubagentTask, clearSubagentHistory: clearSubagentHistory,
@@ -7857,12 +9716,393 @@
       _loadedPanels: _loadedPanels, _toast: toast,
       refreshHands: refreshHands, handAction: handAction, viewHandOutput: viewHandOutput,
       refreshWorkflows: refreshWorkflows, runWorkflow: runWorkflow, deleteWorkflow: deleteWorkflow, showCreateWorkflow: showCreateWorkflow,
+      wfSelect: wfSelect, wfSave: wfSave, wfAddStep: wfAddStep, wfEditStep: wfEditStep, wfSaveStep: wfSaveStep, wfDeleteStep: wfDeleteStep,
       refreshAnalytics: refreshAnalytics,
       refreshKnowledge: refreshKnowledge, searchKnowledge: searchKnowledge,
       refreshSecurity: refreshSecurity, runSecurityScan: runSecurityScan,
-      refreshChannels: refreshChannels, configureChannel: configureChannel
+      refreshChannels: refreshChannels, configureChannel: configureChannel,
+      refreshBreeding: refreshBreeding, breedAgents: breedAgents,
+      refreshMesh: refreshMesh, meshToggle: meshToggle, meshAddPeer: meshAddPeer, meshDelegate: meshDelegate,
+      refreshMoney: refreshMoney, moneyScan: moneyScan, moneyApprove: moneyApprove, moneyReject: moneyReject, moneyFilter: moneyFilter,
+      refreshImprove: refreshImprove, improveScan: improveScan, improveAccept: improveAccept, improveReject: improveReject, improveFilter: improveFilter,
+      filterMarketplace: filterMarketplace, installMarketplaceItem: installMarketplaceItem,
+      refreshAgentChats: refreshAgentChats, showNewAgentChat: showNewAgentChat, openAgentConversation: openAgentConversation,
+      sendAgentChat: sendAgentChat, delegateAgentTask: delegateAgentTask,
+      loadTemplates: loadTemplates, useTemplate: useTemplate,
+      refreshWebhooks: refreshWebhooks, showCreateWebhook: showCreateWebhook, saveWebhook: saveWebhook,
+      testWebhook: testWebhook, deleteWebhook: deleteWebhook,
+      refreshTraining: refreshTraining, submitTrainingFeedback: submitTrainingFeedback,
+      desktopRefresh: desktopRefresh, desktopInfo: desktopInfo, desktopType: desktopType,
+      exportAll: exportAll, importAll: importAll, importAllFile: importAllFile,
+      sendCollabChat: sendCollabChat, toggleCollabChat: toggleCollabChat,
+      loadDreams: loadDreams, triggerDream: triggerDream,
+      loadJournals: loadJournals, loadAgentJournal: loadAgentJournal,
+      updateContextViz: updateContextViz,
+      refreshReputation: refreshReputation, submitRating: submitRating, _setRepScore: _setRepScore,
+      refreshTaskQueue: refreshTaskQueue, filterTasks: filterTasks, showEnqueueTask: showEnqueueTask,
+      enqueueTask: enqueueTask, cancelTask: cancelTask,
+      refreshHealthMonitor: refreshHealthMonitor,
+      refreshProxyMode: refreshProxyMode,
+      refreshAutopilot: refreshAutopilot, showNewAutopilotProject: showNewAutopilotProject,
+      startAutopilotProject: startAutopilotProject, openAutopilotProject: openAutopilotProject,
+      autopilotAction: autopilotAction, autopilotApprove: autopilotApprove, autopilotFeedback: autopilotFeedback
     };
   }
+
+  // ══════════════════════════════════════════════════════════
+  // ── Agent DNA Panel Functions ──
+  // ══════════════════════════════════════════════════════════
+  var _currentDna = null;
+  var _currentDnaAgent = null;
+
+  function _dnaSliderHtml(label, id, value, min, max, step, color) {
+    return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="color:' + color + ';width:120px;font-size:12px">' + label + '</span><input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '" style="flex:1;accent-color:' + color + '"><span id="' + id + '-val" style="color:#fff;width:35px;font-size:12px;text-align:right">' + value + '</span></div>';
+  }
+
+  function _renderDnaSliders(dna) {
+    var pDiv = document.getElementById('dnaPersonalitySliders');
+    var sDiv = document.getElementById('dnaSkillSliders');
+    var bDiv = document.getElementById('dnaBiasSliders');
+    var rDiv = document.getElementById('dnaReasoningControls');
+    if (!pDiv) return;
+
+    var p = dna.personality || {};
+    pDiv.innerHTML = ['creativity','precision','verbosity','risk_tolerance','humor'].map(function(k) {
+      return _dnaSliderHtml(k.replace('_',' '), 'dna-p-'+k, p[k]||0.5, 0, 1, 0.01, '#ff00ff');
+    }).join('');
+
+    var s = dna.skills || {};
+    sDiv.innerHTML = ['coding','research','writing','analysis','planning','debugging'].map(function(k) {
+      return _dnaSliderHtml(k, 'dna-s-'+k, s[k]||0.5, 0, 1, 0.01, '#00ff88');
+    }).join('');
+
+    var b = dna.biases || {};
+    bDiv.innerHTML = ['cautious_vs_bold','detail_vs_big_picture','speed_vs_quality'].map(function(k) {
+      return _dnaSliderHtml(k.replace(/_/g,' '), 'dna-b-'+k, b[k]||0, -1, 1, 0.01, '#ffaa00');
+    }).join('');
+
+    var r = dna.reasoning || {};
+    rDiv.innerHTML = '<div style="display:flex;gap:8px;align-items:center;margin:4px 0"><span style="color:#00aaff;width:60px;font-size:12px">Style:</span><select id="dna-r-style" style="flex:1;background:#1a1a2e;border:1px solid #333;color:#fff;padding:4px;border-radius:4px"><option value="analytical"' + (r.style==='analytical'?' selected':'') + '>Analytical</option><option value="creative"' + (r.style==='creative'?' selected':'') + '>Creative</option><option value="systematic"' + (r.style==='systematic'?' selected':'') + '>Systematic</option><option value="intuitive"' + (r.style==='intuitive'?' selected':'') + '>Intuitive</option></select></div>' + _dnaSliderHtml('Depth', 'dna-r-depth', r.depth||5, 1, 10, 1, '#00aaff') + _dnaSliderHtml('Breadth', 'dna-r-breadth', r.breadth||5, 1, 10, 1, '#00aaff');
+
+    // Bind slider value displays
+    document.querySelectorAll('[id^="dna-p-"],[id^="dna-s-"],[id^="dna-b-"],[id^="dna-r-d"],[id^="dna-r-b"]').forEach(function(el) {
+      if (el.tagName === 'INPUT' && el.type === 'range') {
+        el.addEventListener('input', function() { var v = document.getElementById(el.id + '-val'); if (v) v.textContent = el.value; });
+      }
+    });
+
+    // Fitness
+    var fDiv = document.getElementById('dnaFitnessInfo');
+    if (fDiv && dna.fitness) {
+      fDiv.innerHTML = '<div>Tasks: <b style="color:#00fff7">' + (dna.fitness.tasks_completed||0) + '</b> | Success: <b style="color:#00ff88">' + ((dna.fitness.success_rate||0)*100).toFixed(0) + '%</b> | Rating: <b style="color:#ffaa00">' + (dna.fitness.avg_rating||0).toFixed(1) + '</b></div><div>Generation: <b style="color:#ff00ff">' + (dna.generation||0) + '</b> | Mutations: <b>' + (dna.mutations||[]).length + '</b></div>';
+    }
+  }
+
+  function _drawDnaHelix(dna) {
+    var canvas = document.getElementById('dnaHelixCanvas');
+    if (!canvas) return;
+    canvas.style.display = 'block';
+    var ph = document.getElementById('dnaHelixPlaceholder'); if (ph) ph.style.display = 'none';
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height;
+    var t = Date.now() / 1000;
+    ctx.clearRect(0, 0, w, h);
+
+    var vals = Object.values(dna.personality||{}).concat(Object.values(dna.skills||{}));
+    for (var i = 0; i < 20; i++) {
+      var y = i * (h / 20);
+      var phase = t * 2 + i * 0.5;
+      var x1 = w/2 + Math.sin(phase) * 60;
+      var x2 = w/2 + Math.sin(phase + Math.PI) * 60;
+      var v = vals[i % vals.length] || 0.5;
+      // Strand 1
+      ctx.beginPath(); ctx.arc(x1, y, 4, 0, Math.PI*2);
+      ctx.fillStyle = 'hsl(' + (v * 300) + ',100%,60%)'; ctx.fill();
+      // Strand 2
+      ctx.beginPath(); ctx.arc(x2, y, 4, 0, Math.PI*2);
+      ctx.fillStyle = 'hsl(' + ((1-v) * 300) + ',100%,60%)'; ctx.fill();
+      // Base pair connector
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y);
+      ctx.strokeStyle = 'rgba(0,255,247,' + (0.2 + v*0.3) + ')'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    requestAnimationFrame(function() { if (_currentDna) _drawDnaHelix(_currentDna); });
+  }
+
+  window.loadDna = function() {
+    var id = document.getElementById('dnaAgentId').value.trim();
+    if (!id) return;
+    _currentDnaAgent = id;
+    api('GET', 'dna/' + id).then(function(dna) {
+      _currentDna = dna;
+      _renderDnaSliders(dna);
+      _drawDnaHelix(dna);
+      // Show prompt preview
+      api('POST', 'dna/from-prompt', { prompt: '' }).then(function() {
+        var pp = document.getElementById('dnaPromptPreview'); if (pp) pp.style.display = 'block';
+        api('GET', 'dna/' + id).then(function(d2) {
+          // Compute prompt from current genome by calling from-prompt indirectly
+          var compiled = '[DNA PROFILE] Gen ' + (d2.generation||0);
+          var el = document.getElementById('dnaPromptText'); if (el) el.textContent = compiled;
+        });
+      });
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.saveDna = function() {
+    if (!_currentDnaAgent) return toast('Load an agent first');
+    var genome = { personality: {}, skills: {}, biases: {}, reasoning: {} };
+    ['creativity','precision','verbosity','risk_tolerance','humor'].forEach(function(k) {
+      var el = document.getElementById('dna-p-'+k); if (el) genome.personality[k] = parseFloat(el.value);
+    });
+    ['coding','research','writing','analysis','planning','debugging'].forEach(function(k) {
+      var el = document.getElementById('dna-s-'+k); if (el) genome.skills[k] = parseFloat(el.value);
+    });
+    ['cautious_vs_bold','detail_vs_big_picture','speed_vs_quality'].forEach(function(k) {
+      var el = document.getElementById('dna-b-'+k); if (el) genome.biases[k] = parseFloat(el.value);
+    });
+    var styleEl = document.getElementById('dna-r-style'); if (styleEl) genome.reasoning.style = styleEl.value;
+    var depthEl = document.getElementById('dna-r-depth'); if (depthEl) genome.reasoning.depth = parseInt(depthEl.value);
+    var breadthEl = document.getElementById('dna-r-breadth'); if (breadthEl) genome.reasoning.breadth = parseInt(breadthEl.value);
+
+    api('PUT', 'dna/' + _currentDnaAgent, genome).then(function(r) {
+      toast('Genome saved!'); _currentDna = r;
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.mutateDna = function() {
+    if (!_currentDnaAgent) return toast('Load an agent first');
+    api('POST', 'dna/mutate/' + _currentDnaAgent).then(function(r) {
+      toast('Mutated! Gen ' + (r.generation||0));
+      _currentDna = r; _renderDnaSliders(r); _drawDnaHelix(r);
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.crossoverDna = function() {
+    var p1 = document.getElementById('dnaCrossParent1').value.trim();
+    var p2 = document.getElementById('dnaCrossParent2').value.trim();
+    if (!p1 || !p2) return toast('Need both parent IDs');
+    api('POST', 'dna/crossover', { parent1: p1, parent2: p2 }).then(function(r) {
+      toast('Bred child: ' + r.childId);
+      document.getElementById('dnaAgentId').value = r.childId;
+      _currentDnaAgent = r.childId; _currentDna = r; _renderDnaSliders(r); _drawDnaHelix(r);
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.evolveDna = function() {
+    var gens = parseInt(document.getElementById('dnaEvolveGens').value) || 3;
+    api('POST', 'dna/evolve', { generations: gens }).then(function(r) {
+      var el = document.getElementById('dnaEvolveResult');
+      if (el) el.innerHTML = '<span style="color:#00ff88">Evolved ' + r.population + ' agents over ' + r.generations + ' generations!</span>';
+      toast('Evolution complete!');
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  function loadAgentDnaPanel() {
+    // Auto-load list
+    api('GET', 'dna').then(function(list) {
+      if (list.length > 0 && !_currentDnaAgent) {
+        document.getElementById('dnaAgentId').value = list[0].agentId;
+        window.loadDna();
+      }
+    }).catch(function(){});
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ── Hive Mind Panel Functions ──
+  // ══════════════════════════════════════════════════════════
+  var _activeHiveId = null;
+  var _hiveRefreshTimer = null;
+
+  function _drawHiveNet(agents) {
+    var canvas = document.getElementById('hiveNetCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height;
+    var t = Date.now() / 1000;
+    ctx.clearRect(0, 0, w, h);
+
+    if (!agents || agents.length === 0) {
+      ctx.fillStyle = '#555'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('No active hive', w/2, h/2); return;
+    }
+
+    var cx = w/2, cy = h/2, radius = Math.min(w,h)/2 - 40;
+    var nodes = agents.map(function(a, i) {
+      var angle = (i / agents.length) * Math.PI * 2 - Math.PI/2;
+      return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, name: a };
+    });
+
+    // Draw connections with animated data flow
+    nodes.forEach(function(n1, i) {
+      nodes.forEach(function(n2, j) {
+        if (j <= i) return;
+        ctx.beginPath(); ctx.moveTo(n1.x, n1.y); ctx.lineTo(n2.x, n2.y);
+        ctx.strokeStyle = 'rgba(0,255,247,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+        // Animated particle
+        var progress = (t * 0.5 + i * 0.3 + j * 0.2) % 1;
+        var px = n1.x + (n2.x - n1.x) * progress;
+        var py = n1.y + (n2.y - n1.y) * progress;
+        ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI*2);
+        ctx.fillStyle = '#00fff7'; ctx.fill();
+      });
+    });
+
+    // Draw nodes
+    nodes.forEach(function(n) {
+      ctx.beginPath(); ctx.arc(n.x, n.y, 16, 0, Math.PI*2);
+      ctx.fillStyle = '#1a1a2e'; ctx.fill();
+      ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 2; ctx.stroke();
+      // Glow
+      ctx.beginPath(); ctx.arc(n.x, n.y, 20, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,0,255,' + (0.3 + Math.sin(t*3)*0.2) + ')'; ctx.lineWidth = 1; ctx.stroke();
+      // Label
+      ctx.fillStyle = '#fff'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(n.name.substring(0,8), n.x, n.y + 30);
+    });
+
+    requestAnimationFrame(function() { if (_activeHiveId) _drawHiveNet(agents); });
+  }
+
+  window.startHive = function() {
+    var agents = document.getElementById('hiveAgents').value.split(',').map(function(a) { return a.trim(); }).filter(Boolean);
+    var goal = document.getElementById('hiveGoal').value.trim();
+    if (agents.length < 2) return toast('Need at least 2 agents');
+    api('POST', 'hive/start', { agents: agents, goal: goal }).then(function(session) {
+      toast('Hive started! ID: ' + session.id);
+      _activeHiveId = session.id;
+      loadHiveMindPanel();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.hiveWrite = function() {
+    if (!_activeHiveId) return toast('No active hive');
+    var key = document.getElementById('hiveWriteKey').value.trim();
+    var val = document.getElementById('hiveWriteVal').value.trim();
+    if (!key) return toast('Key required');
+    api('POST', 'hive/' + _activeHiveId + '/write', { key: key, value: val }).then(function() {
+      toast('Written!'); _refreshHiveMemory();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  function _refreshHiveMemory() {
+    if (!_activeHiveId) return;
+    api('GET', 'hive/' + _activeHiveId).then(function(session) {
+      var memDiv = document.getElementById('hiveMemoryView');
+      if (memDiv) {
+        var mem = session.sharedMemory || {};
+        var keys = Object.keys(mem);
+        if (keys.length === 0) { memDiv.innerHTML = '<span style="color:#555">Empty</span>'; return; }
+        memDiv.innerHTML = keys.map(function(k) {
+          var v = mem[k];
+          return '<div style="margin:2px 0;padding:4px 8px;background:#1a1a2e;border-radius:4px"><b style="color:#ffaa00">' + k + '</b>: <span style="color:#00ff88">' + JSON.stringify(v.value) + '</span> <span style="color:#555;font-size:10px">by ' + v.updatedBy + '</span></div>';
+        }).join('');
+      }
+      var logDiv = document.getElementById('hiveMessageLog');
+      if (logDiv && session.messageLog) {
+        logDiv.innerHTML = session.messageLog.slice(-20).map(function(m) {
+          return '<div style="margin:1px 0;color:' + (m.type==='broadcast'?'#00aaff':'#888') + ';font-size:11px">[' + (m.agent||'?') + '] ' + (m.message || m.key + '=' + JSON.stringify(m.value)) + '</div>';
+        }).join('');
+      }
+    }).catch(function(){});
+  }
+
+  function loadHiveMindPanel() {
+    api('GET', 'hive').then(function(sessions) {
+      var el = document.getElementById('hiveSessionsContent');
+      if (!el) return;
+      if (sessions.length === 0) {
+        el.innerHTML = '<span style="color:#555">No active hive sessions</span>'; return;
+      }
+      el.innerHTML = sessions.map(function(s) {
+        return '<div style="padding:8px;margin:4px 0;background:#1a1a2e;border:1px solid ' + (_activeHiveId===s.id?'#ff00ff':'#333') + ';border-radius:6px;cursor:pointer" onclick="_selectHive(\'' + s.id + '\')">' +
+          '<div style="color:#00fff7;font-weight:bold">' + s.goal + '</div>' +
+          '<div style="color:#888;font-size:11px">Agents: ' + s.agents.join(', ') + ' | Keys: ' + Object.keys(s.sharedMemory||{}).length + '</div></div>';
+      }).join('');
+      if (!_activeHiveId && sessions.length > 0) _selectHive(sessions[0].id);
+    }).catch(function(){});
+  }
+
+  window._selectHive = function(id) {
+    _activeHiveId = id;
+    api('GET', 'hive/' + id).then(function(s) {
+      _drawHiveNet(s.agents);
+      _refreshHiveMemory();
+    });
+    loadHiveMindPanel();
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // ── Instincts Panel Functions ──
+  // ══════════════════════════════════════════════════════════
+  function loadInstinctsPanel() {
+    api('GET', 'instincts').then(function(instincts) {
+      var el = document.getElementById('instinctsListContent');
+      if (!el) return;
+      el.innerHTML = instincts.map(function(inst) {
+        var color = inst.enabled ? '#00ff88' : '#555';
+        return '<div style="padding:8px;margin:4px 0;background:#1a1a2e;border-left:3px solid ' + (inst.builtin?'#ff00ff':'#00fff7') + ';border-radius:0 6px 6px 0;display:flex;align-items:center;gap:8px">' +
+          '<div style="flex:1"><div style="color:' + color + ';font-weight:bold">' + inst.name + ' <span style="color:#555;font-size:10px">[P' + inst.priority + ']</span>' + (inst.builtin?' <span style="color:#ff00ff;font-size:9px">BUILTIN</span>':'') + '</div>' +
+          '<div style="color:#888;font-size:11px;font-family:monospace">/' + inst.trigger + '/' + (inst.triggerFlags||'i') + '</div>' +
+          '<div style="color:#ffaa00;font-size:11px">' + inst.action + '</div></div>' +
+          '<label style="cursor:pointer"><input type="checkbox" ' + (inst.enabled?'checked':'') + ' onchange="toggleInstinct(\'' + inst.id + '\',this.checked)" style="accent-color:#00ff88"></label>' +
+          (inst.builtin ? '' : '<button onclick="deleteInstinct(\'' + inst.id + '\')" style="background:#ff0033;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:10px">×</button>') +
+          '</div>';
+      }).join('');
+    }).catch(function(e) { toast('Error: ' + e.message); });
+
+    // Load fire stats
+    api('GET', 'instincts/log').then(function(log) {
+      var el = document.getElementById('instFireStats');
+      if (!el) return;
+      var counts = log.counts || {};
+      var keys = Object.keys(counts);
+      if (keys.length === 0) { el.innerHTML = '<span style="color:#555">No instincts have fired yet</span>'; return; }
+      keys.sort(function(a,b) { return counts[b] - counts[a]; });
+      el.innerHTML = keys.map(function(k) {
+        return '<div style="display:flex;justify-content:space-between;margin:2px 0"><span style="color:#aaa">' + k + '</span><span style="color:#00fff7;font-weight:bold">' + counts[k] + 'x</span></div>';
+      }).join('') + '<div style="margin-top:8px;color:#555;font-size:11px">Total fires: ' + log.total + '</div>';
+    }).catch(function(){});
+  }
+
+  window.createInstinct = function() {
+    var name = document.getElementById('instNewName').value.trim();
+    var trigger = document.getElementById('instNewTrigger').value.trim();
+    var action = document.getElementById('instNewAction').value.trim();
+    var priority = parseInt(document.getElementById('instNewPriority').value) || 5;
+    if (!name || !trigger || !action) return toast('All fields required');
+    api('POST', 'instincts', { name: name, trigger: trigger, action: action, priority: priority, agentId: '*', triggerFlags: 'i' }).then(function() {
+      toast('Instinct created!');
+      document.getElementById('instinctCreateForm').style.display = 'none';
+      loadInstinctsPanel();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.toggleInstinct = function(id, enabled) {
+    api('PUT', 'instincts/' + id, { enabled: enabled }).then(function() {
+      toast(enabled ? 'Enabled' : 'Disabled');
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.deleteInstinct = function(id) {
+    if (!confirm('Delete this instinct?')) return;
+    api('DELETE', 'instincts/' + id).then(function() {
+      toast('Deleted'); loadInstinctsPanel();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.testInstincts = function() {
+    var input = document.getElementById('instTestInput').value;
+    if (!input) return;
+    api('POST', 'instincts/test', { input: input }).then(function(result) {
+      var el = document.getElementById('instTestResult');
+      if (!el) return;
+      if (result.actions.length === 0) {
+        el.innerHTML = '<span style="color:#555">No instincts triggered</span>';
+      } else {
+        el.innerHTML = '<span style="color:#ff0055">Triggered ' + result.actions.length + ':</span>\n' + result.prefix;
+      }
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { try { init(); } catch(e) { console.error('INIT CRASH:', e); } });
   else { try { init(); } catch(e) { console.error('INIT CRASH:', e); } }
