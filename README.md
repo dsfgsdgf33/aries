@@ -25,7 +25,7 @@
 
 ## What is Aries?
 
-Aries is a **self-hosted artificial mind** — 270 core modules, 108K+ lines of code, zero npm dependencies. It's not a chatbot wrapper. It's a complete cognitive architecture inspired by the human brain and body, with one mission: **build your own AI agent, with swarm intelligence helping to build it.**
+Aries is a **self-hosted artificial mind** — 270 core modules, 108K+ lines of code, zero npm dependencies. It's not a chatbot wrapper. It's a complete cognitive architecture inspired by the human brain and body, with one mission: **train your own AI model using distributed swarm compute, so you never depend on a corporation for intelligence again.**
 
 Most AI tools wait for instructions. Aries **thinks** when nobody's talking to it, **dreams** during idle time, **feels** emotions that change its behavior, **heals** itself when it crashes, **evolves** through behavioral genetics, and **remembers** across lifetimes through DNA export.
 
@@ -636,9 +636,13 @@ git push origin feature/your-feature
 
 ## 🔭 Vision
 
-Build a **self-hosted artificial mind that evolves, dreams, and genuinely understands itself** — powered by a compute-for-AI economy where anyone with a computer can participate. P2P swarm networks, token-based incentives, generational memory for AI immortality, and a cognitive architecture that grows more capable through its own dreaming.
+Build a **self-hosted artificial mind that trains its own model** — not dependent on OpenAI, Anthropic, or any corporation forever.
 
-The mission: **your own AI agent, with swarm intelligence helping to build it.**
+The endgame: **distributed training across the swarm network.** Every node that contributes compute helps train the Aries model. Start with fine-tuning open-source models (Llama 405B+), scale toward a fully community-trained 1T parameter model running across contributor hardware. No subscriptions. No corporate gatekeepers. **Your compute, your model, your AI.**
+
+The cognitive architecture (consciousness, dreams, emotions, self-healing) isn't just features — it's the training signal. Aries learns from its own dreaming, self-improvement cycles, and swarm intelligence to continuously improve the base model. P2P swarm networks, token-based incentives for compute contributors, and generational memory so the AI never loses what it's learned.
+
+The mission: **train your own AI model, with swarm intelligence powering the compute.**
 
 See **[VISION.md](VISION.md)** for the full picture.
 
