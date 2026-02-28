@@ -522,7 +522,12 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Agent Breeding ──
   if (pathname.startsWith('/api/features/breeding')) {
     let breeding;
-    try { const AgentBreeding = require('./agent-breeding'); breeding = new AgentBreeding(refs); } catch (e) {
+    try {
+      const AgentBreeding = require('./agent-breeding');
+      let subMgr = refs.subagentManager;
+      if (!subMgr) { try { const { getInstance } = require('./subagents'); subMgr = getInstance(); } catch {} }
+      breeding = new AgentBreeding({ ...refs, subagentManager: subMgr });
+    } catch (e) {
       json(res, 501, { error: 'Breeding module not available' }); return true;
     }
     if (pathname === '/api/features/breeding' && method === 'GET') {

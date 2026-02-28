@@ -1427,7 +1427,8 @@ async function handleRequest(req, res) {
       try {
         const kg = require('./knowledge-graph').getInstance();
         const body = JSON.parse(await readBody(req));
-        const result = kg.create(body.type, body.properties || body);
+        const node = { id: require('crypto').randomBytes(6).toString('hex'), type: body.type, label: body.label || body.type, properties: body.properties || {} };
+        const result = kg.addNode(node);
         return json(res, 201, result);
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
