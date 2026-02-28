@@ -20,7 +20,7 @@ class CronManager {
     try { this.jobs = JSON.parse(fs.readFileSync(this.jobsFile, 'utf8')); } catch { this.jobs = []; }
     // Start all enabled jobs
     for (const job of this.jobs) {
-      if (job.enabled !== false) this._schedule(job);
+      if (job.enabled !== false && job.schedule) this._schedule(job);
     }
   }
 
@@ -34,6 +34,7 @@ class CronManager {
   }
 
   _parseCron(expr) {
+    if (!expr || typeof expr !== 'string') return 3600000;
     // Simplified cron: support interval-style "every Xm", "every Xh", "every Xs"
     const m = expr.match(/^every\s+(\d+)([smh])$/i);
     if (m) {
