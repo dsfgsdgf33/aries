@@ -150,6 +150,7 @@ async function startHeadless(configPath) {
   const tools = require(path.join(baseDir, 'core', 'tools'));
   const memory = require(path.join(baseDir, 'core', 'memory'));
   const sysModule = require(path.join(baseDir, 'core', 'system'));
+  sysModule.startPolling(10000); // Poll system stats every 10s
   const events = require(path.join(baseDir, 'core', 'events'));
   const Swarm = require(path.join(baseDir, 'core', 'swarm'));
   const SwarmCoordinator = require(path.join(baseDir, 'core', 'swarm-coordinator'));

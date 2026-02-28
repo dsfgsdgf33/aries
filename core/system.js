@@ -30,6 +30,7 @@ async function refresh() {
     const freeMem = os.freemem();
     cached.memTotal = totalMem;
     cached.memUsed = totalMem - freeMem;
+    cached.memPct = totalMem > 0 ? Math.round(((totalMem - freeMem) / totalMem) * 100) : 0;
     cached.uptime = Math.round(os.uptime());
 
     // CPU usage estimate

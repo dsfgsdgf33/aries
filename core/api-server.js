@@ -717,6 +717,7 @@ async function handleRequest(req, res) {
         cpu: sys.cpu,
         memUsed: sys.memUsed,
         memTotal: sys.memTotal,
+        memPct: sys.memPct || (sys.memTotal ? Math.round((sys.memUsed / sys.memTotal) * 100) : 0),
         gpu: sys.gpu,
         diskUsed: sys.diskUsed,
         diskTotal: sys.diskTotal,
