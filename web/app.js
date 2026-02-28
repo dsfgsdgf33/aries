@@ -207,8 +207,9 @@
   }
 
   function updateStats(data) {
-    setText('statCpu', (data.cpu || 0).toFixed(0) + '%');
-    setText('statRam', (data.memPct || 0) + '%');
+    setText('statCpu', (data.cpu || 0).toFixed ? (data.cpu || 0).toFixed(0) + '%' : (data.cpu || 0) + '%');
+    var memPct = data.memPct || (data.memory && data.memory.percent) || 0;
+    setText('statRam', memPct + '%');
     // Fetch learning stats periodically
     if (!window._lastLearningFetch || Date.now() - window._lastLearningFetch > 30000) {
       window._lastLearningFetch = Date.now();
@@ -216,7 +217,7 @@
         setText('statLearnings', (s.total || 0) + '');
       }).catch(function(){});
       fetch('/api/knowledge/stats').then(function(r){return r.json()}).then(function(s){
-        setText('statKnowledge', (s.totalEntities || 0) + '/' + (s.totalRelations || 0));
+        setText('statKnowledge', (s.nodeCount || s.totalEntities || 0) + '/' + (s.edgeCount || s.totalRelations || 0));
       }).catch(function(){});
     }
   }
@@ -4085,6 +4086,17 @@
     initEasterEggs();
     initContextMenus();
     connectWS();
+    // Fetch initial stats on load
+    fetch('/api/status').then(function(r) { return r.json(); }).then(function(d) {
+      if (d.cpu !== undefined || d.memPct !== undefined) updateStats(d);
+    }).catch(function() {});
+    // Fallback: poll /api/health to update connection status if WS fails
+    setInterval(function() {
+      if (ws && ws.readyState === 1) return; // WS is connected, skip polling
+      fetch('/api/health', { timeout: 3000 }).then(function(r) {
+        if (r.ok) { setConnStatus(true); if (!ws || ws.readyState > 1) connectWS(); }
+      }).catch(function() {});
+    }, 5000);
     // Don't eagerly load swarm - it will lazy-load when user clicks the tab
     // Boot animation handles the visual boot - no need for chat boot message
     showWelcomeScreen();
