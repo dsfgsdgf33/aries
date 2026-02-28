@@ -29,7 +29,7 @@ Aries is a **self-hosted artificial mind** — 270 core modules, 108K+ lines of 
 
 Most AI tools wait for instructions. Aries **thinks** when nobody's talking to it, **dreams** during idle time, **feels** emotions that change its behavior, **heals** itself when it crashes, **evolves** through behavioral genetics, and **remembers** across lifetimes through DNA export.
 
-It also ships with autonomous coding agents, a 5-role swarm build system, 7 persistent Hands, visual workflow builders, a P2P swarm network with token economy, and a cyberpunk dashboard with 100+ panels.
+It also ships with autonomous coding agents, a 5-role subagent build system, 7 persistent Hands, visual workflow builders, a P2P swarm network with token economy, and a cyberpunk dashboard with 100+ panels.
 
 One command to run. No dependencies to install. Your machine, your models, your data.
 
@@ -249,7 +249,7 @@ Not a copilot. Not suggestions. A **fully autonomous coding agent** that builds 
    ⑤ Serve       → Launches with hot reload — ready to use
 ```
 
-### Multi-Agent Swarm Build
+### Multi-Agent Subagent Build
 For large projects, deploys a **5-role agent swarm** working in parallel:
 
 ```
@@ -537,7 +537,7 @@ Cyberpunk web UI at `localhost:3333`:
 │  └────────────────────────────────────────────────────┘                  │
 │                              ↕                                           │
 │  ┌───────────────── AGENT PLATFORM ───────────────────┐                  │
-│  │  Aries Code · 42+ Tools · 7 Hands · Swarm Build    │                  │
+│  │  Aries Code · 42+ Tools · 7 Hands · Subagent Build    │                  │
 │  │  Agent DNA · Breeding · Hive Mind · Autopilot       │                  │
 │  │  Workflows · Webhooks · Marketplace · Battle Mode   │                  │
 │  └────────────────────────────────────────────────────┘                  │
