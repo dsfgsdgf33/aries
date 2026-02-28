@@ -2012,6 +2012,16 @@
       html += '<button class="btn-sm" onclick="window.aries.importAll()">&#x1F4E4; Import</button>';
       html += '<input type="file" id="importAllFile" accept=".json" style="display:none" onchange="window.aries.importAllFile(this)" /></div>';
       html += '<div id="exportStatus" style="font-size:12px;margin-top:6px;color:var(--text-dim)"></div></div>';
+      // Aries API Key
+      html += '<div class="card" style="margin:0 0 16px"><h3 style="margin:0 0 8px;color:var(--accent)">&#x1F510; Aries API Key</h3>';
+      html += '<p style="color:#888;font-size:12px;margin:0 0 8px">Use this key to authenticate with the Aries API. Send as <code style="color:var(--accent);background:#111;padding:2px 6px;border-radius:4px">Authorization: Bearer &lt;key&gt;</code> or <code style="color:var(--accent);background:#111;padding:2px 6px;border-radius:4px">X-Aries-Key: &lt;key&gt;</code></p>';
+      var ariesKey = cfg.apiKey || '';
+      html += '<div style="display:flex;gap:8px;align-items:center"><input id="settingAriesApiKey" type="password" class="input-field" style="flex:1;font-family:monospace" value="' + escapeHtml(ariesKey) + '" />';
+      html += '<button class="btn-sm" onclick="var i=document.getElementById(\'settingAriesApiKey\');i.type=i.type===\'password\'?\'text\':\'password\';this.textContent=i.type===\'password\'?\'&#x1F441;\':\' &#x1F648;\'">\u{1F441}</button>';
+      html += '<button class="btn-sm" onclick="navigator.clipboard.writeText(document.getElementById(\'settingAriesApiKey\').value);this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',1500)">Copy</button>';
+      html += '<button class="btn-primary" onclick="window.aries.saveAriesApiKey()">Save</button></div>';
+      html += '<div id="settingAriesKeyStatus" style="font-size:12px;margin-top:4px">' + (ariesKey ? '\u2705 Key set' : '\u26A0 No key configured') + '</div></div>';
+
       // AI Token
       html += '<div class="card" style="margin:0 0 16px"><h3 style="margin:0 0 8px;color:var(--accent)">&#x1F511; AI Token</h3>';
       html += '<div style="display:flex;gap:8px"><input id="settingAiToken" type="password" class="input-field" style="flex:1;font-family:monospace" placeholder="sk-ant-..." value="' + escapeHtml(tokens.aiToken || '') + '" />';
@@ -2080,6 +2090,15 @@
       if (window._renderAnchorSettings) window._renderAnchorSettings(el);
       if (window._renderArchitectureCreator) window._renderArchitectureCreator(el);
     }).catch(function() { el.innerHTML = '<p style="color:var(--red)">Failed.</p>'; });
+  }
+
+  function saveAriesApiKey() {
+    var el = document.getElementById('settingAriesApiKey');
+    if (!el || !el.value.trim()) { toast('Enter an API key', 'error'); return; }
+    api('POST', 'settings/aries-key', { apiKey: el.value.trim() }).then(function() {
+      toast('Aries API key updated!', 'success');
+      document.getElementById('settingAriesKeyStatus').innerHTML = '\u2705 Key set';
+    }).catch(function(e) { toast('Failed: ' + e.message, 'error'); });
   }
 
   function saveApiKeys() {
@@ -9700,7 +9719,7 @@
       copyInstallCmd: copyInstallCmd, checkAutoUpdate: checkAutoUpdate,
       loadAres: loadAres, aresGenerateData: aresGenerateData,
       aresStartCycle: aresStartCycle, aresSetSchedule: aresSetSchedule,
-      refreshAriesAi: refreshAriesAi, saveApiKeys: saveApiKeys, settingsPullModel: settingsPullModel,
+      refreshAriesAi: refreshAriesAi, saveAriesApiKey: saveAriesApiKey, saveApiKeys: saveApiKeys, settingsPullModel: settingsPullModel,
       loadCredits: loadCredits, joinNetwork: joinNetwork,
       loadTodos: loadTodos, addTodo: addTodo, toggleTodo: toggleTodo, deleteTodo: deleteTodo,
       loadBookmarks: loadBookmarks, addBookmark: addBookmark, deleteBookmark: deleteBookmark,
