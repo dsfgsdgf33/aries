@@ -169,18 +169,18 @@ class AIGateway extends EventEmitter {
     }
 
     // 4. Check for OpenAI-compatible keys
-    var openaiProvider = self._detectOpenAIProvider(apiKey);
+    var openaiProvider = this._detectOpenAIProvider(apiKey);
     if (openaiProvider) {
       return { mode: ROUTE.OPENAI_COMPAT, token: apiKey, url: openaiProvider.url, providerName: openaiProvider.name };
     }
 
     // 5. Check additional providers config
-    var additionalProviders = self.parentConfig.providers || {};
+    var additionalProviders = this.parentConfig.providers || {};
     var providerKeys = Object.keys(additionalProviders);
     for (var pi = 0; pi < providerKeys.length; pi++) {
       var pCfg = additionalProviders[providerKeys[pi]];
       if (pCfg && pCfg.apiKey) {
-        var detected = self._detectOpenAIProvider(pCfg.apiKey);
+        var detected = this._detectOpenAIProvider(pCfg.apiKey);
         if (detected) return { mode: ROUTE.OPENAI_COMPAT, token: pCfg.apiKey, url: pCfg.baseUrl || detected.url, providerName: detected.name };
       }
     }
@@ -1321,7 +1321,8 @@ class AIGateway extends EventEmitter {
 
   /** @returns {object} */
   getStatus() {
-    var route = this._resolveRoute();
+    var route;
+    try { route = this._resolveRoute(); } catch (e) { route = { mode: 'none', token: '' }; }
     return {
       enabled: this.enabled, port: this.port, running: !!this._server,
       routeMode: route.mode,
