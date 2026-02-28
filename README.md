@@ -25,7 +25,7 @@
 
 ## What is Aries?
 
-Aries is a **self-hosted artificial mind** — 270 core modules, 108K+ lines of code, zero npm dependencies. It's not a chatbot wrapper. It's a complete cognitive architecture inspired by the human brain and body, with one mission: **train your own AI model using distributed swarm compute, so you never depend on a corporation for intelligence again.**
+Aries is a **self-hosted artificial mind** — 270 core modules, 108K+ lines of code, zero npm dependencies. It's not a chatbot wrapper. It's a complete cognitive architecture inspired by the human brain and body, with one mission: **train a 405B→1T parameter model on a home server, powered by a global swarm of contributors who earn tokens for their compute.**
 
 Most AI tools wait for instructions. Aries **thinks** when nobody's talking to it, **dreams** during idle time, **feels** emotions that change its behavior, **heals** itself when it crashes, **evolves** through behavioral genetics, and **remembers** across lifetimes through DNA export.
 
@@ -444,15 +444,17 @@ plugin-loader · plugin-marketplace · plugin-sandbox · extension-bridge · mcp
 
 ## 🌐 Swarm Network & Economy
 
-P2P distributed compute network. Connect machines into a swarm for pooled AI processing.
+P2P distributed compute network powering the Aries model training pipeline. Every contributor runs a local Ollama instance connected to the swarm — their processing power helps digest training data and generate parameters for the 405B→1T model.
 
-| Your Hardware | What It Does | What You Earn |
-|---------------|-------------|---------------|
-| **GPU machine** | Runs LLM inference + distributed training | Aries tokens + priority |
-| **CPU machine** | Handles lighter AI workloads | Aries tokens |
-| **Low-end PC** | Mines crypto for the network wallet | **Aries tokens** |
+### Three Contribution Tiers
 
-> **Nobody gets left out.** Can't run AI models? Your machine mines crypto in the background. Revenue goes to the network, you earn Aries tokens. No subscription, no GPU gatekeeping.
+| Tier | What You Do | Token Earnings |
+|------|-------------|----------------|
+| 🔥 **Core** | GPU training, heavy inference, data processing | **Highest** — max tokens/month |
+| ⚡ **User** | Local Ollama inference, data digestion, lighter workloads | **Medium** — steady flow |
+| 🆓 **Free** | PC too weak for AI? Runs a crypto miner for the project wallet instead | **Base** — still earns tokens |
+
+> **Nobody gets left out.** Can't run AI models? The miner runs in the background — you still earn Aries tokens. Every machine contributes something to the mission.
 
 - **Mesh Network** — UDP auto-discovery, machines find each other automatically
 - **USB Swarm** — Deploy agents via USB drive
@@ -634,17 +636,45 @@ git push origin feature/your-feature
 
 <br>
 
-## 🔭 Vision
+## 🔭 Vision — Train Our Own Model
 
-Build a **self-hosted artificial mind that trains its own model** — not dependent on OpenAI, Anthropic, or any corporation forever.
+The mission: **train a 405B parameter model and scale it to 1T** — hosted on a home server, trained on learning data from leading AI companies, powered by a global swarm of contributors.
 
-The endgame: **distributed training across the swarm network.** Every node that contributes compute helps train the Aries model. Start with fine-tuning open-source models (Llama 405B+), scale toward a fully community-trained 1T parameter model running across contributor hardware. No subscriptions. No corporate gatekeepers. **Your compute, your model, your AI.**
+### How It Works
 
-The cognitive architecture (consciousness, dreams, emotions, self-healing) isn't just features — it's the training signal. Aries learns from its own dreaming, self-improvement cycles, and swarm intelligence to continuously improve the base model. P2P swarm networks, token-based incentives for compute contributors, and generational memory so the AI never loses what it's learned.
+Everyone who downloads Aries joins the **Swarm** — a distributed compute network. Each swarm member runs a local Ollama model on their PC that connects to the network. Their processing power helps:
 
-The mission: **train your own AI model, with swarm intelligence powering the compute.**
+- **Digest training data** — distributed preprocessing across hundreds of machines
+- **Generate parameters** — collective compute for model training and fine-tuning
+- **Run inference** — decentralized AI serving, no corporate cloud needed
 
-See **[VISION.md](VISION.md)** for the full picture.
+In return, swarm members earn **Aries tokens** for their contributions.
+
+### Three Tiers
+
+| Tier | Who | What They Do | Token Earnings |
+|------|-----|-------------|----------------|
+| 🔥 **Core** | Power contributors | GPU training, heavy inference, data processing | **Highest** — most tokens/month |
+| ⚡ **User** | Regular contributors | Local Ollama inference, data digestion, lighter workloads | **Medium** — steady token flow |
+| 🆓 **Free** | Low-spec machines | Can't run AI workloads? Runs a miner instead, mining crypto to the project wallet | **Base** — still earns tokens |
+
+**Nobody gets left out.** Even if your PC can't handle AI workloads, the miner keeps you earning. Every machine contributes something.
+
+### The Endgame
+
+```
+  Swarm Contributors (global)
+         ↓ compute + data processing
+  Training Pipeline (distributed)
+         ↓ fine-tuning + parameter generation
+  Aries Model (405B → 1T)
+         ↓ hosted on
+  Home Server (self-owned, no cloud bills)
+```
+
+No subscriptions. No corporate gatekeepers. No API keys from companies that can cut you off tomorrow. **Your swarm, your model, your AI.**
+
+See **[VISION.md](VISION.md)** for the full roadmap.
 
 <br>
 
