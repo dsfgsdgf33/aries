@@ -104,10 +104,12 @@
   }
 
   // ── WebSocket ──
+  var _offlineDebounce = null;
   function connectWS() {
     if (ws && ws.readyState < 2) return;
     try { ws = new WebSocket(WS_URL + '/ws'); } catch (e) { scheduleReconnect(); return; }
     ws.onopen = function() {
+      if (_offlineDebounce) { clearTimeout(_offlineDebounce); _offlineDebounce = null; }
       setConnStatus(true);
       // Only show toast if this is a reconnection, not first connect
       if (_wsWasConnected) toast('Reconnected to Aries', 'success');
@@ -115,14 +117,24 @@
       _wsWasConnected = true;
       if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
     };
-    ws.onmessage = function(ev) { try { handleWSMessage(JSON.parse(ev.data)); } catch (e) {} };
-    ws.onclose = function() { setConnStatus(false); scheduleReconnect(); };
-    ws.onerror = function() { setConnStatus(false); };
+    ws.onmessage = function(ev) {
+      // Any message means connection is alive — clear offline debounce
+      if (_offlineDebounce) { clearTimeout(_offlineDebounce); _offlineDebounce = null; }
+      try { handleWSMessage(JSON.parse(ev.data)); } catch (e) {}
+    };
+    ws.onclose = function() {
+      // Debounce offline status — don't flash red on brief disconnects
+      if (!_offlineDebounce) {
+        _offlineDebounce = setTimeout(function() { _offlineDebounce = null; setConnStatus(false); }, 3000);
+      }
+      scheduleReconnect();
+    };
+    ws.onerror = function() { /* let onclose handle it */ };
   }
 
   function scheduleReconnect() {
     if (wsReconnectTimer) return;
-    wsReconnectTimer = setTimeout(function() { wsReconnectTimer = null; connectWS(); }, 10000);
+    wsReconnectTimer = setTimeout(function() { wsReconnectTimer = null; connectWS(); }, 2000);
   }
 
   function setConnStatus(online) {
