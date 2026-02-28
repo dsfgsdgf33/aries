@@ -9486,23 +9486,100 @@ function registerMoonshotRoutes(refs) {
     console.log('[API] Self-Improve routes registered');
   } catch (e) { console.error('[API] Self-Improve init error:', e.message); }
 
-  // "€"€ Agent Dreams "€"€
+  // "€"€ Agent Dreams v2 "€"€
   try {
     const AgentDreams = require('./agent-dreams');
     const dreams = new AgentDreams({ ai: refs.ai, getChatHistory: refs.getChatHistory });
     refs.agentDreams = dreams;
     dreams.startIdleWatch();
 
+    // Backward compat
     addPluginRoute('GET', '/api/dreams/latest', async (req, res, json) => {
       json(res, 200, dreams.getLatest());
     });
 
+    // Dream journal
+    addPluginRoute('GET', '/api/dreams', async (req, res, json) => {
+      const parsed = require('url').parse(req.url, true);
+      const date = parsed.query.date || null;
+      const limit = parseInt(parsed.query.limit || '10', 10);
+      json(res, 200, { journal: dreams.getDreamJournal({ date, limit }) });
+    });
+
+    // Proposals
+    addPluginRoute('GET', '/api/dreams/proposals', async (req, res, json) => {
+      const parsed = require('url').parse(req.url, true);
+      const status = parsed.query.status || null;
+      json(res, 200, { proposals: dreams.getProposals(status) });
+    });
+
+    // Stats
+    addPluginRoute('GET', '/api/dreams/stats', async (req, res, json) => {
+      json(res, 200, dreams.getDreamStats());
+    });
+
+    // Trigger dream cycle
     addPluginRoute('POST', '/api/dreams/trigger', async (req, res, json) => {
       const result = await dreams.dreamCycle();
       json(res, 200, result);
     });
 
-    console.log('[API] Agent Dreams routes registered');
+    // Live state
+    addPluginRoute('GET', '/api/dreams/live', async (req, res, json) => {
+      json(res, 200, dreams.getLiveState());
+    });
+
+    // Narrative for a specific date
+    addPluginRoute('GET', '/api/dreams/narrative', async (req, res, json) => {
+      const parsed = require('url').parse(req.url, true);
+      json(res, 200, dreams.getDreamNarrative(parsed.query.date));
+    });
+
+    // Directed dream
+    addPluginRoute('POST', '/api/dreams/direct', async (req, res, json, body) => {
+      try {
+        const data = JSON.parse(body || '{}');
+        if (!data.focus) return json(res, 400, { error: 'Missing focus field' });
+        const result = await dreams.directDream(data.focus);
+        json(res, 200, result);
+      } catch (e) { json(res, 500, { error: e.message }); }
+    });
+
+    // Schedule
+    addPluginRoute('GET', '/api/dreams/schedule', async (req, res, json) => {
+      json(res, 200, { schedule: dreams.getSchedule(), due: dreams.getScheduledDreams() });
+    });
+
+    addPluginRoute('POST', '/api/dreams/schedule', async (req, res, json, body) => {
+      try {
+        const data = JSON.parse(body || '[]');
+        json(res, 200, { schedule: dreams.setSchedule(data) });
+      } catch (e) { json(res, 400, { error: e.message }); }
+    });
+
+    // Rate a completed proposal
+    addPluginRoute('POST', '/api/dreams/proposals/', async (req, res, json, body) => {
+      const reqPath = require('url').parse(req.url).pathname;
+      const parts = reqPath.split('/');
+      const id = parts[4];
+      const action = parts[5];
+      if (!id || !action) return json(res, 400, { error: 'Missing proposal id or action' });
+      let result;
+      if (action === 'approve') result = dreams.approveProposal(id);
+      else if (action === 'build') result = dreams.buildProposal(id);
+      else if (action === 'reject') result = dreams.rejectProposal(id);
+      else if (action === 'complete') result = dreams.completeProposal(id);
+      else if (action === 'rate') {
+        try {
+          const data = JSON.parse(body || '{}');
+          result = dreams.rateProposal(id, data.rating, data.notes);
+        } catch (e) { return json(res, 400, { error: e.message }); }
+      }
+      else return json(res, 400, { error: 'Unknown action: ' + action });
+      json(res, 200, result);
+    }, { prefix: true });
+
+    console.log('[API] Agent Dreams v2 routes registered');
   } catch (e) { console.error('[API] Agent Dreams init error:', e.message); }
 
   // "€"€ Emotion Engine "€"€

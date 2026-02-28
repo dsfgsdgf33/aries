@@ -213,10 +213,22 @@ body::after {
   gap: 4px;
 }
 
-.nav-group { padding: 0 8px; margin-bottom: 8px; }
+.nav-group { padding: 0 8px; margin-bottom: 4px; }
 .nav-group-label {
   font-size: 9px; font-weight: 700; color: var(--text-muted);
   letter-spacing: 2px; padding: 8px 12px 4px; text-transform: uppercase;
+  cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px;
+  transition: color 0.2s;
+}
+.nav-group-label:hover { color: var(--accent); }
+.nav-group-label::before {
+  content: '▾'; font-size: 8px; transition: transform 0.2s; display: inline-block; width: 8px;
+}
+.nav-group.collapsed .nav-group-label::before { transform: rotate(-90deg); }
+.nav-group.collapsed .nav-items { display: none; }
+.nav-items { display: flex; flex-direction: column; gap: 1px; }
+.nav-group-count {
+  font-size: 8px; color: var(--text-muted); opacity: 0.5; margin-left: auto;
 }
 
 .nav-item {

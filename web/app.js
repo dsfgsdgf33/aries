@@ -230,6 +230,35 @@
     for (var i = 0; i < items.length; i++) {
       items[i].addEventListener('click', function() { switchPanel(this.getAttribute('data-panel')); });
     }
+    // Collapsible nav groups
+    var labels = document.querySelectorAll('.nav-group-label');
+    for (var i = 0; i < labels.length; i++) {
+      labels[i].addEventListener('click', function(e) {
+        e.stopPropagation();
+        this.parentElement.classList.toggle('collapsed');
+        // Save collapse state
+        var states = JSON.parse(localStorage.getItem('aries-nav-collapsed') || '{}');
+        var groupName = this.textContent.trim();
+        states[groupName] = this.parentElement.classList.contains('collapsed');
+        localStorage.setItem('aries-nav-collapsed', JSON.stringify(states));
+      });
+      // Restore collapse state
+      var states = JSON.parse(localStorage.getItem('aries-nav-collapsed') || '{}');
+      var groupName = labels[i].textContent.trim();
+      if (states[groupName]) labels[i].parentElement.classList.add('collapsed');
+    }
+    // Add item counts to group labels
+    var groups = document.querySelectorAll('.nav-group');
+    for (var g = 0; g < groups.length; g++) {
+      var count = groups[g].querySelectorAll('.nav-item').length;
+      var label = groups[g].querySelector('.nav-group-label');
+      if (label && count > 0) {
+        var badge = document.createElement('span');
+        badge.className = 'nav-group-count';
+        badge.textContent = count;
+        label.appendChild(badge);
+      }
+    }
   }
 
   function switchPanel(name) {
@@ -340,6 +369,8 @@
       case 'timetravel': if (window._loadTimeTravel) window._loadTimeTravel(); break;
       case 'aries-tv': if (window._loadAriesTv) window._loadAriesTv(); break;
       case 'battle': if (window._loadBattle) window._loadBattle(); break;
+      case 'consciousness': loadConsciousness(); break;
+      case 'thoughts': loadThoughts(); break;
       case 'dreams': loadDreams(); break;
       case 'journals': loadJournals(); break;
       case 'reputation': refreshReputation(); break;
@@ -9207,44 +9238,824 @@
     api('POST', 'improve/reject/' + id).then(function() { toast('Rejected', 'info'); refreshImprove(); }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
   }
 
+  // ═══════════════════════════════════════
+  //  CONSCIOUSNESS PANEL
+  // ═══════════════════════════════════════
+  var _conscTab = 'stream';
+
+  function switchConscTab(tab, btn) {
+    var tabs = ['conscStream','conscPerception','conscEmpathy','conscTime'];
+    var ids = { stream:'conscStream', perception:'conscPerception', empathy:'conscEmpathy', time:'conscTime' };
+    tabs.forEach(function(t) { var e = document.getElementById(t); if(e) e.style.display = 'none'; });
+    var target = document.getElementById(ids[tab]);
+    if (target) target.style.display = 'block';
+    var btns = document.querySelectorAll('.consc-subtab');
+    btns.forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.style.color = '#666'; });
+    if (btn) { btn.style.borderBottomColor = '#00e5ff'; btn.style.color = '#00e5ff'; }
+    _conscTab = tab;
+    loadConsciousness();
+  }
+
+  function loadConsciousness() {
+    if (_conscTab === 'stream') loadConscStream();
+    else if (_conscTab === 'perception') loadConscPerception();
+    else if (_conscTab === 'empathy') loadConscEmpathy();
+    else if (_conscTab === 'time') loadConscTime();
+  }
+
+  function _statCard(val, label, color) {
+    return '<div style="background:#0a0a12;padding:12px;border-radius:8px;text-align:center;border:1px solid #1a1a2e">' +
+      '<div style="font-size:22px;font-weight:bold;color:' + (color||'#0ff') + '">' + val + '</div>' +
+      '<div style="font-size:10px;color:#666">' + label + '</div></div>';
+  }
+
+  function loadConscStream() {
+    apiFetch('/api/consciousness/stats').then(function(data) {
+      var el = document.getElementById('conscStreamStats');
+      if (el) el.innerHTML =
+        _statCard(data.totalThoughtsEver || 0, 'Total Thoughts', '#00e5ff') +
+        _statCard(data.activeThreads || 0, 'Active Threads', '#a78bfa') +
+        _statCard(data.totalThreads || 0, 'All Threads', '#8b5cf6') +
+        _statCard((data.thoughtsPerDay || 0).toFixed(1), 'Thoughts/Day', '#22c55e');
+    }).catch(function(){});
+
+    apiFetch('/api/consciousness/stream?limit=50').then(function(data) {
+      var stream = data.stream || [];
+      var el = document.getElementById('conscStreamContent');
+      if (!stream.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#555">Stream is empty. Consciousness initializing...</div>'; return; }
+      var lastSession = '';
+      el.innerHTML = stream.map(function(t) {
+        var sessionBoundary = '';
+        if (t.sessionId !== lastSession) {
+          lastSession = t.sessionId;
+          sessionBoundary = '<div style="text-align:center;padding:8px;color:#333;font-size:11px;border-top:1px dashed #222;margin:8px 0">── Session ' + (t.sessionId||'').slice(0,8) + ' ──</div>';
+        }
+        var time = new Date(t.timestamp).toLocaleString();
+        var threadBadge = t.threadId ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;background:#1a1a3e;color:#a78bfa;margin-left:6px" title="Thread: '+t.threadId+'">🔗 thread</span>' : '';
+        var resumeBadge = t.isResumption ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;background:#0a2a0a;color:#22c55e;margin-left:6px">⏏ resume</span>' : '';
+        var leftBorder = t.isResumption ? 'border-left:3px solid #22c55e;' : (t.threadId ? 'border-left:3px solid #a78bfa;' : 'border-left:3px solid #222;');
+        return sessionBoundary +
+          '<div style="padding:10px 14px;margin-bottom:6px;background:#0a0a12;border-radius:8px;' + leftBorder + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">' +
+          '<span style="font-weight:600;color:#00e5ff;font-size:12px">' + (t.type||'THOUGHT') + threadBadge + resumeBadge + '</span>' +
+          '<span style="font-size:10px;color:#555">' + time + '</span></div>' +
+          '<div style="color:#ccc;font-size:13px;line-height:1.5">' + escapeHtml(t.content||'') + '</div>' +
+          (t.relatedTo ? '<div style="margin-top:3px;font-size:10px;color:#555">📎 ' + escapeHtml(t.relatedTo) + '</div>' : '') +
+          '</div>';
+      }).join('');
+    }).catch(function(){});
+  }
+
+  function loadConscPerception() {
+    // Narrative
+    apiFetch('/api/perception/narrative').then(function(data) {
+      var el = document.getElementById('percNarrativeText');
+      if (el) el.textContent = data.narrative || 'No observations yet.';
+    }).catch(function(){});
+
+    // Snapshot stats
+    apiFetch('/api/perception/snapshot').then(function(data) {
+      var el = document.getElementById('conscPerceptionSnapshot');
+      if (el) {
+        var win = data.uiTree ? (data.uiTree.parsed ? data.uiTree.parsed.appType : (data.uiTree.app||'?')) : '—';
+        el.innerHTML =
+          _statCard(escapeHtml(win.slice(0,20)), 'Active App', '#3b82f6') +
+          _statCard(data.perceptionCount || 0, 'Perceptions', '#a78bfa') +
+          _statCard(data.notableCount || 0, 'Notable', '#f59e0b') +
+          _statCard((data.fileChanges||[]).length, 'File Changes', '#22c55e') +
+          _statCard(data.monitoring ? '🟢 ON' : '🔴 OFF', 'Monitor', data.monitoring ? '#22c55e' : '#ef4444');
+
+        // Populate channel panels from snapshot
+        // UI Tree
+        var uiEl = document.getElementById('percUITree');
+        if (uiEl && data.uiTree) {
+          var ui = data.uiTree;
+          var html = '<div style="margin-bottom:6px"><span style="color:#3b82f6;font-weight:600">' + escapeHtml(ui.app||'?') + '</span> <span style="color:#555">PID:' + (ui.pid||'?') + '</span></div>';
+          html += '<div style="color:#ccc;margin-bottom:8px">' + escapeHtml((ui.title||'').slice(0,80)) + '</div>';
+          if (ui.parsed) {
+            html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">';
+            for (var k in ui.parsed) { html += '<span style="padding:2px 6px;background:#1a1a3e;border-radius:4px;font-size:10px;color:#a78bfa">' + k + ': ' + escapeHtml(String(ui.parsed[k])) + '</span>'; }
+            html += '</div>';
+          }
+          if (ui.tree && ui.tree.children) {
+            html += '<div style="border-top:1px solid #222;padding-top:8px;margin-top:4px">';
+            (ui.tree.children||[]).slice(0,15).forEach(function(c) {
+              html += '<div style="padding:2px 0;color:#888"><span style="color:#555">' + (c.type||'?') + '</span> ' + escapeHtml((c.name||'').slice(0,60)) + '</div>';
+            });
+            html += '</div>';
+          }
+          uiEl.innerHTML = html;
+        }
+
+        // Clipboard
+        var clipEl = document.getElementById('percClipboard');
+        if (clipEl && data.clipboard) {
+          var cl = data.clipboard;
+          var typeColor = {url:'#3b82f6',error_message:'#ef4444',code_snippet:'#a78bfa',file_path:'#22c55e',text:'#888',data:'#eab308',sensitive:'#ef4444',empty:'#555'};
+          clipEl.innerHTML = '<span style="padding:2px 8px;border-radius:4px;background:#1a1a2e;color:' + (typeColor[cl.type]||'#888') + ';font-size:10px;font-weight:600">' + (cl.type||'?') + '</span>' +
+            (cl.length ? ' <span style="color:#555;font-size:10px">' + cl.length + ' chars</span>' : '') +
+            (cl.content ? '<div style="margin-top:6px;padding:6px;background:#050510;border-radius:4px;font-family:monospace;font-size:11px;color:#aaa;word-break:break-all;max-height:100px;overflow-y:auto">' + escapeHtml((cl.content||'').slice(0,300)) + '</div>' : '') +
+            (cl.insight ? '<div style="margin-top:4px;color:#eab308;font-size:11px">' + escapeHtml(cl.insight) + '</div>' : '');
+        }
+
+        // File changes
+        var filesEl = document.getElementById('percFiles');
+        if (filesEl) {
+          var fc = data.fileChanges || [];
+          if (!fc.length) { filesEl.innerHTML = '<span style="color:#555">No recent changes</span>'; }
+          else {
+            filesEl.innerHTML = fc.map(function(f) {
+              var actionColor = {created:'#22c55e',modified:'#eab308',deleted:'#ef4444'};
+              var diffInfo = f.diff ? ' <span style="color:#22c55e">+' + f.diff.linesAdded + '</span> <span style="color:#ef4444">-' + f.diff.linesRemoved + '</span>' : '';
+              return '<div style="padding:3px 0;display:flex;align-items:center;gap:6px"><span style="color:' + (actionColor[f.action]||'#888') + ';font-size:10px;font-weight:600;min-width:55px">' + f.action + '</span><span style="color:#ccc">' + escapeHtml(f.basename||'?') + '</span>' + diffInfo + '</div>';
+            }).join('');
+          }
+        }
+
+        // Audio
+        var audioEl = document.getElementById('percAudio');
+        if (audioEl && data.audio) {
+          var a = data.audio;
+          var volBar = a.speakerVolume >= 0 ? '<div style="margin-top:6px"><div style="font-size:10px;color:#666;margin-bottom:2px">Volume</div><div style="background:#1a1a2e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:' + Math.max(0,a.speakerVolume) + '%;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);border-radius:4px"></div></div><div style="text-align:right;font-size:10px;color:#555">' + a.speakerVolume + '%</div></div>' : '';
+          var contextEmoji = {silent:'🔇',listening:'🔊',unknown:'❓'};
+          audioEl.innerHTML = '<div style="display:flex;gap:12px;align-items:center">' +
+            '<span style="font-size:24px">' + (contextEmoji[a.context]||'❓') + '</span>' +
+            '<div><div style="color:#ccc;font-weight:600">' + (a.context||'unknown').toUpperCase() + '</div>' +
+            '<div style="font-size:10px;color:#666">' + (a.speakerMuted ? '🔇 Muted' : 'Active') + '</div></div></div>' + volBar;
+        }
+      }
+    }).catch(function(){});
+
+    // Network
+    apiFetch('/api/perception/network').then(function(data) {
+      var el = document.getElementById('percNetwork');
+      if (!el) return;
+      var services = data.services || [];
+      var health = data.health || {};
+      var healthColor = health.healthy ? '#22c55e' : '#ef4444';
+      var html = '<div style="margin-bottom:8px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + healthColor + ';margin-right:6px"></span><span style="color:' + healthColor + ';font-weight:600">' + (health.healthy ? 'Healthy' : 'Issues Detected') + '</span>';
+      html += ' <span style="color:#555;font-size:10px">Est:' + (health.established||0) + ' TW:' + (health.timeWait||0) + ' CW:' + (health.closeWait||0) + '</span></div>';
+      if (services.length) {
+        html += services.slice(0,15).map(function(s) {
+          return '<div style="padding:2px 0;display:flex;align-items:center;gap:6px"><span style="color:#00e5ff;font-family:monospace;min-width:45px">:' + s.port + '</span><span style="color:#aaa">' + escapeHtml(s.process||'?') + '</span>' +
+            (s.knownService ? '<span style="padding:1px 6px;border-radius:4px;background:#0a2a0a;color:#22c55e;font-size:10px">' + s.knownService + '</span>' : '') + '</div>';
+        }).join('');
+      } else { html += '<span style="color:#555">No listening services</span>'; }
+      el.innerHTML = html;
+    }).catch(function(){});
+
+    // Processes
+    apiFetch('/api/perception/processes').then(function(data) {
+      var el = document.getElementById('percProcesses');
+      if (!el) return;
+      var procs = data.processes || [];
+      var html = '<div style="margin-bottom:6px;color:#555;font-size:10px">Total: ' + (data.totalProcesses||0) + ' processes</div>';
+      if (data.notResponding && data.notResponding.length) {
+        html += '<div style="padding:4px 8px;background:#2a0a0a;border-radius:4px;margin-bottom:6px;color:#ef4444;font-size:11px">⚠️ Not responding: ' + data.notResponding.map(function(p){return p.ProcessName}).join(', ') + '</div>';
+      }
+      if (data.highMemory && data.highMemory.length) {
+        html += '<div style="padding:4px 8px;background:#2a2a0a;border-radius:4px;margin-bottom:6px;color:#eab308;font-size:11px">🔥 High memory: ' + data.highMemory.map(function(p){return p.ProcessName+' ('+p.MemMB+'MB)'}).join(', ') + '</div>';
+      }
+      procs.slice(0,12).forEach(function(p) {
+        var memPct = Math.min(100, (p.MemMB||0) / 10);
+        html += '<div style="padding:2px 0;display:flex;align-items:center;gap:6px"><span style="color:#ccc;min-width:100px;font-size:11px">' + escapeHtml(p.ProcessName||'?') + '</span>' +
+          '<div style="flex:1;background:#1a1a2e;border-radius:2px;height:6px;overflow:hidden"><div style="height:100%;width:' + memPct + '%;background:' + (p.MemMB > 1024 ? '#ef4444' : p.MemMB > 500 ? '#eab308' : '#22c55e') + '"></div></div>' +
+          '<span style="color:#555;font-size:10px;min-width:50px;text-align:right">' + (p.MemMB||0) + 'MB</span></div>';
+      });
+      el.innerHTML = html;
+    }).catch(function(){});
+
+    // Input Patterns
+    apiFetch('/api/perception/input').then(function(data) {
+      var el = document.getElementById('percInput');
+      if (!el) return;
+      var levelColors = {active:'#22c55e',moderate:'#eab308',low:'#f97316',idle:'#ef4444'};
+      var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
+        '<div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:#0a0a1a;border:2px solid ' + (levelColors[data.activityLevel]||'#555') + '">' +
+        (data.activityLevel === 'active' ? '🔥' : data.activityLevel === 'idle' ? '😴' : '⏳') + '</div>' +
+        '<div><div style="font-weight:600;color:' + (levelColors[data.activityLevel]||'#888') + '">' + (data.activityLevel||'?').toUpperCase() + '</div>' +
+        '<div style="font-size:10px;color:#555">Idle: ' + (data.idleSec||0) + 's</div></div></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px">' +
+        '<div style="color:#888">Typing trend: <span style="color:#ccc">' + (data.typingSpeedTrend||'?') + '</span></div>' +
+        '<div style="color:#888">Mouse: <span style="color:#ccc">' + (data.mousePattern||'?') + '</span></div>' +
+        '<div style="color:#888">Pause freq: <span style="color:#ccc">' + ((data.pauseFrequency||0)*100).toFixed(0) + '%</span></div>' +
+        '<div style="color:#888">Avg idle: <span style="color:#ccc">' + Math.round((data.avgIdleMs||0)/1000) + 's</span></div></div>';
+      el.innerHTML = html;
+    }).catch(function(){});
+
+    // Window Layout
+    apiFetch('/api/perception/layout').then(function(data) {
+      var el = document.getElementById('percWindows');
+      if (!el) return;
+      var wins = data.windows || [];
+      if (!wins.length) { el.innerHTML = '<span style="color:#555">No windows detected</span>'; return; }
+      el.innerHTML = '<div style="margin-bottom:4px;color:#555;font-size:10px">' + wins.length + ' windows</div>' +
+        wins.map(function(w) {
+          return '<div style="padding:3px 0;display:flex;align-items:center;gap:6px">' +
+            '<span style="width:8px;height:8px;border-radius:50%;background:' + (w.responding ? '#22c55e' : '#ef4444') + '"></span>' +
+            '<span style="color:#06b6d4;font-size:11px;min-width:80px">' + escapeHtml(w.process||'?') + '</span>' +
+            '<span style="color:#888;font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml((w.title||'').slice(0,50)) + '</span></div>';
+        }).join('');
+    }).catch(function(){});
+
+    // Notable events
+    apiFetch('/api/perception/notable').then(function(data) {
+      var perceptions = data.perceptions || [];
+      var el = document.getElementById('conscPerceptionNotable');
+      if (!perceptions.length) { el.innerHTML = '<div style="color:#555;padding:12px">No notable events yet.</div>'; return; }
+      var typeInfo = {UI_TREE:'🖥️',INPUT_PATTERN:'⌨️',FILE_CHANGE:'📄',NETWORK:'🌐',CLIPBOARD:'📋',PROCESS:'⚙️',WINDOW_LAYOUT:'🪟',SYSTEM_EVENT:'📢',AUDIO:'🔊',ANOMALY:'⚠️',VISUAL:'👁️',FILE:'📄',SYSTEM:'💻'};
+      el.innerHTML = perceptions.slice(0,20).map(function(p) {
+        var time = new Date(p.timestamp).toLocaleString();
+        var channel = p.channel || p.type || '?';
+        return '<div style="padding:8px 12px;margin-bottom:4px;background:#1a1a0a;border-radius:6px;border-left:3px solid #f59e0b">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">' +
+          '<span style="color:#f59e0b;font-weight:600">' + (typeInfo[channel]||'❓') + ' ' + channel + '</span>' +
+          '<span style="color:#555">' + time + '</span></div>' +
+          (p.insight ? '<div style="color:#eab308;font-size:12px;margin-bottom:2px">' + escapeHtml(p.insight) + '</div>' : '') +
+          '<div style="color:#888;font-size:11px">' + escapeHtml(typeof p.content === 'string' ? p.content.slice(0,120) : JSON.stringify(p.content).slice(0,120)) + '</div></div>';
+      }).join('');
+    }).catch(function(){});
+
+    // Recent perceptions
+    apiFetch('/api/perception?limit=30').then(function(data) {
+      var perceptions = data.perceptions || [];
+      var el = document.getElementById('conscPerceptionRecent');
+      if (!perceptions.length) { el.innerHTML = '<div style="color:#555;padding:12px">No perceptions recorded yet.</div>'; return; }
+      var typeInfo = {UI_TREE:'🖥️',INPUT_PATTERN:'⌨️',FILE_CHANGE:'📄',NETWORK:'🌐',CLIPBOARD:'📋',PROCESS:'⚙️',WINDOW_LAYOUT:'🪟',SYSTEM_EVENT:'📢',AUDIO:'🔊',ANOMALY:'⚠️',VISUAL:'👁️',FILE:'📄',SYSTEM:'💻'};
+      el.innerHTML = perceptions.map(function(p) {
+        var time = new Date(p.timestamp).toLocaleTimeString();
+        var channel = p.channel || p.type || '?';
+        var content = typeof p.content === 'string' ? p.content : (p.content && p.content.summary ? p.content.summary : JSON.stringify(p.content).slice(0,100));
+        return '<div style="padding:6px 10px;border-bottom:1px solid #111;display:flex;align-items:center;gap:8px">' +
+          '<span style="font-size:11px;color:#555;min-width:60px">' + time + '</span>' +
+          '<span>' + (typeInfo[channel]||'❓') + '</span>' +
+          '<span style="color:#666;font-size:10px;min-width:65px">' + channel + '</span>' +
+          '<span style="color:#aaa;font-size:12px;flex:1">' + escapeHtml((content||'').slice(0,100)) + '</span>' +
+          (p.notable ? '<span style="color:#f59e0b;font-size:10px">⚡</span>' : '') + '</div>';
+      }).join('');
+    }).catch(function(){});
+  }
+
+  function loadConscEmpathy() {
+    apiFetch('/api/empathy/state').then(function(data) {
+      var el = document.getElementById('conscEmpathyState');
+      if (!el) return;
+      var moodEmojis = {happy:'😊',frustrated:'😤',tired:'😴',focused:'🎯',bored:'😶',stressed:'😰',excited:'🤩',neutral:'😐'};
+      var moodColors = {happy:'#22c55e',frustrated:'#ef4444',tired:'#78716c',focused:'#8b5cf6',bored:'#6b7280',stressed:'#f59e0b',excited:'#ec4899',neutral:'#6b7280'};
+      var mood = data.mood || 'neutral';
+      el.innerHTML =
+        '<div style="text-align:center;margin-bottom:16px">' +
+        '<div style="font-size:48px">' + (moodEmojis[mood]||'😐') + '</div>' +
+        '<div style="font-size:18px;font-weight:700;color:' + (moodColors[mood]||'#888') + ';margin-top:8px">' + mood.toUpperCase() + '</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px">Confidence: ' + Math.round((data.moodConfidence||0)*100) + '%</div>' +
+        '</div>' +
+        '<div style="margin-bottom:12px">' +
+        '<div style="font-size:11px;color:#888;margin-bottom:4px">Engagement Level</div>' +
+        '<div style="background:#1a1a2e;border-radius:6px;height:12px;overflow:hidden">' +
+        '<div style="height:100%;width:' + (data.engagement||0) + '%;background:linear-gradient(90deg,#3b82f6,#00e5ff);border-radius:6px;transition:width 0.5s"></div>' +
+        '</div><div style="text-align:right;font-size:10px;color:#555">' + (data.engagement||0) + '%</div></div>' +
+        (data.likelyIntent ? '<div style="font-size:12px;color:#a78bfa">🎯 Intent: ' + data.likelyIntent + '</div>' : '');
+    }).catch(function(){});
+
+    apiFetch('/api/empathy/adaptations').then(function(data) {
+      var el = document.getElementById('conscEmpathyAdaptations');
+      if (!el) return;
+      el.innerHTML =
+        '<h3 style="margin:0 0 12px;font-size:14px;color:#ec4899">🎭 Active Adaptations</h3>' +
+        '<div style="margin-bottom:8px;font-size:12px;color:#ccc">' + escapeHtml(data.tip||'No adaptations active.') + '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;font-size:12px">' +
+        '<div style="color:#888">📏 Response length: <span style="color:#ccc">' + (data.responseLength||'normal') + '</span></div>' +
+        '<div style="color:#888">❓ Questions: <span style="color:#ccc">' + (data.questions||'normal') + '</span></div>' +
+        '<div style="color:#888">🎵 Tone: <span style="color:#ccc">' + (data.tone||'balanced') + '</span></div>' +
+        '<div style="color:#888">💬 Small talk: <span style="color:#ccc">' + (data.smallTalk ? 'Yes' : 'No') + '</span></div>' +
+        '</div>';
+    }).catch(function(){});
+
+    apiFetch('/api/empathy/history?days=3').then(function(data) {
+      var history = data.history || [];
+      var el = document.getElementById('conscEmpathyHistory');
+      var entries = [];
+      if (Array.isArray(history) && history.length > 0 && history[0].entries) {
+        for (var i = 0; i < history.length; i++) entries = entries.concat(history[i].entries || []);
+      } else { entries = history; }
+      if (!entries.length) { el.innerHTML = '<div style="color:#555;text-align:center;padding:20px">No empathy data yet.</div>'; return; }
+      var moodColors = {happy:'#22c55e',frustrated:'#ef4444',tired:'#78716c',focused:'#8b5cf6',bored:'#6b7280',stressed:'#f59e0b',excited:'#ec4899',neutral:'#6b7280'};
+      el.innerHTML = entries.slice(-40).reverse().map(function(e) {
+        var time = new Date(e.timestamp).toLocaleString();
+        return '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid #111">' +
+          '<span style="font-size:11px;color:#555;min-width:110px">' + time + '</span>' +
+          '<span style="font-weight:600;color:' + (moodColors[e.mood]||'#888') + ';min-width:80px">' + (e.mood||'?') + '</span>' +
+          '<div style="width:' + (e.engagement||0) + 'px;height:4px;background:#3b82f6;border-radius:2px"></div>' +
+          '<span style="font-size:10px;color:#555">' + (e.engagement||0) + '%</span>' +
+          (e.intent ? '<span style="font-size:10px;color:#666;margin-left:auto">' + e.intent + '</span>' : '') + '</div>';
+      }).join('');
+    }).catch(function(){});
+  }
+
+  function loadConscTime() {
+    apiFetch('/api/temporal').then(function(data) {
+      var el = document.getElementById('conscTimeContext');
+      if (!el) return;
+      var paceColors = {RAPID:'#ef4444',NORMAL:'#22c55e',SLOW:'#eab308',IDLE:'#6b7280'};
+      el.innerHTML =
+        _statCard(data.pace || 'IDLE', 'Pace', paceColors[data.pace]||'#888') +
+        _statCard(data.sessionDurationStr || '—', 'Session', '#3b82f6') +
+        _statCard(data.messageCount || 0, 'Messages', '#a78bfa');
+
+      // Time flags
+      var flags = [];
+      if (data.isLateNight) flags.push('🌙 Late Night');
+      if (data.isRushHour) flags.push('🏃 Rush Hour');
+      if (data.isWeekend) flags.push('🎉 Weekend');
+      if (data.stuckEstimate && data.stuckEstimate.isLikelyStuck) flags.push('🔄 Possibly Stuck (' + data.stuckEstimate.durationStr + ')');
+      if (flags.length) {
+        el.innerHTML += '<div style="background:#0a0a12;padding:12px;border-radius:8px;text-align:center;border:1px solid #1a1a2e;grid-column:span 3"><div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
+          flags.map(function(f){return '<span style="color:#eab308;font-size:12px">'+f+'</span>';}).join('') + '</div></div>';
+      }
+    }).catch(function(){});
+
+    apiFetch('/api/temporal/patterns').then(function(data) {
+      // Hourly bar chart
+      var hourly = data.hourlyActivity || new Array(24).fill(0);
+      var maxH = Math.max.apply(null, hourly) || 1;
+      var el = document.getElementById('conscTimeHourly');
+      if (el) {
+        el.innerHTML = hourly.map(function(v, i) {
+          var h = Math.max(2, (v / maxH) * 170);
+          var color = v === maxH && v > 0 ? '#00e5ff' : '#1a3a5e';
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px" title="' + i + ':00 — ' + v + ' msgs">' +
+            '<div style="width:100%;background:' + color + ';height:' + h + 'px;border-radius:2px 2px 0 0;min-width:6px"></div>' +
+            '<span style="font-size:8px;color:#555">' + (i % 6 === 0 ? i : '') + '</span></div>';
+        }).join('');
+      }
+
+      // Daily activity
+      var daily = data.dailyActivity || new Array(7).fill(0);
+      var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      var maxD = Math.max.apply(null, daily) || 1;
+      var elD = document.getElementById('conscTimeDaily');
+      if (elD) {
+        elD.innerHTML = daily.map(function(v, i) {
+          var pct = (v / maxD) * 100;
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+            '<span style="font-size:11px;color:#888;min-width:30px">' + dayNames[i] + '</span>' +
+            '<div style="flex:1;background:#1a1a2e;border-radius:4px;height:16px;overflow:hidden">' +
+            '<div style="height:100%;width:' + pct + '%;background:#22c55e;border-radius:4px"></div></div>' +
+            '<span style="font-size:10px;color:#555;min-width:25px">' + v + '</span></div>';
+        }).join('');
+      }
+    }).catch(function(){});
+  }
+
   // ═══════════════════════════════
   //  AGENT DREAMS
   // ═══════════════════════════════
+  //  DREAMS v2
+  // ═══════════════════════════════
+  var _dreamTypeEmojis = { associative:'🔗', nightmare:'👹', consolidation:'🧠', pruning:'✂️', sentiment:'💚', problemSolving:'🔧', creativeDrift:'🎨', selfImprove:'🪞', competitive:'🏆', mirror:'🪩', precognitive:'🔮', narrative:'📖' };
+  var _dreamTypeLabels = { associative:'Associative', nightmare:'Nightmare', consolidation:'Memory Consolidation', pruning:'Memory Pruning', sentiment:'Sentiment', problemSolving:'Problem Solving', creativeDrift:'Creative Drift', selfImprove:'Self-Improvement', competitive:'Competitive', mirror:'Mirror', precognitive:'Precognitive', narrative:'Narrative' };
+  var _proposalStatusColors = { proposed:'#00e5ff', approved:'#eab308', building:'#f97316', complete:'#22c55e', rejected:'#ef4444', graveyard:'#666' };
+
+  function switchDreamTab(tab, btn) {
+    var tabs = ['dreamsContent','dreamsUpgrades','dreamsStats','dreamsLive'];
+    var ids = { journal:'dreamsContent', upgrades:'dreamsUpgrades', stats:'dreamsStats', live:'dreamsLive' };
+    tabs.forEach(function(t) { var e = document.getElementById(t); if(e) e.style.display = 'none'; });
+    var target = document.getElementById(ids[tab]);
+    if (target) target.style.display = 'block';
+    // Update sub-tab styles
+    var btns = document.querySelectorAll('.dream-subtab');
+    btns.forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.style.color = '#666'; });
+    if (btn) { btn.style.borderBottomColor = '#a78bfa'; btn.style.color = '#a78bfa'; }
+    // Load content
+    if (tab === 'journal') loadDreamJournal();
+    else if (tab === 'upgrades') loadDreamUpgrades();
+    else if (tab === 'stats') loadDreamStats();
+    else if (tab === 'live') loadDreamLive();
+  }
+
+  // ═══════════════════════════════════════
+  //  THOUGHTS / INNER MONOLOGUE
+  // ═══════════════════════════════════════
+  const THOUGHT_EMOJIS = { OBSERVATION: '👁️', CURIOSITY: '🔍', CONCERN: '⚠️', IDEA: '💡', REFLECTION: '🪞', REALIZATION: '⚡' };
+  let _thoughtFilter = 'all';
+
+  function loadThoughts() {
+    const url = _thoughtFilter === 'all' ? '/api/thoughts?limit=50' : '/api/thoughts?type=' + _thoughtFilter;
+    apiFetch(url).then(data => {
+      const thoughts = data.thoughts || [];
+      const el = document.getElementById('thoughtsStream');
+      if (!thoughts.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#555">No thoughts yet. The mind is quiet.</div>'; return; }
+      el.innerHTML = thoughts.map(t => {
+        const emoji = THOUGHT_EMOJIS[t.type] || '💭';
+        const time = new Date(t.timestamp).toLocaleTimeString();
+        const prioClass = t.priority === 'high' ? 'border-left:3px solid #ef4444;' : 'border-left:3px solid #333;';
+        return '<div style="padding:12px 16px;margin-bottom:8px;background:#0a0a12;border-radius:8px;' + prioClass + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+          '<span style="font-weight:600;color:#a78bfa">' + emoji + ' ' + t.type + '</span>' +
+          '<span style="font-size:11px;color:#555">' + time + '</span></div>' +
+          '<div style="color:#ccc;font-size:13px;line-height:1.5">' + escapeHtml(t.content) + '</div>' +
+          (t.relatedTo ? '<div style="margin-top:4px;font-size:11px;color:#666">📎 ' + escapeHtml(t.relatedTo) + '</div>' : '') +
+          '</div>';
+      }).join('');
+    }).catch(() => {});
+
+    // Stats
+    apiFetch('/api/thoughts/stats').then(data => {
+      document.getElementById('thoughtCountToday').textContent = data.today || 0;
+      document.getElementById('thoughtCountTotal').textContent = data.total || 0;
+    }).catch(() => {});
+
+    // Emotion state + history
+    loadEmotionState();
+    loadEmotionHistory();
+  }
+
+  function loadEmotionState() {
+    apiFetch('/api/emotions').then(data => {
+      const s = data.state || {};
+      const badge = document.getElementById('thoughtsMoodBadge');
+      const indicator = document.getElementById('moodIndicator');
+      const text = (s.emoji || '🧐') + ' ' + (s.label || 'Unknown') + ' (' + (s.intensity || 0) + '%)';
+      if (badge) { badge.textContent = text; badge.style.color = s.color || '#8b5cf6'; }
+      if (indicator) { indicator.textContent = text; indicator.style.color = s.color || '#8b5cf6'; }
+    }).catch(() => {});
+  }
+
+  function loadEmotionHistory() {
+    apiFetch('/api/emotions/history').then(data => {
+      const history = data.history || [];
+      const el = document.getElementById('emotionHistory');
+      // Flatten if array of {date, entries}
+      let entries = [];
+      if (Array.isArray(history) && history.length > 0 && history[0].entries) {
+        entries = history[0].entries || [];
+      } else {
+        entries = history;
+      }
+      if (!entries.length) { el.innerHTML = '<div style="color:#555;text-align:center;padding:20px">No emotional data today.</div>'; return; }
+      el.innerHTML = entries.slice(-30).reverse().map(e => {
+        const time = new Date(e.timestamp).toLocaleTimeString();
+        return '<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid #1a1a2e">' +
+          '<span style="font-size:12px;color:#555;min-width:70px">' + time + '</span>' +
+          '<span style="font-weight:600;color:#a78bfa">' + e.emotion + '</span>' +
+          '<div style="width:' + e.intensity + 'px;height:6px;background:#8b5cf6;border-radius:3px"></div>' +
+          '<span style="font-size:11px;color:#666">' + (e.intensity || 0) + '%</span>' +
+          '<span style="font-size:11px;color:#555;margin-left:auto">' + escapeHtml(e.trigger || '') + '</span>' +
+          '</div>';
+      }).join('');
+    }).catch(() => {});
+  }
+
+  function filterThoughts(type, btn) {
+    _thoughtFilter = type;
+    document.querySelectorAll('.thought-filter').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    loadThoughts();
+  }
+
+  function triggerThought() {
+    apiFetch('/api/thoughts', { method: 'POST' }).then(data => {
+      if (data.thought) { loadThoughts(); }
+    }).catch(() => {});
+  }
+
+  // Poll mood indicator every 60s
+  setInterval(loadEmotionState, 60000);
+  setTimeout(loadEmotionState, 3000);
+
   function loadDreams() {
+    loadDreamJournal();
+  }
+
+  function loadDreamJournal() {
     var el = document.getElementById('dreamsContent');
     if (!el) return;
-    el.innerHTML = '<div class="spinner"></div> Loading dreams...';
-    api('GET', 'dreams/latest').then(function(data) {
+    el.innerHTML = '<div class="spinner"></div> Loading dream journal...';
+    api('GET', 'dreams?limit=10').then(function(data) {
+      var journal = data.journal || [];
+      if (journal.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:40px;color:#a78bfa"><span style="font-size:48px">🌙</span><h3 style="color:#a78bfa">No Dreams Yet</h3><p style="color:#666">Trigger a dream cycle or wait for idle time</p></div>';
+        return;
+      }
       var html = '';
-      if (!data.dreams || data.dreams.length === 0) {
-        html = '<div style="text-align:center;padding:40px;color:#a78bfa"><span style="font-size:48px">🌙</span><h3 style="color:#a78bfa">No Dreams Yet</h3><p style="color:#666">Trigger a dream cycle or wait for idle time</p></div>';
-      } else {
-        html += '<div style="color:#a78bfa;font-size:13px;margin-bottom:12px">Dream date: ' + escapeHtml(data.date || '') + '</div>';
-        for (var i = 0; i < data.dreams.length; i++) {
-          var d = data.dreams[i];
-          var ins = d.insights || d;
-          html += '<div style="background:linear-gradient(135deg,#1a0a2e,#0a0a1a);border:1px solid #7c3aed44;border-radius:12px;padding:16px;margin-bottom:12px">';
-          html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:20px">💭</span><span style="color:#a78bfa;font-weight:700">Dream Insight</span><span style="color:#555;font-size:11px">' + new Date(ins.timestamp || d.timestamp).toLocaleString() + '</span></div>';
-          if (ins.topTopics && ins.topTopics.length) html += '<div style="margin-bottom:6px"><span style="color:#888;font-size:12px">Topics:</span> ' + ins.topTopics.map(function(t) { return '<span style="background:#7c3aed33;color:#a78bfa;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px">' + escapeHtml(t) + '</span>'; }).join(' ') + '</div>';
-          if (ins.topTools && ins.topTools.length) html += '<div style="margin-bottom:6px"><span style="color:#888;font-size:12px">Tools:</span> ' + ins.topTools.map(function(t) { return '<span style="background:#06b6d433;color:#06b6d4;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px">' + escapeHtml(t) + '</span>'; }).join(' ') + '</div>';
-          html += '<div style="color:#666;font-size:12px">' + (ins.conversationsAnalyzed || 0) + ' convos analyzed, ' + (ins.totalMessages || 0) + ' messages</div>';
-          if (ins.aiSummary) {
-            var ai = ins.aiSummary;
-            if (ai.keyInsight) html += '<div style="margin-top:8px;padding:8px 12px;background:#7c3aed22;border-left:3px solid #7c3aed;border-radius:4px;color:#c4b5fd;font-size:13px">💡 ' + escapeHtml(ai.keyInsight) + '</div>';
-          }
+      for (var i = 0; i < journal.length; i++) {
+        var session = journal[i];
+        var date = session.date || '';
+        var narrative = session.narrative || '';
+        var dreams = session.dreams || [];
+        var proposals = session.proposals || [];
+        var duration = session.durationMs ? Math.round(session.durationMs / 1000) + 's' : '';
+        html += '<div style="background:linear-gradient(135deg,#1a0a2e,#0a0a1a);border:1px solid #7c3aed44;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer" onclick="this.querySelector(\'.dream-details\').style.display=this.querySelector(\'.dream-details\').style.display===\'none\'?\'block\':\'none\'">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+        html += '<span style="font-size:20px">💭</span>';
+        html += '<span style="color:#a78bfa;font-weight:700">' + escapeHtml(date) + '</span>';
+        html += '<span style="color:#555;font-size:11px">' + dreams.length + ' dreams, ' + proposals.length + ' proposals' + (duration ? ' · ' + duration : '') + '</span>';
+        html += '</div>';
+        // Narrative
+        if (narrative) {
+          html += '<div style="color:#c4b5fd;font-size:13px;font-style:italic;line-height:1.5;margin-bottom:8px;padding:8px 12px;background:#7c3aed11;border-left:3px solid #7c3aed;border-radius:4px">' + escapeHtml(narrative).slice(0, 400) + '</div>';
+        }
+        // Expandable dream details
+        html += '<div class="dream-details" style="display:none;margin-top:8px">';
+        for (var j = 0; j < dreams.length; j++) {
+          var d = dreams[j];
+          var emoji = _dreamTypeEmojis[d.type] || '💭';
+          var label = _dreamTypeLabels[d.type] || d.type || 'Dream';
+          html += '<div style="padding:8px 12px;margin:4px 0;background:#0d0d1a;border-radius:8px;border:1px solid #333">';
+          html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span>' + emoji + '</span><span style="color:#a78bfa;font-size:12px;font-weight:600">' + escapeHtml(label) + '</span></div>';
+          if (d.narrative) html += '<div style="color:#999;font-size:12px;line-height:1.4">' + escapeHtml(d.narrative).slice(0, 300) + '</div>';
           html += '</div>';
         }
+        html += '</div></div>';
       }
       el.innerHTML = html;
     }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load dreams</div>'; });
   }
 
+  function loadDreamUpgrades(filterStatus) {
+    var el = document.getElementById('dreamsUpgrades');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div> Loading proposals...';
+    var url = 'dreams/proposals' + (filterStatus ? '?status=' + filterStatus : '');
+    api('GET', url).then(function(data) {
+      var proposals = data.proposals || [];
+      if (proposals.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:40px;color:#666"><span style="font-size:48px">📋</span><h3 style="color:#888">No Proposals</h3><p>Dream cycles will generate upgrade proposals</p></div>';
+        return;
+      }
+      // Sort by priority desc
+      proposals.sort(function(a, b) { return (b.priority || 0) - (a.priority || 0); });
+      // Filter buttons
+      var html = '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">';
+      var filterLabels = { all:'All', proposed:'Proposed', approved:'Approved', building:'Building', complete:'Complete', graveyard:'💀 Graveyard' };
+      ['all','proposed','approved','building','complete','graveyard'].forEach(function(s) {
+        var active = (!filterStatus && s === 'all') || filterStatus === s;
+        html += '<button onclick="window.aries.loadDreamUpgrades(' + (s === 'all' ? '' : '\'' + s + '\'') + ')" style="padding:4px 12px;border-radius:12px;border:1px solid ' + (_proposalStatusColors[s] || '#555') + ';background:' + (active ? (_proposalStatusColors[s] || '#555') + '22' : 'transparent') + ';color:' + (_proposalStatusColors[s] || '#aaa') + ';cursor:pointer;font-size:11px;font-weight:600">' + (filterLabels[s] || s) + '</button>';
+      });
+      html += '</div>';
+      // Cards
+      for (var i = 0; i < proposals.length; i++) {
+        var p = proposals[i];
+        var statusColor = _proposalStatusColors[p.status] || '#888';
+        var typeColors = { bugfix:'#ef4444', feature:'#22c55e', refactor:'#3b82f6', performance:'#f59e0b', security:'#f43f5e' };
+        var typeColor = typeColors[p.type] || '#888';
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:14px;margin-bottom:10px">';
+        // Header
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
+        html += '<span style="color:#fff;font-weight:700;flex:1">' + escapeHtml(p.title || 'Untitled') + '</span>';
+        html += '<span style="padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + typeColor + '22;color:' + typeColor + ';text-transform:uppercase">' + escapeHtml(p.type || '') + '</span>';
+        html += '<span style="padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + statusColor + '22;color:' + statusColor + ';' + (p.status === 'building' ? 'animation:pulse 1.5s infinite' : '') + '">' + escapeHtml(p.status || '') + '</span>';
+        html += '</div>';
+        // Description
+        if (p.description) html += '<div style="color:#888;font-size:12px;margin-bottom:8px">' + escapeHtml(p.description).slice(0, 200) + '</div>';
+        // Impact/Effort bars
+        html += '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px">';
+        html += '<div style="flex:1"><span style="color:#888">Impact:</span> <div style="background:#222;height:6px;border-radius:3px;margin-top:2px"><div style="background:#22c55e;height:6px;border-radius:3px;width:' + ((p.impact || 0) * 10) + '%"></div></div></div>';
+        html += '<div style="flex:1"><span style="color:#888">Effort:</span> <div style="background:#222;height:6px;border-radius:3px;margin-top:2px"><div style="background:#f59e0b;height:6px;border-radius:3px;width:' + ((p.effort || 0) * 10) + '%"></div></div></div>';
+        html += '<div style="color:#a78bfa;font-weight:700">Priority: ' + (p.priority || 0) + '</div>';
+        html += '</div>';
+        // Confidence + badges
+        var conf = p.confidence || 0;
+        var confColor = conf >= 80 ? '#22c55e' : conf >= 50 ? '#eab308' : '#ef4444';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
+        html += '<span style="color:' + confColor + ';font-size:11px;font-weight:700">Confidence: ' + conf + '%</span>';
+        if (conf >= 80) html += '<span style="background:#22c55e22;color:#22c55e;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">⚔️ Battle-Tested</span>';
+        if (p.resurrected) html += '<span style="background:#a78bfa22;color:#a78bfa;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">🧟 Resurrected</span>';
+        html += '</div>';
+        // Dream source
+        var srcEmoji = _dreamTypeEmojis[p.dreamSource] || '💭';
+        html += '<div style="color:#555;font-size:11px;margin-bottom:8px">' + srcEmoji + ' from ' + escapeHtml(p.dreamSource || 'unknown') + ' · ' + new Date(p.createdAt).toLocaleDateString() + '</div>';
+        // Action buttons
+        if (p.status === 'proposed') {
+          html += '<div style="display:flex;gap:6px">';
+          html += '<button onclick="window.aries.dreamAction(\'' + p.id + '\',\'approve\')" style="padding:4px 12px;border-radius:6px;border:none;background:#eab308;color:#000;cursor:pointer;font-weight:600;font-size:11px">✅ Approve</button>';
+          html += '<button onclick="window.aries.dreamAction(\'' + p.id + '\',\'reject\')" style="padding:4px 12px;border-radius:6px;border:none;background:#333;color:#ef4444;cursor:pointer;font-weight:600;font-size:11px">❌ Reject</button>';
+          html += '</div>';
+        } else if (p.status === 'approved') {
+          html += '<button onclick="window.aries.dreamAction(\'' + p.id + '\',\'build\')" class="btn-primary" style="padding:6px 16px;font-size:12px;font-weight:700">🔨 Build This</button>';
+        } else if (p.status === 'building') {
+          html += '<button onclick="window.aries.dreamAction(\'' + p.id + '\',\'complete\')" style="padding:4px 12px;border-radius:6px;border:none;background:#22c55e;color:#000;cursor:pointer;font-weight:600;font-size:11px">✅ Mark Complete</button>';
+        } else if (p.status === 'complete' && !p.measuredImpact) {
+          html += '<div style="background:#0d0d2a;border:1px solid #7c3aed44;border-radius:8px;padding:8px;margin-top:4px">';
+          html += '<div style="color:#a78bfa;font-size:11px;margin-bottom:4px">Rate this upgrade\'s real impact:</div>';
+          html += '<div style="display:flex;gap:6px">';
+          html += '<button onclick="window.aries.rateProposal(\'' + p.id + '\',\'positive\')" style="padding:3px 10px;border-radius:6px;border:none;background:#22c55e22;color:#22c55e;cursor:pointer;font-size:11px">👍 Positive</button>';
+          html += '<button onclick="window.aries.rateProposal(\'' + p.id + '\',\'neutral\')" style="padding:3px 10px;border-radius:6px;border:none;background:#88888822;color:#888;cursor:pointer;font-size:11px">😐 Neutral</button>';
+          html += '<button onclick="window.aries.rateProposal(\'' + p.id + '\',\'negative\')" style="padding:3px 10px;border-radius:6px;border:none;background:#ef444422;color:#ef4444;cursor:pointer;font-size:11px">👎 Negative</button>';
+          html += '</div></div>';
+        } else if (p.status === 'complete' && p.measuredImpact) {
+          var impactIcons = { positive:'👍', neutral:'😐', negative:'👎' };
+          html += '<div style="color:#888;font-size:11px">' + (impactIcons[p.measuredImpact] || '') + ' Rated: ' + escapeHtml(p.measuredImpact) + (p.impactNotes ? ' — ' + escapeHtml(p.impactNotes) : '') + '</div>';
+        } else if (p.status === 'graveyard') {
+          html += '<div style="color:#666;font-size:11px;font-style:italic">💀 In the graveyard. May be resurrected if conditions change.</div>';
+        }
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load proposals</div>'; });
+  }
+
+  function loadDreamStats() {
+    var el = document.getElementById('dreamsStats');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div> Loading stats...';
+    api('GET', 'dreams/stats').then(function(stats) {
+      var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px">';
+      // Stat cards
+      var cards = [
+        { label: 'Total Dreams', value: stats.totalDreams || 0, color: '#a78bfa', icon: '💭' },
+        { label: 'Proposals', value: stats.proposalsGenerated || 0, color: '#00e5ff', icon: '📋' },
+        { label: 'Approved', value: stats.proposalsApproved || 0, color: '#eab308', icon: '✅' },
+        { label: 'Built', value: stats.proposalsBuilt || 0, color: '#22c55e', icon: '🔨' },
+        { label: 'Rejected', value: stats.proposalsRejected || 0, color: '#ef4444', icon: '❌' },
+        { label: 'Streak', value: (stats.streak || 0) + ' days', color: '#f59e0b', icon: '🔥' },
+      ];
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i];
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:14px;text-align:center">';
+        html += '<div style="font-size:24px">' + c.icon + '</div>';
+        html += '<div style="color:' + c.color + ';font-size:24px;font-weight:800">' + c.value + '</div>';
+        html += '<div style="color:#666;font-size:11px;font-weight:600">' + c.label + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      // Dreams by type bar chart
+      var byType = stats.dreamsByType || {};
+      var types = Object.entries(byType).sort(function(a,b) { return b[1] - a[1]; });
+      if (types.length > 0) {
+        var maxCount = types[0][1];
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:16px">';
+        html += '<h3 style="color:#a78bfa;margin:0 0 12px;font-size:14px">Dreams by Type</h3>';
+        for (var j = 0; j < types.length; j++) {
+          var t = types[j];
+          var emoji = _dreamTypeEmojis[t[0]] || '💭';
+          var pct = maxCount > 0 ? Math.round((t[1] / maxCount) * 100) : 0;
+          html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+          html += '<span style="width:24px;text-align:center">' + emoji + '</span>';
+          html += '<span style="width:100px;color:#aaa;font-size:11px;overflow:hidden;text-overflow:ellipsis">' + (_dreamTypeLabels[t[0]] || t[0]) + '</span>';
+          html += '<div style="flex:1;background:#222;height:8px;border-radius:4px"><div style="background:linear-gradient(90deg,#7c3aed,#a78bfa);height:8px;border-radius:4px;width:' + pct + '%;transition:width 0.3s"></div></div>';
+          html += '<span style="color:#a78bfa;font-size:11px;font-weight:700;width:30px;text-align:right">' + t[1] + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      // Success rate
+      var total = (stats.proposalsApproved || 0) + (stats.proposalsRejected || 0);
+      if (total > 0) {
+        var rate = Math.round(((stats.proposalsApproved || 0) / total) * 100);
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:16px;margin-top:12px;text-align:center">';
+        html += '<div style="color:#888;font-size:12px">Approval Rate</div>';
+        html += '<div style="color:' + (rate > 50 ? '#22c55e' : '#ef4444') + ';font-size:36px;font-weight:800">' + rate + '%</div>';
+        html += '</div>';
+      }
+      // Dream Effectiveness per type
+      var eff = stats.dreamEffectiveness || {};
+      var effEntries = Object.entries(eff).sort(function(a,b) { return (b[1].score||0) - (a[1].score||0); });
+      if (effEntries.length > 0) {
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:16px;margin-top:12px">';
+        html += '<h3 style="color:#f59e0b;margin:0 0 12px;font-size:14px">🧬 Dream Effectiveness (Evolution Weights)</h3>';
+        for (var k = 0; k < effEntries.length; k++) {
+          var ek = effEntries[k];
+          var eEmoji = _dreamTypeEmojis[ek[0]] || '💭';
+          var eScore = Math.round((ek[1].score || 0) * 100);
+          var eColor = eScore >= 60 ? '#22c55e' : eScore >= 30 ? '#eab308' : '#ef4444';
+          html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+          html += '<span style="width:24px;text-align:center">' + eEmoji + '</span>';
+          html += '<span style="width:110px;color:#aaa;font-size:11px;overflow:hidden;text-overflow:ellipsis">' + (_dreamTypeLabels[ek[0]] || ek[0]) + '</span>';
+          html += '<div style="flex:1;background:#222;height:8px;border-radius:4px"><div style="background:' + eColor + ';height:8px;border-radius:4px;width:' + eScore + '%;transition:width 0.3s"></div></div>';
+          html += '<span style="color:' + eColor + ';font-size:11px;font-weight:700;width:40px;text-align:right">' + eScore + '%</span>';
+          html += '<span style="color:#555;font-size:10px;width:80px;text-align:right">' + (ek[1].approved||0) + '/' + (ek[1].total||0) + ' approved</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      // Impact tracking stats
+      var imp = stats.impactStats || {};
+      if ((imp.positive || 0) + (imp.neutral || 0) + (imp.negative || 0) > 0) {
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:16px;margin-top:12px">';
+        html += '<h3 style="color:#22c55e;margin:0 0 12px;font-size:14px">📊 Real Impact Tracking</h3>';
+        html += '<div style="display:flex;gap:16px;text-align:center">';
+        html += '<div style="flex:1"><div style="font-size:20px">👍</div><div style="color:#22c55e;font-size:20px;font-weight:800">' + (imp.positive || 0) + '</div><div style="color:#666;font-size:10px">Positive</div></div>';
+        html += '<div style="flex:1"><div style="font-size:20px">😐</div><div style="color:#888;font-size:20px;font-weight:800">' + (imp.neutral || 0) + '</div><div style="color:#666;font-size:10px">Neutral</div></div>';
+        html += '<div style="flex:1"><div style="font-size:20px">👎</div><div style="color:#ef4444;font-size:20px;font-weight:800">' + (imp.negative || 0) + '</div><div style="color:#666;font-size:10px">Negative</div></div>';
+        html += '<div style="flex:1"><div style="font-size:20px">❓</div><div style="color:#555;font-size:20px;font-weight:800">' + (imp.unrated || 0) + '</div><div style="color:#666;font-size:10px">Unrated</div></div>';
+        html += '</div></div>';
+      }
+      // Schedule section
+      html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:16px;margin-top:12px">';
+      html += '<h3 style="color:#00e5ff;margin:0 0 12px;font-size:14px">📅 Dream Schedule</h3>';
+      html += '<div id="dreamScheduleContent" style="color:#888;font-size:12px">Loading...</div>';
+      html += '</div>';
+      el.innerHTML = html;
+      // Load schedule
+      api('GET', 'dreams/schedule').then(function(data) {
+        var schedEl = document.getElementById('dreamScheduleContent');
+        if (!schedEl) return;
+        var schedule = data.schedule || [];
+        var due = data.due || [];
+        var sh = '';
+        for (var si = 0; si < schedule.length; si++) {
+          var rule = schedule[si];
+          var isDue = due.indexOf(rule.type) >= 0;
+          var rEmoji = _dreamTypeEmojis[rule.type] || '💭';
+          sh += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:' + (isDue ? '#7c3aed11' : 'transparent') + ';border-radius:6px">';
+          sh += '<span>' + rEmoji + '</span>';
+          sh += '<span style="color:#aaa;flex:1">' + escapeHtml(rule.label || rule.type) + '</span>';
+          sh += '<span style="color:#555;font-size:10px">' + escapeHtml(rule.rule || '') + '</span>';
+          if (isDue) sh += '<span style="background:#a78bfa22;color:#a78bfa;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">DUE</span>';
+          sh += '</div>';
+        }
+        if (schedule.length === 0) sh = '<div style="color:#555">No schedule rules configured</div>';
+        schedEl.innerHTML = sh;
+      }).catch(function() {});
+    }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load stats</div>'; });
+  }
+
+  var _dreamLiveInterval = null;
+  function loadDreamLive() {
+    var el = document.getElementById('dreamsLive');
+    if (!el) return;
+    function refresh() {
+      api('GET', 'dreams/live').then(function(state) {
+        var html = '';
+        if (state.dreaming) {
+          var phaseColors = { light:'#60a5fa', deep:'#7c3aed', rem:'#f472b6', hypnagogia:'#fbbf24', wake:'#34d399', starting:'#888' };
+          var phaseColor = phaseColors[state.phase] || '#a78bfa';
+          html += '<div style="text-align:center;padding:20px">';
+          html += '<div style="font-size:48px;animation:pulse 1.5s infinite">🌀</div>';
+          html += '<div style="color:' + phaseColor + ';font-size:18px;font-weight:800;margin:8px 0;text-transform:uppercase;letter-spacing:2px">' + escapeHtml(state.phase || 'dreaming') + ' phase</div>';
+          html += '<div style="color:#c4b5fd;font-size:14px;font-style:italic">' + escapeHtml(state.detail || '...') + '</div>';
+          html += '</div>';
+          // Log
+          if (state.log && state.log.length > 0) {
+            html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;margin-top:12px">';
+            var logs = state.log.slice(-15).reverse();
+            for (var i = 0; i < logs.length; i++) {
+              var l = logs[i];
+              var lColor = phaseColors[l.phase] || '#555';
+              html += '<div style="font-size:11px;margin:2px 0;color:#888"><span style="color:' + lColor + ';font-weight:600">[' + (l.phase || '?') + ']</span> ' + escapeHtml(l.detail || '') + ' <span style="color:#444">' + new Date(l.ts).toLocaleTimeString() + '</span></div>';
+            }
+            html += '</div>';
+          }
+        } else {
+          html += '<div style="text-align:center;padding:40px">';
+          html += '<div style="font-size:48px">☀️</div>';
+          html += '<h3 style="color:#a78bfa;margin:8px 0">Aries is Awake</h3>';
+          html += '<p style="color:#666;font-size:13px">' + escapeHtml(state.detail || 'No active dream cycle') + '</p>';
+          html += '<button class="btn-primary" onclick="window.aries.triggerDream()" style="margin-top:12px">🌜 Trigger Dream Cycle</button>';
+          html += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #333">';
+          html += '<div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:6px">🎯 Directed Dream</div>';
+          html += '<div style="display:flex;gap:6px"><input id="directedDreamInput" type="text" placeholder="Focus: module name, file path, or topic..." style="flex:1;background:#0d0d1a;border:1px solid #333;color:#fff;padding:8px 12px;border-radius:6px;font-size:13px" />';
+          html += '<button onclick="window.aries.triggerDirectedDream()" style="padding:8px 14px;border-radius:6px;border:none;background:#a78bfa;color:#000;cursor:pointer;font-weight:700;font-size:12px;white-space:nowrap">Dream About This</button></div>';
+          html += '</div>';
+          html += '</div>';
+        }
+        el.innerHTML = html;
+      }).catch(function() { el.innerHTML = '<div style="color:#666">Failed to load live state</div>'; });
+    }
+    refresh();
+    if (_dreamLiveInterval) clearInterval(_dreamLiveInterval);
+    _dreamLiveInterval = setInterval(refresh, 2000);
+  }
+
+  function dreamAction(proposalId, action) {
+    toast('Processing: ' + action + '...', 'info');
+    api('POST', 'dreams/proposals/' + proposalId + '/' + action).then(function(data) {
+      if (data.error) { toast(data.error, 'error'); return; }
+      toast('Proposal ' + action + 'd!', 'success');
+      loadDreamUpgrades();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
   function triggerDream() {
     toast('Starting dream cycle...', 'info');
+    // Switch to live tab
+    switchDreamTab('live', document.querySelectorAll('.dream-subtab')[3]);
     api('POST', 'dreams/trigger').then(function(data) {
-      toast('Dream cycle complete!', 'success');
-      loadDreams();
+      toast('Dream cycle complete! ' + (data.dreams ? data.dreams.length : 0) + ' dreams, ' + (data.proposals ? data.proposals.length : 0) + ' proposals', 'success');
+      loadDreamJournal();
+      loadDreamLive();
     }).catch(function(e) { toast('Dream error: ' + e.message, 'error'); });
+  }
+
+  function triggerDirectedDream() {
+    var input = document.getElementById('directedDreamInput');
+    var focus = input ? input.value.trim() : '';
+    if (!focus) { toast('Enter a focus topic first', 'error'); return; }
+    toast('Directed dream about: ' + focus + '...', 'info');
+    api('POST', 'dreams/direct', { focus: focus }).then(function(data) {
+      toast('Directed dream complete! ' + (data.proposals ? data.proposals.length : 0) + ' proposals', 'success');
+      loadDreamJournal();
+      loadDreamLive();
+    }).catch(function(e) { toast('Dream error: ' + e.message, 'error'); });
+  }
+
+  function rateProposal(proposalId, rating) {
+    api('POST', 'dreams/proposals/' + proposalId + '/rate', { rating: rating, notes: '' }).then(function(data) {
+      if (data.error) { toast(data.error, 'error'); return; }
+      toast('Impact rated: ' + rating, 'success');
+      loadDreamUpgrades();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
   }
 
   // ═══════════════════════════════
@@ -9754,7 +10565,9 @@
       desktopRefresh: desktopRefresh, desktopInfo: desktopInfo, desktopType: desktopType,
       exportAll: exportAll, importAll: importAll, importAllFile: importAllFile,
       sendCollabChat: sendCollabChat, toggleCollabChat: toggleCollabChat,
-      loadDreams: loadDreams, triggerDream: triggerDream,
+      loadConsciousness: loadConsciousness, switchConscTab: switchConscTab,
+      loadThoughts: loadThoughts, filterThoughts: filterThoughts, triggerThought: triggerThought,
+      loadDreams: loadDreams, triggerDream: triggerDream, switchDreamTab: switchDreamTab, loadDreamUpgrades: loadDreamUpgrades, dreamAction: dreamAction, triggerDirectedDream: triggerDirectedDream, rateProposal: rateProposal,
       loadJournals: loadJournals, loadAgentJournal: loadAgentJournal,
       updateContextViz: updateContextViz,
       refreshReputation: refreshReputation, submitRating: submitRating, _setRepScore: _setRepScore,
