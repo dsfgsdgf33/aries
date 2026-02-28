@@ -232,13 +232,21 @@ function wsSend(client, obj) {
 }
 
 function wsBroadcast(obj) {
+  // Send to legacy clients (api-server's own handleUpgrade — rarely used)
   for (const client of _wsClients) wsSend(client, obj);
+  // Send raw JSON to wsServer clients (websocket.js — the real WS handler via ws library)
+  if (_refs && _refs.wsServer && _refs.wsServer._clients) {
+    const msg = JSON.stringify(obj);
+    const WS = require('ws');
+    for (const [id, ws] of _refs.wsServer._clients) {
+      try { if (ws.readyState === WS.OPEN) ws.send(msg); } catch (_) {}
+    }
+  }
 }
 
 //  Stats broadcast 
 function startStatsBroadcast() {
   setInterval(() => {
-    if (_wsClients.size === 0) return;
     const sys = _refs.sysModule ? _refs.sysModule.get() : {};
     const memPct = sys.memTotal ? Math.round((sys.memUsed / sys.memTotal) * 100) : 0;
     wsBroadcast({
@@ -253,7 +261,7 @@ function startStatsBroadcast() {
       netUp: sys.netUp,
       netDown: sys.netDown,
     });
-  }, 10000); // 10s instead of 5s  reduces overhead
+  }, 10000);
 }
 
 //  Swarm Worker Tracker 

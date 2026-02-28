@@ -215,98 +215,11 @@ const MANIFEST = JSON.stringify({
 function registerFeatureRoutes(server, refs) {
   const { config, ai, subagents, hands, memory, knowledgeGraph, analytics, audit, workflows } = refs || {};
 
-  // ── WebSocket upgrade ──
-  server.on('upgrade', (req, socket, head) => {
-    const parsed = new URL(req.url, 'http://localhost');
-    if (parsed.pathname !== '/ws') {
-      socket.destroy();
-      return;
-    }
-
-    const key = req.headers['sec-websocket-key'];
-    if (!key) { socket.destroy(); return; }
-
-    const accept = crypto
-      .createHash('sha1')
-      .update(key + '258EAFA5-E914-47DA-95CA-5AB5CE89B541')
-      .digest('base64');
-
-    socket.write(
-      'HTTP/1.1 101 Switching Protocols\r\n' +
-      'Upgrade: websocket\r\n' +
-      'Connection: Upgrade\r\n' +
-      `Sec-WebSocket-Accept: ${accept}\r\n` +
-      '\r\n'
-    );
-
-    const client = { socket, alive: true, buf: Buffer.alloc(0) };
-    wsClients.add(client);
-
-    socket.on('data', (chunk) => {
-      client.buf = Buffer.concat([client.buf, chunk]);
-      while (client.buf.length >= 2) {
-        const frame = decodeFrame(client.buf);
-        if (!frame) break;
-        client.buf = client.buf.slice(frame.totalLen);
-
-        if (frame.opcode === 0x01) {
-          // text frame — echo or handle
-          const text = frame.payload.toString('utf8');
-          try {
-            const msg = JSON.parse(text);
-            // Collaboration: presence, cursor, chat
-            if (msg.type === 'collab:join') {
-              client.collabUser = { name: msg.name || 'Anonymous', panel: msg.panel || 'chat', joinedAt: Date.now(), color: msg.color || '#00e5ff' };
-              broadcastPresence();
-            } else if (msg.type === 'collab:panel') {
-              if (client.collabUser) client.collabUser.panel = msg.panel || 'chat';
-              broadcastPresence();
-            } else if (msg.type === 'collab:cursor') {
-              for (const other of wsClients) {
-                if (other !== client && other.alive) sendWsFrame(other.socket, JSON.stringify({ type: 'collab:cursor', name: client.collabUser ? client.collabUser.name : '?', x: msg.x, y: msg.y }));
-              }
-            } else if (msg.type === 'collab:chat') {
-              const chatMsg = { type: 'collab:chat', name: client.collabUser ? client.collabUser.name : 'Anonymous', text: msg.text, color: client.collabUser ? client.collabUser.color : '#fff', timestamp: Date.now() };
-              for (const c of wsClients) { if (c.alive) sendWsFrame(c.socket, JSON.stringify(chatMsg)); }
-            } else {
-              sendWsFrame(socket, JSON.stringify({ type: 'ack', data: msg, timestamp: Date.now() }));
-            }
-          } catch (_) { /* ignore bad json */ }
-        } else if (frame.opcode === 0x09) {
-          // ping → pong
-          const pong = Buffer.alloc(2 + frame.payload.length);
-          pong[0] = 0x8a; // FIN + pong
-          pong[1] = frame.payload.length;
-          frame.payload.copy(pong, 2);
-          try { socket.write(pong); } catch (_) { /* */ }
-        } else if (frame.opcode === 0x0a) {
-          // pong
-          client.alive = true;
-        } else if (frame.opcode === 0x08) {
-          // close
-          sendClose(socket);
-          wsClients.delete(client);
-          return;
-        }
-      }
-    });
-
-    socket.on('close', () => { wsClients.delete(client); broadcastPresence(); });
-    socket.on('error', () => { wsClients.delete(client); broadcastPresence(); });
-  });
-
-  // Ping interval
-  setInterval(() => {
-    for (const client of wsClients) {
-      if (!client.alive) {
-        wsClients.delete(client);
-        try { client.socket.destroy(); } catch (_) { /* */ }
-        continue;
-      }
-      client.alive = false;
-      sendPing(client.socket);
-    }
-  }, 30000).unref();
+  // ── WebSocket ──
+  // NOTE: WebSocket upgrade is handled by websocket.js (attached in headless.js).
+  // Do NOT register server.on('upgrade') here — it conflicts and causes double-handshake disconnects.
+  // Collab messages (collab:join, collab:panel, collab:cursor, collab:chat) are handled
+  // via the wsServer 'message' event in headless.js which delegates to feature-routes.
 
   // ── Expose a request handler that can be called from api-server ──
   // Instead of intercepting all requests, we export a tryHandle function
@@ -2829,4 +2742,4 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   return false; // not handled
 }
 
-module.exports = { registerFeatureRoutes, broadcast };
+module.exports = { registerFeatureRoutes, broadcast, wsClients, sendWsFrame };
