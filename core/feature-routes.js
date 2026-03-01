@@ -1856,6 +1856,13 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
       const body = await jsonBody(req);
       json(res, 200, neuro.weaken(body.from, body.to)); return true;
     }
+    if (pathname === '/api/neuroplasticity/connections' && method === 'GET') {
+      json(res, 200, neuro.getConnectionMap()); return true;
+    }
+    if (pathname === '/api/neuroplasticity/stats' && method === 'GET') {
+      const map = neuro.getConnectionMap();
+      json(res, 200, { connections: map.connections ? map.connections.length : 0, hot: neuro.getHotPaths().length, cold: neuro.getColdPaths().length, map }); return true;
+    }
   }
 
   // ── Ghost Protocol ──
@@ -1881,6 +1888,12 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
     if (pathname === '/api/ghost/stats' && method === 'GET') {
       json(res, 200, ghost.getGhostStats()); return true;
+    }
+    if (pathname === '/api/ghost/status' && method === 'GET') {
+      json(res, 200, ghost.getStatus()); return true;
+    }
+    if (pathname === '/api/ghost/observations' && method === 'GET') {
+      json(res, 200, { observations: ghost.getGhostLog() }); return true;
     }
   }
 
@@ -1911,6 +1924,9 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     if (pathname === '/api/synesthesia/history' && method === 'GET') {
       const limit = parseInt(parsed.searchParams.get('limit') || '20', 10);
       json(res, 200, syn.getHistory(limit)); return true;
+    }
+    if (pathname === '/api/synesthesia/mappings' && method === 'GET') {
+      json(res, 200, { mappings: syn.getMappings() }); return true;
     }
   }
 
@@ -2024,6 +2040,9 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
       const body = await jsonBody(req);
       json(res, 200, attn.recordEffectiveness(body.target, body.outcome)); return true;
     }
+    if (pathname === '/api/attention/budget' && method === 'GET') {
+      json(res, 200, { spotlight: attn.getSpotlight(), peripheral: attn.getPeripheral(), dark: attn.getDark(), map: attn.getAttentionMap() }); return true;
+    }
   }
 
   // ── Intuition Engine ──
@@ -2101,6 +2120,9 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     if (pathname === '/api/emergent/effectiveness' && method === 'GET') {
       json(res, 200, { effectiveness: emergent.getRuleEffectiveness() }); return true;
     }
+    if (pathname === '/api/emergent/rules' && method === 'GET') {
+      json(res, 200, { rules: emergent.getRules(), active: emergent.getActiveRules() }); return true;
+    }
     if (pathname === '/api/emergent/rule' && method === 'POST') {
       const body = await jsonBody(req);
       if (!body.condition || !body.action) { json(res, 400, { error: 'Missing condition or action' }); return true; }
@@ -2163,6 +2185,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
       const body = await jsonBody(req);
       if (!body.event) { json(res, 400, { error: 'Missing event' }); return true; }
       json(res, 201, causal.recordEvent(body.event, body.cause, body.evidence)); return true;
+    }
+    if (pathname === '/api/causal/analyses' && method === 'GET') {
+      const limit = parseInt(parsed.searchParams.get('limit') || '20', 10);
+      json(res, 200, { analyses: causal.getHistory(limit), patterns: causal.getCausalPatterns() }); return true;
     }
     if (pathname === '/api/causal/predict' && method === 'POST') {
       const body = await jsonBody(req);
