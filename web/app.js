@@ -9655,7 +9655,7 @@
   // ═══════════════════════════════
   var _dreamTypeEmojis = { associative:'🔗', nightmare:'👹', consolidation:'🧠', pruning:'✂️', sentiment:'💚', problemSolving:'🔧', creativeDrift:'🎨', selfImprove:'🪞', competitive:'🏆', mirror:'🪩', precognitive:'🔮', narrative:'📖' };
   var _dreamTypeLabels = { associative:'Associative', nightmare:'Nightmare', consolidation:'Memory Consolidation', pruning:'Memory Pruning', sentiment:'Sentiment', problemSolving:'Problem Solving', creativeDrift:'Creative Drift', selfImprove:'Self-Improvement', competitive:'Competitive', mirror:'Mirror', precognitive:'Precognitive', narrative:'Narrative' };
-  var _proposalStatusColors = { proposed:'#00e5ff', approved:'#eab308', building:'#f97316', complete:'#22c55e', rejected:'#ef4444', graveyard:'#666' };
+  var _proposalStatusColors = { proposed:'#00e5ff', approved:'#eab308', building:'#f97316', complete:'#22c55e', applied:'#10b981', failed:'#dc2626', rejected:'#ef4444', graveyard:'#666' };
 
   function switchDreamTab(tab, btn) {
     var tabs = ['dreamsContent','dreamsUpgrades','dreamsStats','dreamsLive','dreamsApprovals'];
@@ -10082,6 +10082,148 @@
     refresh();
     if (_dreamLiveInterval) clearInterval(_dreamLiveInterval);
     _dreamLiveInterval = setInterval(refresh, 2000);
+  }
+
+  // ═══════════════════════════════════════
+  //  DREAM APPROVALS PIPELINE
+  // ═══════════════════════════════════════
+  var _approvalsView = 'pending'; // pending | approved | history
+
+  function loadDreamApprovals(view) {
+    if (view) _approvalsView = view;
+    var el = document.getElementById('dreamsApprovals');
+    if (!el) return;
+    el.innerHTML = '<div class="spinner"></div> Loading...';
+
+    // Tab bar
+    var html = '<div style="display:flex;gap:6px;margin-bottom:16px">';
+    var views = [
+      { key:'pending', label:'📋 Pending Review', color:'#00e5ff' },
+      { key:'approved', label:'✅ Ready to Apply', color:'#eab308' },
+      { key:'history', label:'📜 Applied History', color:'#22c55e' }
+    ];
+    views.forEach(function(v) {
+      var active = _approvalsView === v.key;
+      html += '<button onclick="window.aries.loadDreamApprovals(\'' + v.key + '\')" style="padding:6px 16px;border-radius:8px;border:1px solid ' + v.color + ';background:' + (active ? v.color + '22' : 'transparent') + ';color:' + v.color + ';cursor:pointer;font-weight:600;font-size:12px">' + v.label + '</button>';
+    });
+    html += '</div>';
+
+    if (_approvalsView === 'history') {
+      api('GET', 'dreams/proposals/applied').then(function(data) {
+        var history = data.history || [];
+        if (!history.length) {
+          html += '<div style="text-align:center;padding:40px;color:#555"><span style="font-size:48px">📭</span><h3 style="color:#888">No Applied Proposals Yet</h3><p>Approve and apply proposals to see history here</p></div>';
+        } else {
+          history.reverse();
+          for (var i = 0; i < history.length; i++) {
+            var h = history[i];
+            var statusIcon = h.success ? '✅' : '❌';
+            var statusColor = h.success ? '#22c55e' : '#ef4444';
+            html += '<div style="background:#0a0a12;border:1px solid #222;border-radius:10px;padding:14px;margin-bottom:8px;border-left:3px solid ' + statusColor + '">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+            html += '<span style="color:#fff;font-weight:700">' + statusIcon + ' ' + escapeHtml(h.title || h.proposalId) + '</span>';
+            html += '<span style="color:#555;font-size:11px">' + new Date(h.appliedAt).toLocaleString() + '</span>';
+            html += '</div>';
+            if (h.error) html += '<div style="color:#ef4444;font-size:12px;margin-top:4px">Error: ' + escapeHtml(h.error) + '</div>';
+            if (h.files && h.files.length) {
+              html += '<div style="margin-top:6px;font-size:11px;color:#888">';
+              h.files.forEach(function(f) {
+                html += '<div>📄 ' + escapeHtml(f.file || '') + ' → <span style="color:' + (f.action === 'skipped' ? '#666' : '#a78bfa') + '">' + escapeHtml(f.action || '') + '</span></div>';
+              });
+              html += '</div>';
+            }
+            html += '</div>';
+          }
+        }
+        el.innerHTML = html;
+      }).catch(function() { el.innerHTML = html + '<div style="color:#666">Failed to load history</div>'; });
+      return;
+    }
+
+    var endpoint = _approvalsView === 'pending' ? 'dreams/proposals/pending' : 'dreams/proposals/approved';
+    api('GET', endpoint).then(function(data) {
+      var proposals = data.proposals || [];
+      if (!proposals.length) {
+        var emptyMsg = _approvalsView === 'pending' ? 'No proposals awaiting review' : 'No approved proposals ready to apply';
+        html += '<div style="text-align:center;padding:40px;color:#555"><span style="font-size:48px">' + (_approvalsView === 'pending' ? '✨' : '📭') + '</span><h3 style="color:#888">' + emptyMsg + '</h3></div>';
+        el.innerHTML = html;
+        return;
+      }
+
+      proposals.sort(function(a, b) { return (b.priority || 0) - (a.priority || 0); });
+
+      // Apply All button for approved view
+      if (_approvalsView === 'approved') {
+        html += '<div style="margin-bottom:12px"><button onclick="window.aries.applyAllApproved()" style="padding:8px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;cursor:pointer;font-weight:700;font-size:13px;box-shadow:0 0 15px #22c55e44">⚡ Apply All (' + proposals.length + ' proposals)</button></div>';
+      }
+
+      for (var i = 0; i < proposals.length; i++) {
+        var p = proposals[i];
+        var typeColors = { bugfix:'#ef4444', feature:'#22c55e', refactor:'#3b82f6', performance:'#f59e0b', security:'#f43f5e', docs:'#a78bfa' };
+        var typeColor = typeColors[p.type] || '#888';
+        var prioColor = p.priority >= 2 ? '#ef4444' : p.priority >= 1.2 ? '#f59e0b' : '#22c55e';
+
+        html += '<div style="background:#0d0d1a;border:1px solid #333;border-radius:10px;padding:14px;margin-bottom:10px">';
+        // Header
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
+        html += '<span style="color:#fff;font-weight:700;flex:1">' + escapeHtml(p.title || 'Untitled') + '</span>';
+        html += '<span style="padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + typeColor + '22;color:' + typeColor + ';text-transform:uppercase">' + escapeHtml(p.type || '') + '</span>';
+        html += '<span style="padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + prioColor + '22;color:' + prioColor + '">P' + (p.priority || 0) + '</span>';
+        html += '</div>';
+        // Description
+        if (p.description) html += '<div style="color:#888;font-size:12px;margin-bottom:8px">' + escapeHtml(p.description).slice(0, 300) + '</div>';
+        // Files
+        if (p.files && p.files.length) {
+          html += '<div style="margin-bottom:8px;font-size:11px;color:#666">';
+          p.files.slice(0, 5).forEach(function(f) { html += '<div>📄 ' + escapeHtml(typeof f === 'string' ? f.split('\\').pop().split('/').pop() : f) + '</div>'; });
+          if (p.files.length > 5) html += '<div>...and ' + (p.files.length - 5) + ' more</div>';
+          html += '</div>';
+        }
+        // Confidence + source
+        var conf = p.confidence || 0;
+        var confColor = conf >= 80 ? '#22c55e' : conf >= 50 ? '#eab308' : '#ef4444';
+        var srcEmoji = _dreamTypeEmojis[p.dreamSource] || '💭';
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:11px">';
+        html += '<span style="color:' + confColor + ';font-weight:700">Confidence: ' + conf + '%</span>';
+        html += '<span style="color:#555">' + srcEmoji + ' ' + escapeHtml(p.dreamSource || 'unknown') + '</span>';
+        html += '<span style="color:#555">' + new Date(p.createdAt).toLocaleDateString() + '</span>';
+        html += '</div>';
+        // Action buttons
+        if (_approvalsView === 'pending') {
+          html += '<div style="display:flex;gap:6px">';
+          html += '<button onclick="window.aries.dreamAction(\'' + p.id + '\',\'approve\');setTimeout(function(){window.aries.loadDreamApprovals()},500)" style="padding:5px 14px;border-radius:6px;border:none;background:#eab308;color:#000;cursor:pointer;font-weight:600;font-size:12px">✅ Approve</button>';
+          html += '<button onclick="window.aries.dreamAction(\'' + p.id + '\',\'reject\');setTimeout(function(){window.aries.loadDreamApprovals()},500)" style="padding:5px 14px;border-radius:6px;border:none;background:#333;color:#ef4444;cursor:pointer;font-weight:600;font-size:12px">❌ Reject</button>';
+          html += '</div>';
+        } else if (_approvalsView === 'approved') {
+          html += '<div style="display:flex;gap:6px">';
+          html += '<button onclick="window.aries.applyProposal(\'' + p.id + '\')" style="padding:5px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;cursor:pointer;font-weight:700;font-size:12px;box-shadow:0 0 10px #22c55e33">⚡ Apply</button>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() { el.innerHTML = html + '<div style="color:#666">Failed to load proposals</div>'; });
+  }
+
+  function applyProposal(id) {
+    if (!confirm('Apply this proposal? This will modify files.')) return;
+    toast('Applying proposal...', 'info');
+    api('POST', 'dreams/proposals/' + id + '/apply').then(function(data) {
+      if (data.error) { toast('Apply failed: ' + data.error, 'error'); return; }
+      toast('Proposal applied successfully!', 'success');
+      loadDreamApprovals();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  function applyAllApproved() {
+    if (!confirm('Apply ALL approved proposals? This will modify files.')) return;
+    toast('Applying all approved proposals...', 'info');
+    api('POST', 'dreams/proposals/apply-all').then(function(data) {
+      var applied = (data.applied || []).length;
+      var failed = (data.failed || []).length;
+      toast('Applied: ' + applied + ', Failed: ' + failed, applied > 0 ? 'success' : 'error');
+      loadDreamApprovals();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
   }
 
   function dreamAction(proposalId, action) {
@@ -10633,7 +10775,7 @@
       sendCollabChat: sendCollabChat, toggleCollabChat: toggleCollabChat,
       loadConsciousness: loadConsciousness, switchConscTab: switchConscTab,
       loadThoughts: loadThoughts, filterThoughts: filterThoughts, triggerThought: triggerThought,
-      loadDreams: loadDreams, triggerDream: triggerDream, switchDreamTab: switchDreamTab, loadDreamUpgrades: loadDreamUpgrades, dreamAction: dreamAction, triggerDirectedDream: triggerDirectedDream, rateProposal: rateProposal, setDreamModel: setDreamModel,
+      loadDreams: loadDreams, triggerDream: triggerDream, switchDreamTab: switchDreamTab, loadDreamUpgrades: loadDreamUpgrades, dreamAction: dreamAction, triggerDirectedDream: triggerDirectedDream, rateProposal: rateProposal, setDreamModel: setDreamModel, loadDreamApprovals: loadDreamApprovals, applyProposal: applyProposal, applyAllApproved: applyAllApproved,
       loadJournals: loadJournals, loadAgentJournal: loadAgentJournal,
       updateContextViz: updateContextViz,
       refreshReputation: refreshReputation, submitRating: submitRating, _setRepScore: _setRepScore,
