@@ -413,7 +413,15 @@
       case 'lock': if (window.loadLock) window.loadLock(); break;
       case 'knowledge-wiki': if (window.loadKnowledgeWiki) window.loadKnowledgeWiki(); break;
       case 'marketplace': if (window.loadMarketplace) window.loadMarketplace(); break;
+      case 'accelerators': if (window.loadAccelerators) window.loadAccelerators(); break;
+      case 'architecture': if (window.loadArchitecture) window.loadArchitecture(); break;
+      case 'autonomy': loadAutonomyPanel(); break;
+      case 'lineage': loadLineagePanel(); break;
       case 'self-arch': if (window.loadSelfArch) window.loadSelfArch(); break;
+      case 'employees': loadEmployeesPanel(); break;
+      case 'governance': loadGovernancePanel(); break;
+      case 'compiler': loadCompiler(); break;
+      case 'knowledge-hub': loadKnowledgeHub(); break;
     }
   }
 
@@ -10639,6 +10647,84 @@
     }).catch(function(e) { sEl.innerHTML = '<div style="color:#f44">Error: ' + e.message + '</div>'; });
   }
 
+  // ═══════════════════════════════
+  //  GOVERNANCE PANEL
+  // ═══════════════════════════════
+  function loadGovernancePanel() {
+    var cards = document.getElementById('govSummaryCards');
+    var queue = document.getElementById('govApprovalQueue');
+    var audit = document.getElementById('govAuditTrail');
+    var rules = document.getElementById('govRiskRules');
+
+    if (cards) cards.innerHTML = '<div style="color:#888">Loading...</div>';
+
+    fetch(API + '/governance/status').then(r => r.json()).then(function(d) {
+      if (!cards) return;
+      var rd = d.riskDistribution || {};
+      var ps = d.packetStats || {};
+      var pending = (ps.byStatus || {}).pending || 0;
+      cards.innerHTML =
+        '<div style="background:#1a1a2e;padding:12px;border-radius:8px;border:1px solid #333;text-align:center"><div style="font-size:24px;font-weight:bold;color:#f59e0b">' + pending + '</div><div style="font-size:11px;color:#888">Pending</div></div>' +
+        '<div style="background:#1a1a2e;padding:12px;border-radius:8px;border:1px solid #333;text-align:center"><div style="font-size:24px;font-weight:bold;color:#22c55e">' + (rd.R0||0) + '</div><div style="font-size:11px;color:#888">R0 Low</div></div>' +
+        '<div style="background:#1a1a2e;padding:12px;border-radius:8px;border:1px solid #333;text-align:center"><div style="font-size:24px;font-weight:bold;color:#f59e0b">' + (rd.R1||0) + '</div><div style="font-size:11px;color:#888">R1 Medium</div></div>' +
+        '<div style="background:#1a1a2e;padding:12px;border-radius:8px;border:1px solid #333;text-align:center"><div style="font-size:24px;font-weight:bold;color:#ef4444">' + (rd.R2||0) + '</div><div style="font-size:11px;color:#888">R2 High</div></div>' +
+        '<div style="background:#1a1a2e;padding:12px;border-radius:8px;border:1px solid #333;text-align:center"><div style="font-size:24px;font-weight:bold;color:#dc2626">' + (rd.R3||0) + '</div><div style="font-size:11px;color:#888">R3 Critical</div></div>' +
+        '<div style="background:#1a1a2e;padding:12px;border-radius:8px;border:1px solid #333;text-align:center"><div style="font-size:24px;font-weight:bold;color:#8b5cf6">' + (ps.total||0) + '</div><div style="font-size:11px;color:#888">Total Packets</div></div>';
+    }).catch(function() { if (cards) cards.innerHTML = '<div style="color:#f44">Failed to load</div>'; });
+
+    // Approval Queue
+    fetch(API + '/governance/packets?status=pending').then(r => r.json()).then(function(d) {
+      if (!queue) return;
+      var pkts = d.packets || [];
+      if (!pkts.length) { queue.innerHTML = '<div style="color:#888;padding:8px">No pending approvals</div>'; return; }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="border-bottom:1px solid #333;color:#888"><th style="padding:6px;text-align:left">ID</th><th style="text-align:left">Agent</th><th style="text-align:left">Action</th><th style="text-align:left">Risk</th><th style="text-align:left">Status</th><th>Actions</th></tr>';
+      pkts.forEach(function(p) {
+        var riskColor = p.riskClass === 'R0' ? '#22c55e' : p.riskClass === 'R1' ? '#f59e0b' : p.riskClass === 'R2' ? '#ef4444' : '#dc2626';
+        html += '<tr style="border-bottom:1px solid #222"><td style="padding:6px;font-family:monospace;font-size:10px">' + (p.id||'').slice(0,12) + '</td><td>' + (p.agentId||'-') + '</td><td>' + ((p.action||{}).type||'-') + '</td><td style="color:' + riskColor + ';font-weight:bold">' + p.riskClass + '</td><td>' + p.status + '</td><td style="white-space:nowrap"><button onclick="window._govApprove(\'' + p.id + '\')" style="padding:2px 8px;background:#22c55e;border:none;color:#fff;border-radius:4px;cursor:pointer;margin-right:4px;font-size:11px">✓</button><button onclick="window._govReject(\'' + p.id + '\')" style="padding:2px 8px;background:#ef4444;border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:11px">✗</button></td></tr>';
+      });
+      html += '</table>';
+      queue.innerHTML = html;
+    }).catch(function() { if (queue) queue.innerHTML = '<div style="color:#f44">Failed</div>'; });
+
+    // Audit Trail
+    fetch(API + '/governance/audit?limit=50').then(r => r.json()).then(function(d) {
+      if (!audit) return;
+      var entries = d.audit || [];
+      if (!entries.length) { audit.innerHTML = '<div style="color:#888;padding:8px">No audit entries</div>'; return; }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="border-bottom:1px solid #333;color:#888"><th style="padding:4px;text-align:left">Time</th><th style="text-align:left">Agent</th><th style="text-align:left">Risk</th><th style="text-align:left">Decision</th><th style="text-align:left">Reason</th></tr>';
+      entries.slice(-30).reverse().forEach(function(e) {
+        var decColor = e.decision === 'allow' ? '#22c55e' : e.decision === 'deny' ? '#ef4444' : '#f59e0b';
+        html += '<tr style="border-bottom:1px solid #1a1a2e"><td style="padding:3px;color:#888;font-size:10px">' + new Date(e.timestamp).toLocaleString() + '</td><td>' + (e.agentId||'-') + '</td><td>' + (e.riskClass||'-') + '</td><td style="color:' + decColor + '">' + e.decision + '</td><td style="color:#aaa;max-width:200px;overflow:hidden;text-overflow:ellipsis">' + (e.reason||'-') + '</td></tr>';
+      });
+      html += '</table>';
+      audit.innerHTML = html;
+    }).catch(function() { if (audit) audit.innerHTML = '<div style="color:#f44">Failed</div>'; });
+
+    // Risk Rules
+    fetch(API + '/governance/risk-rules').then(r => r.json()).then(function(d) {
+      if (!rules) return;
+      var rr = d.rules || [];
+      if (!rr.length) { rules.innerHTML = '<div style="color:#888">No rules</div>'; return; }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="border-bottom:1px solid #333;color:#888"><th style="padding:4px;text-align:left">Pattern</th><th style="text-align:left">Risk Class</th><th style="text-align:left">Description</th></tr>';
+      rr.forEach(function(r) {
+        html += '<tr style="border-bottom:1px solid #222"><td style="padding:4px;font-family:monospace;color:#3b82f6">' + (r.pattern||'') + '</td><td style="font-weight:bold">' + r.riskClass + '</td><td style="color:#aaa">' + (r.description||'') + '</td></tr>';
+      });
+      html += '</table>';
+      rules.innerHTML = html;
+    }).catch(function() { if (rules) rules.innerHTML = '<div style="color:#f44">Failed</div>'; });
+  }
+
+  window.loadGovernancePanel = loadGovernancePanel;
+
+  window._govApprove = function(id) {
+    fetch(API + '/governance/packets/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': AUTH }, body: JSON.stringify({ approverId: 'human' }) }).then(function() { loadGovernancePanel(); });
+  };
+  window._govReject = function(id) {
+    var reason = prompt('Rejection reason:');
+    if (!reason) return;
+    fetch(API + '/governance/packets/' + id + '/reject', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': AUTH }, body: JSON.stringify({ reason: reason }) }).then(function() { loadGovernancePanel(); });
+  };
+
     window.aries = {
       switchPanel: switchPanel, refreshAgents: refreshAgents, openAgentDetail: openAgentDetail, closeAgentDetail: closeAgentDetail, sendAgentTask: sendAgentTask,
       refreshSubagents: refreshSubagents, openSubagentChat: openSubagentChat, closeSubagentChat: closeSubagentChat, sendSubagentTask: sendSubagentTask, clearSubagentHistory: clearSubagentHistory,
@@ -11146,6 +11232,636 @@
       }
     }).catch(function(e) { toast('Error: ' + e.message); });
   };
+
+  // ═══════════════════════════════
+  //  VIRTUAL EMPLOYEES
+  // ═══════════════════════════════
+  function loadEmployeesPanel() {
+    var summary = document.getElementById('employeesSummary');
+    var content = document.getElementById('employeesContent');
+    if (!content) return;
+    content.innerHTML = '<div class="spinner"></div> Loading employees...';
+
+    Promise.all([
+      api('GET', 'employees').catch(function() { return { employees: [] }; }),
+      api('GET', 'employees/stats').catch(function() { return {}; })
+    ]).then(function(r) {
+      var employees = (r[0].employees || []);
+      var stats = r[1] || {};
+
+      // Summary cards
+      if (summary) {
+        summary.innerHTML =
+          '<div style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px 16px;flex:1;min-width:120px"><div style="font-size:11px;color:#888">Active</div><div style="font-size:24px;font-weight:700;color:#10b981">' + (stats.active || 0) + '</div></div>' +
+          '<div style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px 16px;flex:1;min-width:120px"><div style="font-size:11px;color:#888">Avg Performance</div><div style="font-size:24px;font-weight:700;color:#8b5cf6">' + (stats.avgPerformance || 0) + '%</div></div>' +
+          '<div style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px 16px;flex:1;min-width:120px"><div style="font-size:11px;color:#888">KPIs Tracked</div><div style="font-size:24px;font-weight:700;color:#06b6d4">' + (stats.totalKpis || 0) + '</div></div>' +
+          '<div style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px 16px;flex:1;min-width:120px"><div style="font-size:11px;color:#888">Alerts</div><div style="font-size:24px;font-weight:700;color:' + (stats.alerts > 0 ? '#ef4444' : '#555') + '">' + (stats.alerts || 0) + '</div></div>';
+      }
+
+      if (employees.length === 0) {
+        content.innerHTML = '<div style="text-align:center;padding:40px;color:#555">No virtual employees deployed yet. Click <b>Deploy New</b> to get started.</div>';
+        return;
+      }
+
+      var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+      employees.forEach(function(emp) {
+        var statusColor = emp.status === 'active' ? '#10b981' : emp.status === 'paused' ? '#f59e0b' : '#ef4444';
+        var riskColors = { R0: '#10b981', R1: '#06b6d4', R2: '#f59e0b', R3: '#ef4444' };
+        var gradeColors = { G0: '#555', G1: '#06b6d4', G2: '#8b5cf6', G3: '#f59e0b' };
+
+        var kpiHtml = '';
+        (emp.kpis || []).slice(0, 3).forEach(function(kpi) {
+          var pct = 0;
+          if (kpi.current !== null && kpi.current !== undefined) {
+            if (kpi.direction === 'below') {
+              pct = kpi.current <= kpi.target ? 100 : Math.max(0, Math.round((kpi.target / kpi.current) * 100));
+            } else {
+              pct = kpi.current >= kpi.target ? 100 : Math.max(0, Math.round((kpi.current / kpi.target) * 100));
+            }
+          }
+          var barColor = pct >= 100 ? '#10b981' : pct >= 75 ? '#f59e0b' : '#ef4444';
+          kpiHtml += '<div style="margin:4px 0"><div style="display:flex;justify-content:space-between;font-size:10px;color:#888"><span>' + kpi.name + '</span><span>' + (kpi.current !== null ? kpi.current : '—') + '/' + kpi.target + ' ' + kpi.unit + '</span></div><div style="background:#222;border-radius:4px;height:6px;margin-top:2px"><div style="background:' + barColor + ';height:100%;border-radius:4px;width:' + Math.min(pct, 100) + '%"></div></div></div>';
+        });
+
+        html += '<div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:16px;cursor:pointer" onclick="viewEmployeeDetail(\'' + emp.id + '\')">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><b style="font-size:14px">' + emp.name + '</b><div style="font-size:11px;color:#888">' + emp.role + '</div></div>' +
+          '<div style="display:flex;gap:4px"><span style="background:' + statusColor + '22;color:' + statusColor + ';padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">' + emp.status + '</span>' +
+          '<span style="background:' + (gradeColors[emp.maturityGrade] || '#555') + '22;color:' + (gradeColors[emp.maturityGrade] || '#555') + ';padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600">' + emp.maturityGrade + '</span>' +
+          '<span style="background:' + (riskColors[emp.riskClass] || '#555') + '22;color:' + (riskColors[emp.riskClass] || '#555') + ';padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600">' + emp.riskClass + '</span></div></div>' +
+          '<div style="font-size:11px;color:#aaa;margin-bottom:8px">' + (emp.mandate || '') + '</div>' +
+          kpiHtml +
+          '<div style="display:flex;gap:6px;margin-top:10px"><button class="btn-sm" onclick="event.stopPropagation();viewEmployeeDetail(\'' + emp.id + '\')">View</button>' +
+          '<button class="btn-sm" onclick="event.stopPropagation();toggleEmployeePause(\'' + emp.id + '\',\'' + emp.status + '\')">' + (emp.status === 'paused' ? 'Resume' : 'Pause') + '</button>' +
+          '<button class="btn-sm" onclick="event.stopPropagation();evaluateEmployee(\'' + emp.id + '\')">Evaluate</button></div></div>';
+      });
+      html += '</div>';
+      content.innerHTML = html;
+    });
+  }
+  window.loadEmployeesPanel = loadEmployeesPanel;
+
+  window.viewEmployeeDetail = function(id) {
+    var detail = document.getElementById('employeeDetail');
+    if (!detail) return;
+    detail.style.display = 'block';
+    detail.innerHTML = '<div class="spinner"></div> Loading...';
+
+    Promise.all([
+      api('GET', 'employees/' + id).catch(function() { return null; }),
+      api('GET', 'employees/' + id + '/kpis').catch(function() { return {}; }),
+      api('GET', 'employees/' + id + '/performance').catch(function() { return {}; })
+    ]).then(function(r) {
+      var emp = r[0];
+      var kpis = r[1];
+      var perf = r[2];
+      if (!emp) { detail.innerHTML = '<div style="color:#ef4444">Employee not found</div>'; return; }
+
+      var html = '<div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:20px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">' + emp.name + '</h3><button class="btn-sm" onclick="document.getElementById(\'employeeDetail\').style.display=\'none\'">✕ Close</button></div>' +
+        '<div style="color:#888;margin:4px 0">' + emp.role + ' • ' + emp.mandate + '</div>' +
+        '<div style="margin:8px 0"><b>Score:</b> <span style="font-size:20px;font-weight:700;color:' + (perf.score >= 75 ? '#10b981' : perf.score >= 50 ? '#f59e0b' : '#ef4444') + '">' + (perf.score || 0) + '%</span> <span style="color:#888">(' + (perf.grade || 'N/A') + ')</span></div>' +
+        '<h4>KPIs</h4><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:6px">Name</th><th>Target</th><th>Current</th><th>Achievement</th><th>Status</th></tr>';
+
+      ((kpis.kpis || [])).forEach(function(k) {
+        var sc = k.status === 'meeting' ? '#10b981' : k.status === 'close' ? '#f59e0b' : '#ef4444';
+        html += '<tr style="border-bottom:1px solid #222"><td style="padding:6px">' + k.name + '</td><td style="text-align:center">' + k.target + ' ' + k.unit + '</td><td style="text-align:center">' + (k.current !== null ? k.current : '—') + '</td><td style="text-align:center">' + k.achievement + '%</td><td style="text-align:center;color:' + sc + '">' + k.status + '</td></tr>';
+      });
+      html += '</table>';
+
+      html += '<h4>Tool Permissions</h4><div style="display:flex;flex-wrap:wrap;gap:4px">';
+      (emp.toolAllowlist || []).forEach(function(t) { html += '<span style="background:#10b98122;color:#10b981;padding:2px 8px;border-radius:6px;font-size:11px">✓ ' + t + '</span>'; });
+      (emp.toolDenylist || []).forEach(function(t) { html += '<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:6px;font-size:11px">✕ ' + t + '</span>'; });
+      html += '</div>';
+
+      html += '<div style="margin-top:12px;font-size:11px;color:#555">Created: ' + emp.created + ' • Actions: ' + (emp.metrics ? emp.metrics.actionsCompleted : 0) + '</div></div>';
+      detail.innerHTML = html;
+    });
+  };
+
+  window.toggleEmployeePause = function(id, currentStatus) {
+    var newStatus = currentStatus === 'paused' ? 'active' : 'paused';
+    api('PUT', 'employees/' + id, { status: newStatus }).then(function() {
+      toast('Employee ' + newStatus);
+      loadEmployeesPanel();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.evaluateEmployee = function(id) {
+    api('GET', 'employees/' + id + '/performance').then(function(r) {
+      toast(r.employeeName + ': ' + r.score + '% (' + r.grade + ')');
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.showDeployEmployeeModal = function() {
+    var modal = document.getElementById('deployEmployeeModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    var gallery = document.getElementById('templateGallery');
+    if (!gallery) return;
+    gallery.innerHTML = '<div class="spinner"></div>';
+
+    api('GET', 'employees/templates').then(function(r) {
+      var templates = r.templates || [];
+      var industries = {};
+      templates.forEach(function(t) { if (!industries[t.industry]) industries[t.industry] = []; industries[t.industry].push(t); });
+
+      var html = '';
+      Object.keys(industries).forEach(function(ind) {
+        html += '<h4 style="margin:12px 0 6px;text-transform:capitalize;color:#8b5cf6">' + ind + '</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">';
+        industries[ind].forEach(function(t) {
+          html += '<div style="background:#0a0a1a;border:1px solid #333;border-radius:8px;padding:12px"><b style="font-size:13px">' + t.name + '</b><div style="font-size:11px;color:#888;margin:4px 0">' + t.mandate + '</div><div style="font-size:10px;color:#555">Risk: ' + t.riskClass + ' • ' + t.kpis.length + ' KPIs</div><button class="btn-sm" style="margin-top:8px;background:#8b5cf6" onclick="deployFromTemplate(\'' + t.template + '\')">Deploy</button></div>';
+        });
+        html += '</div>';
+      });
+      gallery.innerHTML = html;
+    });
+  };
+
+  window.hideDeployEmployeeModal = function() {
+    var modal = document.getElementById('deployEmployeeModal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  window.deployFromTemplate = function(templateName) {
+    api('POST', 'employees/from-template', { template: templateName }).then(function(r) {
+      if (r.error) { toast('Error: ' + r.error); return; }
+      toast('Deployed: ' + r.name);
+      hideDeployEmployeeModal();
+      loadEmployeesPanel();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // ── Industry Accelerators Panel ──
+  // ══════════════════════════════════════════════════════════
+  var _accIcons = { healthcare: '🏥', 'financial-services': '🏦', 'professional-services': '💼', logistics: '🚛', manufacturing: '🏭', retail: '🛒', marketing: '📣' };
+
+  window.loadAccelerators = function() {
+    var grid = document.getElementById('acceleratorsGrid');
+    var detail = document.getElementById('acceleratorDetail');
+    if (!grid) return;
+    detail.style.display = 'none';
+    api('GET', 'accelerators').then(function(r) {
+      var accs = r.accelerators || [];
+      grid.innerHTML = accs.map(function(a) {
+        var icon = _accIcons[a.industry] || '📦';
+        var badge = a.deployed
+          ? '<span style="background:#00ff88;color:#000;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold">Deployed</span>'
+          : '<span style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold">Available</span>';
+        return '<div style="background:#0d1117;border:1px solid #333;border-radius:10px;padding:16px;cursor:pointer;transition:border-color 0.2s" onmouseenter="this.style.borderColor=\'#00fff7\'" onmouseleave="this.style.borderColor=\'#333\'" onclick="showAcceleratorDetail(\'' + a.industry + '\')">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:28px">' + icon + '</span>' + badge + '</div>' +
+          '<div style="font-weight:bold;font-size:15px;color:#e0e0e0;margin-bottom:4px">' + a.name + '</div>' +
+          '<div style="font-size:11px;color:#888;margin-bottom:10px">' + a.description + '</div>' +
+          '<div style="display:flex;gap:12px;font-size:11px;color:#aaa">' +
+            '<span>📋 ' + a.entityCount + ' entities</span>' +
+            '<span>🤖 ' + a.agentCount + ' agents</span>' +
+            '<span>📊 ' + a.kpiCount + ' KPIs</span>' +
+          '</div></div>';
+      }).join('');
+    }).catch(function(e) { grid.innerHTML = '<span style="color:#f66">Failed to load accelerators</span>'; });
+  };
+
+  window.showAcceleratorDetail = function(industry) {
+    var detail = document.getElementById('acceleratorDetail');
+    if (!detail) return;
+    api('GET', 'accelerators/' + industry).then(function(a) {
+      if (!a || a.error) { detail.innerHTML = '<span style="color:#f66">Not found</span>'; detail.style.display = 'block'; return; }
+      var icon = _accIcons[a.industry] || '📦';
+      var isDeployed = a.deployed;
+      var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<h3 style="margin:0">' + icon + ' ' + a.name + '</h3>' +
+        '<div>' + (isDeployed
+          ? '<button class="btn-sm" style="background:#f66" onclick="undeployAccelerator(\'' + a.industry + '\')">Undeploy</button>'
+          : '<button class="btn-sm" style="background:#00ff88;color:#000" onclick="deployAccelerator(\'' + a.industry + '\')">Deploy</button>') +
+        ' <button class="btn-sm" onclick="document.getElementById(\'acceleratorDetail\').style.display=\'none\'">Close</button></div></div>';
+
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+      // Schemas
+      html += '<div><h4 style="color:#00fff7;margin:0 0 8px">📋 Schemas</h4>';
+      (a.schemas||[]).forEach(function(s) { html += '<div style="padding:4px 8px;margin:2px 0;background:#111;border-radius:4px;font-size:12px"><b>' + s.entity + '</b> <span style="color:#666">(' + s.fields.length + ' fields)</span></div>'; });
+      html += '</div>';
+      // SOPs
+      html += '<div><h4 style="color:#ff6b6b;margin:0 0 8px">📖 SOPs</h4>';
+      (a.sops||[]).forEach(function(s) { html += '<div style="padding:4px 8px;margin:2px 0;background:#111;border-radius:4px;font-size:12px">' + s.name + ' <span style="color:#666">(' + s.steps.length + ' steps)</span></div>'; });
+      html += '</div>';
+      // Agents
+      html += '<div><h4 style="color:#8b5cf6;margin:0 0 8px">🤖 Agents</h4>';
+      (a.agents||[]).forEach(function(ag) { html += '<div style="padding:4px 8px;margin:2px 0;background:#111;border-radius:4px;font-size:12px"><b>' + ag.name + '</b><div style="color:#888;font-size:10px">' + ag.role + '</div></div>'; });
+      html += '</div>';
+      // KPIs
+      html += '<div><h4 style="color:#fbbf24;margin:0 0 8px">📊 KPIs</h4>';
+      (a.kpis||[]).forEach(function(k) { html += '<div style="padding:4px 8px;margin:2px 0;background:#111;border-radius:4px;font-size:12px">' + k.name + ' <span style="color:#666">target: ' + k.target + '</span></div>'; });
+      html += '</div></div>';
+
+      if (a.riskProfile) {
+        html += '<div style="margin-top:12px;padding:8px;background:#111;border-radius:6px;font-size:12px">Risk Class: <b style="color:#fbbf24">' + a.riskProfile.defaultClass + '</b>';
+        if (a.riskProfile.compliance.length) html += ' | Compliance: ' + a.riskProfile.compliance.map(function(c) { return '<span style="background:#1e3a5f;padding:1px 6px;border-radius:4px;margin:0 2px">' + c + '</span>'; }).join('');
+        html += '</div>';
+      }
+      detail.innerHTML = html;
+      detail.style.display = 'block';
+    });
+  };
+
+  window.deployAccelerator = function(industry) {
+    if (!confirm('Deploy ' + industry + ' accelerator? This will activate schemas, agents, and SOPs.')) return;
+    api('POST', 'accelerators/' + industry + '/deploy').then(function(r) {
+      if (r.success) { toast('Deployed: ' + industry); loadAccelerators(); }
+      else toast('Error: ' + (r.error || 'Unknown'));
+    });
+  };
+
+  window.undeployAccelerator = function(industry) {
+    if (!confirm('Undeploy ' + industry + ' accelerator?')) return;
+    api('DELETE', 'accelerators/' + industry).then(function(r) {
+      if (r.success) { toast('Undeployed: ' + industry); loadAccelerators(); }
+      else toast('Error: ' + (r.error || 'Unknown'));
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // ── Architecture (13-Layer Stack) Panel ──
+  // ══════════════════════════════════════════════════════════
+  var _clusterColors = { 'Inference Core': '#3b82f6', 'Orchestration': '#8b5cf6', 'Application': '#00ff88' };
+  var _healthDot = { healthy: '🟢', degraded: '🟡', down: '🔴', static: '⚪' };
+
+  window.loadArchitecture = function() {
+    var stackEl = document.getElementById('layerStack');
+    var statusEl = document.getElementById('stackStatus');
+    var detailEl = document.getElementById('layerDetail');
+    if (!stackEl) return;
+    detailEl.style.display = 'none';
+
+    api('GET', 'stack').then(function(r) {
+      var stack = r.stack || [];
+      var status = r.status || {};
+
+      // Status summary
+      statusEl.innerHTML = '<div style="display:flex;gap:16px;font-size:13px">' +
+        '<span>Overall: <b style="color:' + (status.overall === 'healthy' ? '#00ff88' : status.overall === 'degraded' ? '#fbbf24' : '#f66') + '">' + (status.overall || 'unknown').toUpperCase() + '</b></span>' +
+        '<span>🟢 ' + (status.healthy || 0) + ' healthy</span>' +
+        '<span>🟡 ' + (status.degraded || 0) + ' degraded</span>' +
+        '<span>🔴 ' + (status.down || 0) + ' down</span></div>';
+
+      // Build health map
+      var healthMap = {};
+      if (status.layers) status.layers.forEach(function(lh) { healthMap[lh.layer] = lh; });
+
+      stackEl.innerHTML = stack.map(function(l) {
+        var color = _clusterColors[l.cluster] || '#555';
+        var lh = healthMap[l.layer];
+        var dot = lh ? (_healthDot[lh.status] || '⚪') : '⚪';
+        return '<div style="background:#0d1117;border-left:4px solid ' + color + ';border:1px solid #333;border-left:4px solid ' + color + ';border-radius:6px;padding:10px 14px;cursor:pointer;transition:background 0.2s" onmouseenter="this.style.background=\'#1a1a2e\'" onmouseleave="this.style.background=\'#0d1117\'" onclick="showLayerDetail(' + l.layer + ')">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center">' +
+            '<div><span style="color:#666;font-size:11px;margin-right:8px">L' + l.layer + '</span><b style="color:#e0e0e0">' + l.name + '</b> <span style="color:' + color + ';font-size:11px;margin-left:8px">' + l.cluster + '</span></div>' +
+            '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#888">' + l.modules.join(', ') + '</span><span>' + dot + '</span></div>' +
+          '</div></div>';
+      }).join('');
+    }).catch(function() { stackEl.innerHTML = '<span style="color:#f66">Failed to load stack</span>'; });
+  };
+
+  window.showLayerDetail = function(num) {
+    var detailEl = document.getElementById('layerDetail');
+    if (!detailEl) return;
+    api('GET', 'stack/' + num).then(function(l) {
+      if (!l || l.error) { detailEl.innerHTML = '<span style="color:#f66">Layer not found</span>'; detailEl.style.display = 'block'; return; }
+      var color = _clusterColors[l.cluster] || '#555';
+      var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<h3 style="margin:0;color:' + color + '">Layer ' + l.layer + ': ' + l.name + '</h3>' +
+        '<button class="btn-sm" onclick="document.getElementById(\'layerDetail\').style.display=\'none\'">Close</button></div>';
+      html += '<div style="color:#888;margin-bottom:12px">Cluster: <span style="color:' + color + '">' + l.cluster + '</span></div>';
+      html += '<h4 style="margin:0 0 8px;color:#aaa">Modules</h4>';
+      l.modules.forEach(function(m) {
+        html += '<div style="padding:6px 10px;margin:4px 0;background:#111;border-radius:4px;font-size:12px;font-family:monospace">' + m + '</div>';
+      });
+      detailEl.innerHTML = html;
+      detailEl.style.display = 'block';
+    });
+  };
+
+  // ═══════════════════════════════
+  //  SCHEMA COMPILER PANEL
+  // ═══════════════════════════════
+  var _compilerResult = null;
+
+  function loadCompiler() {
+    // Load saved schemas
+    api('GET', 'compiler/schemas').then(function(d) {
+      var el = document.getElementById('compilerSchemas');
+      if (!el) return;
+      var schemas = d.schemas || [];
+      if (schemas.length === 0) { el.innerHTML = '<div style="color:#666;font-size:12px">No saved schemas</div>'; return; }
+      var h = '';
+      schemas.forEach(function(s) {
+        h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#111;border-radius:4px;margin-bottom:4px;font-size:12px">';
+        h += '<span style="color:#4fc3f7;cursor:pointer" onclick="window.aries.compilerLoad(\'' + s.id + '\')">' + escapeHtml(s.domain || s.id) + '</span>';
+        h += '<span style="color:#666">' + (s.schema || '') + '</span></div>';
+      });
+      el.innerHTML = h;
+    }).catch(function() {});
+    // Load history
+    api('GET', 'compiler/history').then(function(d) {
+      var el = document.getElementById('compilerHistory');
+      if (!el) return;
+      var hist = d.history || [];
+      if (hist.length === 0) { el.innerHTML = '<div style="color:#666;font-size:12px">No compilations yet</div>'; return; }
+      var h = '';
+      hist.slice(-10).reverse().forEach(function(e) {
+        h += '<div style="font-size:11px;padding:3px 6px;background:#0a0a1a;border-radius:4px;margin-bottom:2px">';
+        h += '<span style="color:#4fc3f7">' + escapeHtml(e.domain) + '</span> · ';
+        h += '<span style="color:#888">' + e.entityCount + ' entities, ' + e.endpointCount + ' endpoints</span> · ';
+        h += '<span style="color:#555">' + new Date(e.compiledAt).toLocaleString() + '</span></div>';
+      });
+      el.innerHTML = h;
+    }).catch(function() {});
+  }
+  window.aries = window.aries || {};
+  window.aries.loadCompiler = loadCompiler;
+
+  window.aries.compilerValidate = function() {
+    var editor = document.getElementById('compilerEditor');
+    var out = document.getElementById('compilerValidation');
+    if (!editor || !out) return;
+    var schema;
+    try { schema = JSON.parse(editor.value); } catch(e) { out.innerHTML = '<div style="color:#f44">Invalid JSON: ' + escapeHtml(e.message) + '</div>'; return; }
+    api('POST', 'compiler/validate', schema).then(function(d) {
+      if (d.valid) { out.innerHTML = '<div style="color:#4caf50">✓ Schema is valid</div>'; }
+      else { out.innerHTML = '<div style="color:#f44">✗ ' + d.errors.map(escapeHtml).join('<br>') + '</div>'; }
+    });
+  };
+
+  window.aries.compilerCompile = function() {
+    var editor = document.getElementById('compilerEditor');
+    var out = document.getElementById('compilerOutput');
+    var val = document.getElementById('compilerValidation');
+    if (!editor || !out) return;
+    var schema;
+    try { schema = JSON.parse(editor.value); } catch(e) { if(val) val.innerHTML = '<div style="color:#f44">Invalid JSON: ' + escapeHtml(e.message) + '</div>'; return; }
+    api('POST', 'compiler/compile', schema).then(function(d) {
+      _compilerResult = d;
+      if (!d.compiled) { if(val) val.innerHTML = '<div style="color:#f44">✗ ' + (d.errors||[]).map(escapeHtml).join('<br>') + '</div>'; return; }
+      if(val) val.innerHTML = '<div style="color:#4caf50">✓ Compiled! ' + d.manifest.entityCount + ' entities, ' + d.manifest.endpointCount + ' endpoints</div>';
+      window.aries.compilerTab('database');
+      loadCompiler(); // refresh history
+    });
+  };
+
+  window.aries.compilerTab = function(tab) {
+    var out = document.getElementById('compilerOutput');
+    var tabs = document.getElementById('compilerTabs');
+    if (!out || !_compilerResult || !_compilerResult.outputs) { out.innerHTML = 'Compile a schema first'; return; }
+    // Update active tab button
+    if (tabs) { var btns = tabs.querySelectorAll('button'); for(var i=0;i<btns.length;i++) btns[i].classList.remove('active'); }
+    if (tabs) { var btns = tabs.querySelectorAll('button'); for(var i=0;i<btns.length;i++) { if(btns[i].textContent.toLowerCase().indexOf(tab)>=0) btns[i].classList.add('active'); } }
+    var data = _compilerResult.outputs[tab];
+    out.textContent = JSON.stringify(data, null, 2);
+  };
+
+  window.aries.compilerSave = function() {
+    var editor = document.getElementById('compilerEditor');
+    if (!editor) return;
+    var schema;
+    try { schema = JSON.parse(editor.value); } catch(e) { toast('Invalid JSON'); return; }
+    api('POST', 'compiler/schemas', schema).then(function(d) {
+      toast('Schema saved: ' + (d.domain || d.id));
+      loadCompiler();
+    });
+  };
+
+  window.aries.compilerLoad = function(id) {
+    api('GET', 'compiler/schemas/' + id).then(function(d) {
+      var editor = document.getElementById('compilerEditor');
+      if (editor) editor.value = JSON.stringify(d, null, 2);
+    });
+  };
+
+  // ═══════════════════════════════
+  //  KNOWLEDGE HUB PANEL
+  // ═══════════════════════════════
+  function loadKnowledgeHub() {
+    // Stats
+    api('GET', 'knowledge-hub/stats').then(function(d) {
+      var el = document.getElementById('khStats');
+      if (!el) return;
+      var colors = ['#4fc3f7','#81c784','#ffb74d','#e57373','#ba68c8','#4dd0e1'];
+      var h = '<div style="background:#111;border-radius:8px;padding:12px;min-width:100px;text-align:center"><div style="font-size:24px;color:#4fc3f7">' + (d.totalEntries||0) + '</div><div style="font-size:11px;color:#888">Entries</div></div>';
+      h += '<div style="background:#111;border-radius:8px;padding:12px;min-width:100px;text-align:center"><div style="font-size:24px;color:#81c784">' + (d.totalChunks||0) + '</div><div style="font-size:11px;color:#888">Chunks</div></div>';
+      h += '<div style="background:#111;border-radius:8px;padding:12px;min-width:100px;text-align:center"><div style="font-size:24px;color:#ffb74d">' + (d.totalEntities||0) + '</div><div style="font-size:11px;color:#888">Entities</div></div>';
+      // Sources breakdown as colored bars
+      if (d.byType && Object.keys(d.byType).length > 0) {
+        h += '<div style="background:#111;border-radius:8px;padding:12px;min-width:150px"><div style="font-size:11px;color:#888;margin-bottom:4px">Sources</div>';
+        var i = 0;
+        for (var t in d.byType) {
+          h += '<div style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:2px;background:' + colors[i%colors.length] + '"></div><span style="color:#ccc">' + t + ': ' + d.byType[t] + '</span></div>';
+          i++;
+        }
+        h += '</div>';
+      }
+      el.innerHTML = h;
+    }).catch(function() {});
+    // Entries list
+    api('GET', 'knowledge-hub/entries').then(function(d) {
+      var el = document.getElementById('khEntries');
+      if (!el) return;
+      var entries = d.entries || [];
+      if (entries.length === 0) { el.innerHTML = '<div style="color:#666;font-size:12px">No entries yet. Ingest some data!</div>'; return; }
+      var h = '';
+      entries.forEach(function(e) {
+        h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#0a0a1a;border-radius:4px;margin-bottom:4px;font-size:12px;cursor:pointer" onclick="window.aries.khDetail(\'' + e.id + '\')">';
+        h += '<div><span style="color:#4fc3f7">' + escapeHtml(e.source.filename) + '</span> <span style="color:#888;font-size:10px">[' + e.source.type + ']</span></div>';
+        h += '<div style="color:#666">' + e.stats.chunks + ' chunks · ' + e.stats.entities + ' entities';
+        h += ' <button class="btn-sm" style="margin-left:8px;background:#c62828;padding:2px 6px" onclick="event.stopPropagation();window.aries.khDelete(\'' + e.id + '\')">×</button></div></div>';
+      });
+      el.innerHTML = h;
+    }).catch(function() {});
+  }
+  window.aries.loadKnowledgeHub = loadKnowledgeHub;
+
+  window.aries.khIngest = function() {
+    var text = document.getElementById('khText');
+    var type = document.getElementById('khType');
+    var fname = document.getElementById('khFilename');
+    if (!text || !text.value.trim()) { toast('Enter text to ingest'); return; }
+    api('POST', 'knowledge-hub/ingest', { text: text.value, type: type ? type.value : 'text', metadata: { filename: fname ? fname.value : '' } }).then(function(d) {
+      toast('Ingested: ' + d.stats.chunks + ' chunks, ' + d.stats.entities + ' entities');
+      text.value = '';
+      loadKnowledgeHub();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.aries.khIngestFile = function() {
+    var fp = document.getElementById('khFilePath');
+    if (!fp || !fp.value.trim()) { toast('Enter a file path'); return; }
+    api('POST', 'knowledge-hub/ingest-file', { filePath: fp.value }).then(function(d) {
+      if (d.error) { toast(d.error); return; }
+      toast('Ingested: ' + d.stats.chunks + ' chunks');
+      fp.value = '';
+      loadKnowledgeHub();
+    }).catch(function(e) { toast('Error: ' + e.message); });
+  };
+
+  window.aries.khSearchGo = function() {
+    var q = document.getElementById('khSearch');
+    var el = document.getElementById('khResults');
+    if (!q || !q.value.trim() || !el) return;
+    api('GET', 'knowledge-hub/search?q=' + encodeURIComponent(q.value) + '&limit=10').then(function(d) {
+      var results = d.results || [];
+      if (results.length === 0) { el.innerHTML = '<div style="color:#666;font-size:12px">No results</div>'; return; }
+      var h = '';
+      results.forEach(function(r) {
+        h += '<div style="padding:4px 8px;background:#0a0a1a;border-radius:4px;margin-bottom:3px;font-size:12px;cursor:pointer" onclick="window.aries.khDetail(\'' + r.id + '\')">';
+        h += '<span style="color:#4fc3f7">' + escapeHtml(r.source ? r.source.filename : r.id) + '</span>';
+        h += ' <span style="color:#81c784">score: ' + r.score + '</span></div>';
+      });
+      el.innerHTML = h;
+    });
+  };
+
+  window.aries.khDetail = function(id) {
+    var el = document.getElementById('khDetail');
+    if (!el) return;
+    api('GET', 'knowledge-hub/entries/' + id).then(function(d) {
+      if (!d || d.error) { el.innerHTML = '<div style="color:#f44">Not found</div>'; return; }
+      var h = '<h4 style="margin:0 0 8px;color:#4fc3f7">' + escapeHtml(d.source.filename) + ' <span style="color:#888;font-size:11px">[' + d.source.type + ']</span></h4>';
+      h += '<div style="font-size:11px;color:#888;margin-bottom:8px">Ingested: ' + new Date(d.source.ingested).toLocaleString() + ' · ' + d.stats.size_bytes + ' bytes</div>';
+      if (d.entities_extracted.length > 0) {
+        h += '<div style="margin-bottom:8px"><b style="font-size:11px;color:#ffb74d">Entities:</b> <span style="font-size:11px;color:#ccc">' + d.entities_extracted.map(escapeHtml).join(', ') + '</span></div>';
+      }
+      h += '<div style="font-size:11px;color:#888;margin-bottom:4px">Chunks (' + d.chunks.length + '):</div>';
+      d.chunks.slice(0, 5).forEach(function(c) {
+        h += '<div style="background:#111;border-radius:4px;padding:6px;margin-bottom:3px;font-size:11px;color:#ccc;max-height:60px;overflow:hidden">' + escapeHtml(c.text.substring(0, 200)) + (c.text.length > 200 ? '...' : '') + '</div>';
+      });
+      if (d.chunks.length > 5) h += '<div style="font-size:10px;color:#666">... and ' + (d.chunks.length - 5) + ' more chunks</div>';
+      // Cross references
+      api('GET', 'knowledge-hub/cross-ref/' + id).then(function(cr) {
+        var refs = cr.references || [];
+        if (refs.length > 0) {
+          h += '<div style="margin-top:8px"><b style="font-size:11px;color:#ba68c8">Cross References:</b></div>';
+          refs.forEach(function(r) {
+            h += '<div style="font-size:11px;color:#ccc;padding:2px 0;cursor:pointer" onclick="window.aries.khDetail(\'' + r.id + '\')">' + escapeHtml(r.source.filename) + ' — ' + r.overlapCount + ' shared entities</div>';
+          });
+        }
+        el.innerHTML = h;
+      }).catch(function() { el.innerHTML = h; });
+    });
+  };
+
+  window.aries.khDelete = function(id) {
+    api('DELETE', 'knowledge-hub/entries/' + id).then(function() {
+      toast('Entry deleted');
+      loadKnowledgeHub();
+    });
+  };
+
+  // ── AUTONOMY PANEL ──
+  function loadAutonomyPanel() {
+    var p = document.getElementById('panel-autonomy');
+    if (!p) return;
+    p.innerHTML = '<div class="panel-loading">Loading autonomy data...</div>';
+    api('GET', 'autonomy/status').then(function(d) {
+      var agents = d.agents || [];
+      var matrix = {'G0':{'R0':'❌','R1':'❌','R2':'❌','R3':'❌'},'G1':{'R0':'👁️','R1':'👁️','R2':'👁️','R3':'👁️'},'G2':{'R0':'✅','R1':'🔑','R2':'👁️','R3':'👁️'},'G3':{'R0':'✅','R1':'✅','R2':'🔑','R3':'👁️'}};
+      var html = '<div style="padding:20px">';
+      html += '<h2 style="color:#0f0;margin-bottom:20px">⚡ Earned Autonomy</h2>';
+      // Summary
+      var grades = {G0:0,G1:0,G2:0,G3:0};
+      agents.forEach(function(a) { grades[a.grade || 'G0']++; });
+      html += '<div style="display:flex;gap:15px;margin-bottom:20px">';
+      ['G0','G1','G2','G3'].forEach(function(g) {
+        var colors = {G0:'#666',G1:'#f80',G2:'#0af',G3:'#0f0'};
+        var labels = {G0:'Setup',G1:'Shadow',G2:'Copilot',G3:'Autonomous'};
+        html += '<div style="background:#111;border:1px solid '+colors[g]+';border-radius:8px;padding:15px;flex:1;text-align:center">';
+        html += '<div style="font-size:24px;color:'+colors[g]+'">'+grades[g]+'</div>';
+        html += '<div style="color:#888;font-size:12px">'+g+': '+labels[g]+'</div></div>';
+      });
+      html += '</div>';
+      // Permission matrix
+      html += '<h3 style="color:#0af;margin:15px 0">Permission Matrix</h3>';
+      html += '<table style="width:100%;border-collapse:collapse;margin-bottom:20px"><tr><th style="border:1px solid #333;padding:8px;background:#111">Grade</th>';
+      ['R0','R1','R2','R3'].forEach(function(r) { html += '<th style="border:1px solid #333;padding:8px;background:#111">'+r+'</th>'; });
+      html += '</tr>';
+      ['G0','G1','G2','G3'].forEach(function(g) {
+        html += '<tr><td style="border:1px solid #333;padding:8px;font-weight:bold">'+g+'</td>';
+        ['R0','R1','R2','R3'].forEach(function(r) { html += '<td style="border:1px solid #333;padding:8px;text-align:center">'+matrix[g][r]+'</td>'; });
+        html += '</tr>';
+      });
+      html += '</table>';
+      // Agent list
+      if (agents.length) {
+        html += '<h3 style="color:#0af;margin:15px 0">Agents</h3>';
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:15px">';
+        agents.forEach(function(a) {
+          var gc = {G0:'#666',G1:'#f80',G2:'#0af',G3:'#0f0'}[a.grade||'G0'] || '#666';
+          html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:15px">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+          html += '<strong style="color:#fff">'+a.id+'</strong>';
+          html += '<span style="background:'+gc+';color:#000;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:bold">'+(a.grade||'G0')+'</span>';
+          html += '</div>';
+          html += '<div style="color:#888;font-size:12px;margin-top:8px">Confidence: '+(a.confidence||0).toFixed(1)+'%</div>';
+          html += '<div style="color:#888;font-size:12px">Actions: '+(a.successfulActions||0)+' success / '+(a.failedActions||0)+' failed</div>';
+          html += '<div style="margin-top:10px;display:flex;gap:5px">';
+          html += '<button onclick="api(\'POST\',\'autonomy/agent/'+a.id+'/promote\').then(function(){loadAutonomyPanel()})" style="background:#0a0;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px">Promote</button>';
+          html += '<button onclick="api(\'POST\',\'autonomy/agent/'+a.id+'/demote\',{reason:\'Manual\'}).then(function(){loadAutonomyPanel()})" style="background:#a00;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px">Demote</button>';
+          html += '</div></div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div style="color:#888;text-align:center;padding:40px">No agents registered. Agents earn autonomy through demonstrated competence.</div>';
+      }
+      html += '</div>';
+      p.innerHTML = html;
+    }).catch(function(e) { p.innerHTML = '<div style="color:#f00;padding:20px">Failed to load autonomy data: '+e.message+'</div>'; });
+  }
+
+  // ── DECISION LINEAGE PANEL ──
+  function loadLineagePanel() {
+    var p = document.getElementById('panel-lineage');
+    if (!p) return;
+    p.innerHTML = '<div class="panel-loading">Loading decision lineage...</div>';
+    Promise.all([
+      api('GET', 'lineage/decisions').catch(function() { return {decisions:[]}; }),
+      api('GET', 'lineage/stats').catch(function() { return {total:0,successRate:0,avgChainDepth:0}; })
+    ]).then(function(results) {
+      var decisions = results[0].decisions || results[0] || [];
+      if (Array.isArray(results[0])) decisions = results[0];
+      var stats = results[1];
+      var html = '<div style="padding:20px">';
+      html += '<h2 style="color:#0f0;margin-bottom:20px">🔗 Decision Lineage</h2>';
+      // Stats
+      html += '<div style="display:flex;gap:15px;margin-bottom:20px">';
+      html += '<div style="background:#111;border:1px solid #0af;border-radius:8px;padding:15px;flex:1;text-align:center"><div style="font-size:24px;color:#0af">'+(stats.total||0)+'</div><div style="color:#888;font-size:12px">Total Decisions</div></div>';
+      html += '<div style="background:#111;border:1px solid #0f0;border-radius:8px;padding:15px;flex:1;text-align:center"><div style="font-size:24px;color:#0f0">'+(stats.successRate||0).toFixed(1)+'%</div><div style="color:#888;font-size:12px">Success Rate</div></div>';
+      html += '<div style="background:#111;border:1px solid #f80;border-radius:8px;padding:15px;flex:1;text-align:center"><div style="font-size:24px;color:#f80">'+(stats.avgChainDepth||0).toFixed(1)+'</div><div style="color:#888;font-size:12px">Avg Chain Depth</div></div>';
+      html += '</div>';
+      // Decision feed
+      html += '<h3 style="color:#0af;margin:15px 0">Recent Decisions</h3>';
+      if (Array.isArray(decisions) && decisions.length) {
+        decisions.slice(0, 25).forEach(function(d) {
+          var statusColor = d.outcome && d.outcome.status === 'success' ? '#0f0' : d.outcome && d.outcome.status === 'failure' ? '#f00' : '#f80';
+          html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:8px">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+          html += '<span style="color:#fff">'+(d.request && d.request.intent || d.id || 'Decision')+'</span>';
+          html += '<span style="color:'+statusColor+';font-size:12px">'+(d.outcome && d.outcome.status || 'pending')+'</span>';
+          html += '</div>';
+          html += '<div style="color:#888;font-size:11px;margin-top:4px">';
+          html += (d.request && d.request.from || 'system')+' • '+(d.timestamp ? new Date(d.timestamp).toLocaleString() : '')+' • Chain: '+(d.lineage_chain ? d.lineage_chain.length : 0);
+          if (d.rules_applied && d.rules_applied.length) html += ' • Rules: '+d.rules_applied.length;
+          html += '</div>';
+          if (d.context && d.context.length) {
+            html += '<div style="color:#666;font-size:11px;margin-top:4px">Context: '+d.context.map(function(c){return c.type}).join(', ')+'</div>';
+          }
+          if (d.id) {
+            html += '<button onclick="api(\'GET\',\'lineage/trace/'+d.id+'\').then(function(t){alert(JSON.stringify(t,null,2))})" style="background:#333;color:#0af;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;margin-top:6px">Trace 5-Whys</button>';
+          }
+          html += '</div>';
+        });
+      } else {
+        html += '<div style="color:#888;text-align:center;padding:40px">No decisions recorded yet. Decisions are logged automatically as agents take actions.</div>';
+      }
+      html += '</div>';
+      p.innerHTML = html;
+    }).catch(function(e) { p.innerHTML = '<div style="color:#f00;padding:20px">Failed to load lineage: '+e.message+'</div>'; });
+  }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { try { init(); } catch(e) { console.error('INIT CRASH:', e); } });
   else { try { init(); } catch(e) { console.error('INIT CRASH:', e); } }
