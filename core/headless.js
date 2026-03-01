@@ -1202,19 +1202,6 @@ async function startHeadless(configPath) {
   }
 
   // ── Start Cognitive Systems ──
-  // ── Earned Autonomy & Decision Lineage ──
-  try {
-    const EarnedAutonomy = require(path.join(baseDir, 'core', 'earned-autonomy'));
-    refs.autonomy = new EarnedAutonomy();
-    log.info('Earned autonomy system initialized');
-  } catch (e) { console.error('[GOVERNANCE] Earned autonomy init error:', e.message); }
-
-  try {
-    const DecisionLineage = require(path.join(baseDir, 'core', 'decision-lineage'));
-    refs.decisionLineage = new DecisionLineage();
-    log.info('Decision lineage system initialized');
-  } catch (e) { console.error('[GOVERNANCE] Decision lineage init error:', e.message); }
-
   // These give Aries its "mind" — inner thoughts, emotions, consciousness stream
   try {
     const InnerMonologue = require(path.join(baseDir, 'core', 'inner-monologue'));
@@ -1235,19 +1222,6 @@ async function startHeadless(configPath) {
     refs.emotionalEngine = new EmotionalEngine({});
     if (typeof refs.emotionalEngine.start === 'function') refs.emotionalEngine.start();
     log.info('Emotional engine started');
-
-    // Governance Plane & Approval Packets
-    try {
-      const Governance = require(path.join(baseDir, 'core', 'governance'));
-      const ApprovalPackets = require(path.join(baseDir, 'core', 'approval-packet'));
-      const VerificationEngines = require(path.join(baseDir, 'core', 'verification-engines'));
-      refs.governance = new Governance();
-      refs.approvalPackets = new ApprovalPackets({ governance: refs.governance });
-      refs.verificationEngines = new VerificationEngines();
-      log.info('Governance plane initialized');
-    } catch (govErr) {
-      log.warn('Governance plane failed to initialize: ' + govErr.message);
-    }
 
     // Idle emotion trigger
     let _lastChatActivity = Date.now();
@@ -1273,20 +1247,6 @@ async function startHeadless(configPath) {
     log.info('Gestalt engine started');
   } catch (e) { console.error('[COGNITIVE] Gestalt engine init error:', e.message); }
 
-  // ── Industry Accelerators & Layer Stack ──
-  try {
-    const IndustryAccelerators = require(path.join(baseDir, 'core', 'industry-accelerators'));
-    refs.accelerators = new IndustryAccelerators();
-    log.info('Industry accelerators loaded (' + refs.accelerators.getCatalog().length + ' verticals)');
-  } catch (e) { console.error('[ACCELERATORS] Init error:', e.message); }
-
-  try {
-    const LayerStack = require(path.join(baseDir, 'core', 'layer-stack'));
-    refs.layerStack = new LayerStack(refs);
-    const status = refs.layerStack.getStackStatus();
-    log.info('Layer stack initialized (' + status.healthy + '/13 layers healthy)');
-  } catch (e) { console.error('[LAYER-STACK] Init error:', e.message); }
-
   // ── Start Body Systems ──
   try {
     const CirculatorySystem = require(path.join(baseDir, 'core', 'circulatory-system'));
@@ -1307,12 +1267,6 @@ async function startHeadless(configPath) {
     refs.skeletalSystem = new SkeletalSystem();
     log.info('Skeletal system started');
   } catch (e) { console.error('[BODY] Skeletal system init error:', e.message); }
-
-  try {
-    const VirtualEmployees = require(path.join(baseDir, 'core', 'virtual-employees'));
-    refs.virtualEmployees = new VirtualEmployees();
-    log.info('Virtual Employees framework started');
-  } catch (e) { console.error('[EMPLOYEES] Init error:', e.message); }
 
   try {
     const MuscleMemory = require(path.join(baseDir, 'core', 'muscle-memory'));
@@ -1349,19 +1303,6 @@ async function startHeadless(configPath) {
       log.info('Dream engine started (idle-triggered after 30min)');
     } catch (e) { console.error('[COGNITIVE] Dream engine init error:', e.message); }
   }
-
-  // ── Schema Compiler & Knowledge Hub (Layers 8-9) ──
-  try {
-    const SchemaCompiler = require(path.join(baseDir, 'core', 'schema-compiler'));
-    refs.schemaCompiler = new SchemaCompiler();
-    log.info('Schema Compiler (Layer 9) started');
-  } catch (e) { console.error('[LAYER9] Schema Compiler init error:', e.message); }
-
-  try {
-    const KnowledgeHub = require(path.join(baseDir, 'core', 'knowledge-hub'));
-    refs.knowledgeHub = new KnowledgeHub();
-    log.info('Knowledge Hub (Layer 8) started');
-  } catch (e) { console.error('[LAYER8] Knowledge Hub init error:', e.message); }
 
   // Keepalive — prevent event loop from draining and killing the process
   setInterval(() => {}, 60000);

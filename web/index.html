@@ -133,8 +133,6 @@
         <a class="nav-item" data-panel="analytics">📊 Analytics</a>
         <a class="nav-item" data-panel="timetravel">⏪ Time Travel</a>
         <a class="nav-item" data-panel="security">🛡️ Security</a>
-        <a class="nav-item" data-panel="compiler">🏗️ Schema Compiler</a>
-        <a class="nav-item" data-panel="knowledge-hub">📦 Knowledge Hub</a>
       </div>
       <!-- CODING -->
       <div class="nav-group" data-admin="true" style="display:none">
@@ -202,8 +200,6 @@
         <a class="nav-item" data-panel="battle">⚔️ Battle</a>
         <a class="nav-item" data-panel="self-improve">🔧 Self-Improve</a>
         <a class="nav-item" data-panel="self-arch">🧬 Self-Architecture</a>
-        <a class="nav-item" data-panel="accelerators">🏭 Accelerators</a>
-        <a class="nav-item" data-panel="architecture">🏗️ Architecture</a>
         <a class="nav-item" data-panel="free-keys">&#x1F511; Free Keys</a>
         <a class="nav-item" data-panel="channels">💬 Channels</a>
         <a class="nav-item" data-panel="proxy-earnings">&#x1F4B0; Proxy Earnings</a>
@@ -884,26 +880,7 @@
               <a class="nav-item" data-panel="causal" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">🔗 Causal</a>
               <a class="nav-item" data-panel="cognition" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">🧊 Cognition</a>
               <a class="nav-item" data-panel="evolution" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">🌀 Evolution</a>
-              <a class="nav-item" data-panel="governance" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">🛡️ Governance</a>
-              <a class="nav-item" data-panel="employees" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">👥 Employees</a>
-              <a class="nav-item" data-panel="autonomy" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">⚡ Autonomy</a>
-              <a class="nav-item" data-panel="lineage" style="padding:6px 10px;border:1px solid #333;border-radius:6px;cursor:pointer;text-decoration:none">🔗 Lineage</a>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Virtual Employees Panel -->
-      <section id="panel-employees" class="panel">
-        <div class="panel-header"><h2>👥 Virtual Employees</h2><button class="btn-sm" onclick="loadEmployeesPanel()">🔄 Refresh</button> <button class="btn-sm" style="background:#10b981" onclick="showDeployEmployeeModal()">➕ Deploy New</button></div>
-        <div id="employeesSummary" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
-        <div id="employeesContent" style="margin-top:8px"><div class="spinner"></div> Loading...</div>
-        <div id="employeeDetail" style="display:none;margin-top:16px"></div>
-        <div id="deployEmployeeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
-          <div style="background:#1a1a2e;border:1px solid #333;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto">
-            <h3 style="margin-top:0">Deploy Virtual Employee</h3>
-            <div id="templateGallery"></div>
-            <div style="margin-top:12px;text-align:right"><button class="btn-sm" onclick="hideDeployEmployeeModal()">Cancel</button></div>
           </div>
         </div>
       </section>
@@ -2687,66 +2664,6 @@
         <div id="knowledgeContent"></div>
       </section>
 
-      <!-- Schema Compiler Panel -->
-      <section id="panel-compiler" class="panel">
-        <div class="panel-header"><h2>🏗️ Schema Compiler</h2><div><button class="btn-sm" onclick="window.aries.loadCompiler()">↻ Refresh</button></div></div>
-        <div style="display:flex;gap:12px;height:calc(100vh - 180px)">
-          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-            <h3 style="margin:0">Schema Editor</h3>
-            <textarea id="compilerEditor" style="flex:1;font-family:monospace;font-size:13px;background:#1a1a2e;color:#0f0;border:1px solid #333;border-radius:6px;padding:8px;resize:none" placeholder='Paste schema JSON here...'></textarea>
-            <div style="display:flex;gap:8px">
-              <button class="btn-primary" onclick="window.aries.compilerValidate()">✓ Validate</button>
-              <button class="btn-primary" onclick="window.aries.compilerCompile()">⚡ Compile</button>
-              <button class="btn-sm" onclick="window.aries.compilerSave()">💾 Save Schema</button>
-            </div>
-            <div id="compilerValidation" style="max-height:60px;overflow:auto"></div>
-          </div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;gap:4px;flex-wrap:wrap" id="compilerTabs">
-              <button class="btn-sm active" onclick="window.aries.compilerTab('database')">Database</button>
-              <button class="btn-sm" onclick="window.aries.compilerTab('api')">API</button>
-              <button class="btn-sm" onclick="window.aries.compilerTab('ui')">UI</button>
-              <button class="btn-sm" onclick="window.aries.compilerTab('security')">Security</button>
-              <button class="btn-sm" onclick="window.aries.compilerTab('agents')">Agents</button>
-            </div>
-            <div id="compilerOutput" style="flex:1;overflow:auto;background:#1a1a2e;color:#eee;font-family:monospace;font-size:12px;padding:8px;border-radius:6px;border:1px solid #333;white-space:pre-wrap"></div>
-            <h4 style="margin:4px 0">Saved Schemas</h4>
-            <div id="compilerSchemas" style="max-height:120px;overflow:auto"></div>
-            <h4 style="margin:4px 0">History</h4>
-            <div id="compilerHistory" style="max-height:100px;overflow:auto"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Knowledge Hub Panel -->
-      <section id="panel-knowledge-hub" class="panel">
-        <div class="panel-header"><h2>📦 Knowledge Hub</h2><div><button class="btn-sm" onclick="window.aries.loadKnowledgeHub()">↻ Refresh</button></div></div>
-        <div id="khStats" style="display:flex;gap:12px;margin-bottom:12px"></div>
-        <div style="display:flex;gap:12px">
-          <div style="flex:1">
-            <h3 style="margin:0 0 8px">Ingest</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
-              <select id="khType" class="input-field" style="width:100px"><option value="text">Text</option><option value="csv">CSV</option><option value="json">JSON</option><option value="sql">SQL</option><option value="chat">Chat</option></select>
-              <input id="khFilename" type="text" class="input-field" placeholder="Filename (optional)" style="width:150px" />
-            </div>
-            <textarea id="khText" style="width:100%;height:120px;font-family:monospace;font-size:13px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:6px;padding:8px" placeholder="Paste text to ingest..."></textarea>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn-primary" onclick="window.aries.khIngest()">📥 Ingest Text</button>
-              <input id="khFilePath" type="text" class="input-field" placeholder="Or file path..." style="flex:1" />
-              <button class="btn-sm" onclick="window.aries.khIngestFile()">📂 Ingest File</button>
-            </div>
-            <h3 style="margin:12px 0 8px">Search</h3>
-            <div style="display:flex;gap:8px"><input id="khSearch" type="text" class="input-field" placeholder="Search knowledge..." style="flex:1" /><button class="btn-primary" onclick="window.aries.khSearchGo()">🔍</button></div>
-            <div id="khResults" style="margin-top:8px;max-height:200px;overflow:auto"></div>
-          </div>
-          <div style="flex:1">
-            <h3 style="margin:0 0 8px">Entries</h3>
-            <div id="khEntries" style="max-height:300px;overflow:auto"></div>
-            <div id="khDetail" style="margin-top:12px;max-height:250px;overflow:auto"></div>
-          </div>
-        </div>
-      </section>
-
       <!-- Security Panel -->
       <section id="panel-security" class="panel">
         <div class="panel-header"><h2>🛡️ Security</h2><div><button class="btn-sm" onclick="window.aries.refreshSecurity()">↻ Refresh</button></div></div>
@@ -3790,20 +3707,6 @@
   });
   </script>
 
-  <section id="panel-governance" class="panel">
-    <div class="panel-header">
-      <h2>🛡️ Governance Plane</h2>
-      <button class="btn-sm" onclick="loadGovernancePanel()">🔄 Refresh</button>
-    </div>
-    <div id="govSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px"></div>
-    <h3 style="color:#f59e0b;margin:16px 0 8px">📋 Approval Queue</h3>
-    <div id="govApprovalQueue" style="overflow-x:auto"></div>
-    <h3 style="color:#22c55e;margin:16px 0 8px">📜 Audit Trail</h3>
-    <div id="govAuditTrail" style="max-height:300px;overflow-y:auto"></div>
-    <h3 style="color:#8b5cf6;margin:16px 0 8px">⚙️ Risk Rules</h3>
-    <div id="govRiskRules"></div>
-  </section>
-
   <div id="panel-gen-dna" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">🧬 Generational Memory — Digital DNA</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px" id="genDnaStats"></div>
@@ -3959,23 +3862,6 @@
       </div>
     </div>
   </div>
-
-  <!-- ═══ Industry Accelerators Panel ═══ -->
-  <section id="panel-accelerators" class="panel">
-    <div class="panel-header"><h2>🏭 Industry Accelerators</h2><button class="btn-sm" onclick="window.loadAccelerators()">🔄 Refresh</button></div>
-    <p style="color:#aaa;margin:0 0 16px">Pre-built vertical configurations — deploy schemas, SOPs, agents &amp; KPIs for any industry.</p>
-    <div id="acceleratorsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
-    <div id="acceleratorDetail" style="display:none;margin-top:20px;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:20px"></div>
-  </section>
-
-  <!-- ═══ Architecture (13-Layer Stack) Panel ═══ -->
-  <section id="panel-architecture" class="panel">
-    <div class="panel-header"><h2>🏗️ 13-Layer Architecture</h2><button class="btn-sm" onclick="window.loadArchitecture()">🔄 Refresh</button></div>
-    <p style="color:#aaa;margin:0 0 16px">Aries runtime layer stack — from infrastructure to application UI.</p>
-    <div id="stackStatus" style="margin-bottom:16px"></div>
-    <div id="layerStack" style="display:flex;flex-direction:column-reverse;gap:4px"></div>
-    <div id="layerDetail" style="display:none;margin-top:20px;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:20px"></div>
-  </section>
 
   <!-- ═══ Self-Architecture Panel ═══ -->
   <section id="panel-self-arch" class="panel">
@@ -7245,210 +7131,10 @@
   window.loadImmuneTab = loadImmuneTab;
   window.loadReflexesTab = loadReflexesTab;
 
-  </script>
-
-  <!-- ── Earned Autonomy Panel ── -->
-  <div id="panel-autonomy" class="panel">
-    <h2 style="color:#00fff7;margin-bottom:16px">🛡️ Earned Autonomy — Agent Maturity</h2>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
-      <div id="autonomy-agents" style="flex:2;min-width:400px;background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
-        <h3 style="color:#ff00ff;margin:0 0 12px 0">Agent Cards</h3>
-        <div id="autonomyAgentCards">Loading...</div>
-      </div>
-      <div style="flex:1;min-width:300px">
-        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px;margin-bottom:12px">
-          <h3 style="color:#06b6d4;margin:0 0 12px 0">Permission Matrix</h3>
-          <div id="autonomyMatrix">Loading...</div>
-        </div>
-        <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
-          <h3 style="color:#f59e0b;margin:0 0 12px 0">Promotion History</h3>
-          <div id="autonomyHistory" style="max-height:250px;overflow-y:auto">Loading...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Decision Lineage Panel ── -->
-  <div id="panel-lineage" class="panel">
-    <h2 style="color:#00fff7;margin-bottom:16px">🔗 Decision Lineage — 5-Whys Traceability</h2>
-    <div style="display:flex;gap:12px;margin-bottom:16px">
-      <div id="lineage-stat-total" style="flex:1;background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px;text-align:center">
-        <div style="color:#888;font-size:11px">Total</div><div style="color:#00ff88;font-size:24px;font-weight:bold" id="lineageStatTotal">-</div>
-      </div>
-      <div style="flex:1;background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px;text-align:center">
-        <div style="color:#888;font-size:11px">Today</div><div style="color:#06b6d4;font-size:24px;font-weight:bold" id="lineageStatToday">-</div>
-      </div>
-      <div style="flex:1;background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px;text-align:center">
-        <div style="color:#888;font-size:11px">Success Rate</div><div style="color:#f59e0b;font-size:24px;font-weight:bold" id="lineageStatSuccess">-</div>
-      </div>
-      <div style="flex:1;background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px;text-align:center">
-        <div style="color:#888;font-size:11px">Avg Chain Depth</div><div style="color:#ff00ff;font-size:24px;font-weight:bold" id="lineageStatDepth">-</div>
-      </div>
-    </div>
-    <div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
-      <h3 style="color:#ff00ff;margin:0 0 12px 0">Decision Feed</h3>
-      <div id="lineageFeed" style="max-height:500px;overflow-y:auto">Loading...</div>
-    </div>
-    <div id="lineageTrace" style="display:none;margin-top:16px;background:#0d0d1a;border:1px solid #06b6d4;border-radius:8px;padding:16px">
-      <h3 style="color:#06b6d4;margin:0 0 12px 0">🔍 Lineage Trace</h3>
-      <div id="lineageTraceContent"></div>
-    </div>
-  </div>
-
-  <script>
-  // ── Autonomy Panel Loader ──
-  function loadAutonomyPanel() {
-    fetch('/api/autonomy/status').then(function(r){return r.json()}).then(function(data) {
-      var agents = data.agents || {};
-      var keys = Object.keys(agents);
-      var gradeColors = { G0: '#666', G1: '#f59e0b', G2: '#06b6d4', G3: '#22c55e' };
-      var permIcons = { deny: '❌', observe: '👁️', allow: '✅', approval: '🔑' };
-      if (keys.length === 0) {
-        document.getElementById('autonomyAgentCards').innerHTML = '<div style="color:#666">No agents registered yet. Record outcomes to create agents.</div>';
-      } else {
-        document.getElementById('autonomyAgentCards').innerHTML = keys.map(function(id) {
-          var a = agents[id];
-          var c = a.confidence || {};
-          var daysSince = Math.floor((Date.now() - new Date(a.gradeChangedAt).getTime()) / 86400000);
-          return '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:8px">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center">' +
-            '<span style="color:#eee;font-weight:bold">' + id + '</span>' +
-            '<span style="background:' + (gradeColors[a.grade] || '#666') + ';color:#000;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:12px">' + a.grade + '</span></div>' +
-            '<div style="margin-top:8px;font-size:11px;color:#888">' +
-            'Accuracy: <span style="color:#' + (c.accuracy >= 0.9 ? '22c55e' : 'f59e0b') + '">' + ((c.accuracy || 0) * 100).toFixed(1) + '%</span> · ' +
-            'Actions: ' + (c.totalActions || 0) + ' · Success: ' + (c.successfulActions || 0) + ' · Days in grade: ' + daysSince +
-            '</div>' +
-            '<div style="margin-top:8px;display:flex;gap:6px">' +
-            '<button class="btn-sm" onclick="autonomyPromote(\'' + id + '\')" style="background:#22c55e;color:#000;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:10px">⬆ Promote</button>' +
-            '<button class="btn-sm" onclick="autonomyDemote(\'' + id + '\')" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:10px">⬇ Demote</button>' +
-            '</div></div>';
-        }).join('');
-      }
-      // Matrix
-      fetch('/api/autonomy/permissions').then(function(r){return r.json()}).then(function(pm) {
-        var m = pm.matrix || {};
-        var grades = ['G0','G1','G2','G3'], risks = ['R0','R1','R2','R3'];
-        var html = '<table style="width:100%;font-size:11px;border-collapse:collapse"><tr><th style="color:#888;padding:4px"></th>';
-        risks.forEach(function(r){ html += '<th style="color:#06b6d4;padding:4px">' + r + '</th>'; });
-        html += '</tr>';
-        grades.forEach(function(g){
-          html += '<tr><td style="color:#eee;padding:4px;font-weight:bold">' + g + '</td>';
-          risks.forEach(function(r){ html += '<td style="padding:4px;text-align:center">' + (permIcons[m[g] && m[g][r]] || '❌') + '</td>'; });
-          html += '</tr>';
-        });
-        html += '</table>';
-        document.getElementById('autonomyMatrix').innerHTML = html;
-      });
-      // History
-      fetch('/api/autonomy/agent/all').catch(function(){return{json:function(){return{history:[]}}}}).then(function(r){return r.json()}).then(function(){
-        // Use inline history from agents data - fetch all history
-        var histHtml = '';
-        keys.forEach(function(id) {
-          var a = agents[id];
-          if (a.gradeChangedAt) {
-            histHtml += '<div style="padding:4px 0;border-bottom:1px solid #111;font-size:11px"><span style="color:#06b6d4">' + id + '</span> → <span style="color:#22c55e">' + a.grade + '</span> <span style="color:#555">' + new Date(a.gradeChangedAt).toLocaleString() + '</span></div>';
-          }
-        });
-        document.getElementById('autonomyHistory').innerHTML = histHtml || '<div style="color:#555">No history yet</div>';
-      });
-    }).catch(function(e) {
-      document.getElementById('autonomyAgentCards').innerHTML = '<div style="color:#ef4444">Error: ' + e.message + '</div>';
-    });
-  }
-  window.loadAutonomyPanel = loadAutonomyPanel;
-
-  function autonomyPromote(id) {
-    fetch('/api/autonomy/agent/' + encodeURIComponent(id) + '/promote', { method: 'POST' }).then(function(r){return r.json()}).then(function(d) {
-      if (d.ok) loadAutonomyPanel(); else alert(d.reason || 'Cannot promote');
-    });
-  }
-  window.autonomyPromote = autonomyPromote;
-
-  function autonomyDemote(id) {
-    var reason = prompt('Reason for demotion:');
-    if (!reason) return;
-    fetch('/api/autonomy/agent/' + encodeURIComponent(id) + '/demote', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({reason:reason}) }).then(function(r){return r.json()}).then(function(d) {
-      if (d.ok) loadAutonomyPanel(); else alert(d.reason || 'Cannot demote');
-    });
-  }
-  window.autonomyDemote = autonomyDemote;
-
-  // ── Lineage Panel Loader ──
-  function loadLineagePanel() {
-    fetch('/api/lineage/stats').then(function(r){return r.json()}).then(function(s) {
-      document.getElementById('lineageStatTotal').textContent = s.total || 0;
-      document.getElementById('lineageStatToday').textContent = s.today || 0;
-      document.getElementById('lineageStatSuccess').textContent = s.successRate || 'N/A';
-      document.getElementById('lineageStatDepth').textContent = s.avgChainDepth || '0';
-    });
-    fetch('/api/lineage/decisions?limit=50').then(function(r){return r.json()}).then(function(data) {
-      var decisions = (data.decisions || []).reverse();
-      if (decisions.length === 0) {
-        document.getElementById('lineageFeed').innerHTML = '<div style="color:#666">No decisions recorded yet.</div>';
-        return;
-      }
-      document.getElementById('lineageFeed').innerHTML = decisions.map(function(d) {
-        var statusColor = d.outcome && d.outcome.status === 'success' ? '#22c55e' : d.outcome && d.outcome.status === 'failure' ? '#ef4444' : '#f59e0b';
-        var statusIcon = d.outcome && d.outcome.status === 'success' ? '✅' : d.outcome && d.outcome.status === 'failure' ? '❌' : '⏳';
-        return '<div style="background:#111;border:1px solid #222;border-radius:6px;padding:10px;margin-bottom:6px;cursor:pointer" onclick="toggleLineageDetail(this)">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center">' +
-          '<span style="color:#eee;font-size:12px">' + statusIcon + ' ' + (d.request && d.request.intent || d.action_taken && d.action_taken.type || 'Unknown') + '</span>' +
-          '<span style="color:' + statusColor + ';font-size:10px;font-weight:bold">' + (d.outcome && d.outcome.status || 'pending') + '</span></div>' +
-          '<div style="color:#555;font-size:10px">' + (d.request && d.request.from || '?') + ' · ' + new Date(d.timestamp).toLocaleString() + ' · <span style="color:#06b6d4;cursor:pointer" onclick="event.stopPropagation();traceLineage(\'' + d.id + '\')">🔍 Trace</span></div>' +
-          '<div class="lineage-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #222;font-size:10px">' +
-          '<div style="color:#888"><b>Context:</b> ' + (d.context && d.context.length || 0) + ' items</div>' +
-          '<div style="color:#888"><b>Rules:</b> ' + (d.rules_applied && d.rules_applied.map(function(r){return r.rule}).join(', ') || 'none') + '</div>' +
-          '<div style="color:#888"><b>Hash:</b> <span style="color:#555;font-family:monospace">' + (d.immutable_hash || '').slice(0, 16) + '...</span></div>' +
-          '<div style="color:#888"><b>Chain:</b> ' + (d.lineage_chain && d.lineage_chain.length || 0) + ' parents</div>' +
-          '</div></div>';
-      }).join('');
-    }).catch(function(e) {
-      document.getElementById('lineageFeed').innerHTML = '<div style="color:#ef4444">Error: ' + e.message + '</div>';
-    });
-  }
-  window.loadLineagePanel = loadLineagePanel;
-
-  function toggleLineageDetail(el) {
-    var detail = el.querySelector('.lineage-detail');
-    if (detail) detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
-  }
-  window.toggleLineageDetail = toggleLineageDetail;
-
-  function traceLineage(id) {
-    var traceDiv = document.getElementById('lineageTrace');
-    traceDiv.style.display = 'block';
-    document.getElementById('lineageTraceContent').innerHTML = '<div style="color:#888">Loading trace...</div>';
-    fetch('/api/lineage/trace/' + encodeURIComponent(id) + '?depth=10').then(function(r){return r.json()}).then(function(data) {
-      var chain = data.chain || [];
-      if (chain.length === 0) {
-        document.getElementById('lineageTraceContent').innerHTML = '<div style="color:#555">No chain found</div>';
-        return;
-      }
-      document.getElementById('lineageTraceContent').innerHTML = chain.map(function(d, i) {
-        var verifyBtn = '<span style="cursor:pointer;color:#06b6d4" onclick="verifyLineage(\'' + d.id + '\',this)">🔒 Verify</span>';
-        return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">' +
-          '<div style="min-width:20px;text-align:center;color:#ff00ff;font-weight:bold">' + (i === 0 ? '🎯' : '↑') + '</div>' +
-          '<div style="flex:1;background:#0a0a15;border:1px solid #222;border-radius:4px;padding:8px">' +
-          '<div style="color:#eee;font-size:11px">' + (d.request && d.request.intent || d.action_taken && d.action_taken.type || '?') + '</div>' +
-          '<div style="color:#555;font-size:9px">' + new Date(d.timestamp).toLocaleString() + ' · ' + verifyBtn + '</div>' +
-          '</div></div>';
-      }).join('');
-    });
-  }
-  window.traceLineage = traceLineage;
-
-  function verifyLineage(id, el) {
-    fetch('/api/lineage/verify/' + encodeURIComponent(id)).then(function(r){return r.json()}).then(function(v) {
-      el.innerHTML = v.valid ? '✅ Verified' : '⚠️ Tampered!';
-      el.style.color = v.valid ? '#22c55e' : '#ef4444';
-    });
-  }
-  window.verifyLineage = verifyLineage;
-
   // ── Wire up panel loading ──
   (function() {
     var origSwitch = window.aries && window.aries.switchPanel;
-    var panelLoaders = { growth: loadGrowthPanel, commitments: loadCommitmentsPanel, world: loadWorldPanel, social: loadSocialPanel, lock: loadLockPanel, body: loadBodyPanel, autonomy: loadAutonomyPanel, lineage: loadLineagePanel };
+    var panelLoaders = { growth: loadGrowthPanel, commitments: loadCommitmentsPanel, world: loadWorldPanel, social: loadSocialPanel, lock: loadLockPanel, body: loadBodyPanel };
     var loaded = {};
     if (origSwitch) {
       var _orig = origSwitch.bind(window.aries);
