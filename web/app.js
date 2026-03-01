@@ -395,6 +395,22 @@
       case 'hive-mind': loadHiveMindPanel(); break;
       case 'instincts': loadInstinctsPanel(); break;
       case 'body': if (window.loadBodyPanel) window.loadBodyPanel(); break;
+      case 'mind': if (window.loadDeepMind) window.loadDeepMind(); break;
+      case 'reasoning': if (window.loadReasoning) window.loadReasoning(); break;
+      case 'cognition': if (window.loadCognitionPanel) window.loadCognitionPanel(); break;
+      case 'cognition-plus': if (window.loadCognitionPanel) window.loadCognitionPanel(); break;
+      case 'deep-mind': if (window.loadDeepMind) window.loadDeepMind(); break;
+      case 'deep-self': if (window.loadDeepSelf) window.loadDeepSelf(); break;
+      case 'evolution': if (window.loadEvolution) window.loadEvolution(); break;
+      case 'skill-progress': if (window.loadSkillProgress) window.loadSkillProgress(); break;
+      case 'meta': if (window.loadMeta) window.loadMeta(); break;
+      case 'gen-dna': if (window.loadGenDna) window.loadGenDna(); break;
+      case 'existential': if (window.loadExistential) window.loadExistential(); break;
+      case 'growth': if (window.loadGrowth) window.loadGrowth(); break;
+      case 'lock': if (window.loadLock) window.loadLock(); break;
+      case 'knowledge-wiki': if (window.loadKnowledgeWiki) window.loadKnowledgeWiki(); break;
+      case 'marketplace': if (window.loadMarketplace) window.loadMarketplace(); break;
+      case 'self-arch': if (window.loadSelfArch) window.loadSelfArch(); break;
     }
   }
 

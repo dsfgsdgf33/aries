@@ -256,6 +256,36 @@ function registerFeatureRoutes(server, refs) {
 }
 
 async function handleApi(method, pathname, parsed, req, res, refs) {
+  // Normalize trailing slashes (e.g. /api/reflexes/ → /api/reflexes)
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    pathname = pathname.slice(0, -1);
+  }
+
+  // ── Swarm Status alias ──
+  if (pathname === '/api/swarm/status' && method === 'GET') {
+    // Redirect to the actual swarm info from refs
+    const swarm = refs.swarm || {};
+    json(res, 200, {
+      totalAgents: swarm.totalAgents || 0,
+      totalWorkers: swarm.totalWorkers || 0,
+      nodes: swarm.nodes || {},
+      status: 'active'
+    });
+    return true;
+  }
+
+  // ── Modules Analyze (GET support) ──
+  if (pathname === '/api/modules/analyze' && method === 'GET') {
+    try {
+      const ModuleCreator = require('./module-creator');
+      const mc = new ModuleCreator(refs);
+      json(res, 200, { modules: mc.getCreatedModules ? mc.getCreatedModules() : [], status: 'ready' });
+    } catch (e) {
+      json(res, 200, { modules: [], status: 'module-creator not available' });
+    }
+    return true;
+  }
+
   // ── Activity ──
   if (method === 'GET' && pathname === '/api/activity') {
     const since = parseInt(parsed.searchParams.get('since') || '0', 10);
@@ -1029,6 +1059,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
       const body = await jsonBody(req);
       const result = await rc.challenge(body.chainId, body.stepId, body.counterArgument);
       json(res, 200, result); return true;
+    }
+    // Default: GET /api/reasoning returns history
+    if (pathname === '/api/reasoning' && method === 'GET') {
+      json(res, 200, { chains: rc.getReasoningHistory(20), status: 'ready' }); return true;
     }
   }
 
@@ -2706,6 +2740,15 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     const neutralizeMatch = pathname.match(/^\/api\/immune\/([^/]+)\/neutralize$/);
     if (neutralizeMatch && method === 'POST') {
       json(res, 200, immune.neutralize(neutralizeMatch[1])); return true;
+    }
+    // Default: GET /api/immune returns full status
+    if (pathname === '/api/immune' && method === 'GET') {
+      json(res, 200, {
+        score: immune.getSecurityScore(),
+        threats: immune.getThreats(),
+        vulnerabilities: immune.getVulnerabilities(),
+        antibodies: immune.getAntibodies()
+      }); return true;
     }
   }
 
