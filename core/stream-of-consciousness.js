@@ -89,16 +89,18 @@ class StreamOfConsciousness {
 
     // Thread detection
     const matchedThreadId = this._detectThread(streamThought);
-    if (matchedThreadId) {
+    if (matchedThreadId && this.threads[matchedThreadId]) {
       streamThought.threadId = matchedThreadId;
+      if (!this.threads[matchedThreadId].thoughts) this.threads[matchedThreadId].thoughts = [];
       this.threads[matchedThreadId].thoughts.push(streamThought.id);
       this.threads[matchedThreadId].lastActivity = Date.now();
       this.threads[matchedThreadId].thoughtCount = this.threads[matchedThreadId].thoughts.length;
     } else {
       // Check if this starts a new thread by relating to a recent thought
       const relatedThought = this._findRelatedThought(streamThought);
-      if (relatedThought && relatedThought.threadId) {
+      if (relatedThought && relatedThought.threadId && this.threads[relatedThought.threadId]) {
         streamThought.threadId = relatedThought.threadId;
+        if (!this.threads[relatedThought.threadId].thoughts) this.threads[relatedThought.threadId].thoughts = [];
         this.threads[relatedThought.threadId].thoughts.push(streamThought.id);
         this.threads[relatedThought.threadId].lastActivity = Date.now();
         this.threads[relatedThought.threadId].thoughtCount = this.threads[relatedThought.threadId].thoughts.length;

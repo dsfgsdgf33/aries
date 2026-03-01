@@ -2721,6 +2721,73 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
   }
 
+  // ── Cognitive Freeze ──
+  if (pathname.startsWith('/api/cognitive-freeze')) {
+    let cf;
+    try { const CF = require('./cognitive-freeze'); cf = new CF(refs); } catch (e) {
+      json(res, 501, { error: 'Cognitive freeze not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/cognitive-freeze' && method === 'GET') {
+      json(res, 200, { freezes: cf.listFreezes() }); return true;
+    }
+    if (pathname === '/api/cognitive-freeze/freeze' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 201, cf.freeze(body.label)); return true;
+    }
+    if (pathname === '/api/cognitive-freeze/auto' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 201, cf.autoFreeze(body.reason)); return true;
+    }
+    if (pathname === '/api/cognitive-freeze/compare' && method === 'GET') {
+      const id1 = parsed.searchParams.get('id1');
+      const id2 = parsed.searchParams.get('id2');
+      if (!id1 || !id2) { json(res, 400, { error: 'Missing id1 or id2' }); return true; }
+      json(res, 200, cf.compare(id1, id2)); return true;
+    }
+    const freezeThawMatch = pathname.match(/^\/api\/cognitive-freeze\/([^/]+)\/thaw$/);
+    if (freezeThawMatch && method === 'POST') {
+      json(res, 200, cf.thaw(freezeThawMatch[1])); return true;
+    }
+    const freezeGetMatch = pathname.match(/^\/api\/cognitive-freeze\/([^/]+)$/);
+    if (freezeGetMatch && method === 'GET') {
+      const snap = cf.getFreeze(freezeGetMatch[1]);
+      json(res, snap ? 200 : 404, snap || { error: 'Freeze not found' }); return true;
+    }
+  }
+
+  // ── Cognitive Debt (alias /api/cognitive-debt → /api/debt) ──
+  if (pathname.startsWith('/api/cognitive-debt')) {
+    let debt;
+    try { const CognitiveDebt = require('./cognitive-debt'); debt = new CognitiveDebt(); } catch (e) {
+      json(res, 501, { error: 'Cognitive debt module not available' }); return true;
+    }
+    if (pathname === '/api/cognitive-debt' && method === 'GET') {
+      json(res, 200, { debt: debt.getDebt(), report: debt.getDebtReport() }); return true;
+    }
+    if (pathname === '/api/cognitive-debt/critical' && method === 'GET') {
+      json(res, 200, { critical: debt.getCritical() }); return true;
+    }
+    if (pathname === '/api/cognitive-debt/report' && method === 'GET') {
+      json(res, 200, debt.getDebtReport()); return true;
+    }
+    if (pathname === '/api/cognitive-debt/interest' && method === 'GET') {
+      json(res, 200, debt.getInterest()); return true;
+    }
+    if (pathname === '/api/cognitive-debt/incur' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 201, debt.incur(body.type, body.description, body.context, body.severity)); return true;
+    }
+    const cdPayMatch = pathname.match(/^\/api\/cognitive-debt\/([^/]+)\/pay$/);
+    if (cdPayMatch && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, debt.pay(cdPayMatch[1], body.resolution)); return true;
+    }
+    if (pathname === '/api/cognitive-debt/detect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, { detected: debt.autoDetect(body.action) }); return true;
+    }
+  }
+
   // ── Consciousness Lock ──
   if (pathname.startsWith('/api/lock')) {
     let lock;

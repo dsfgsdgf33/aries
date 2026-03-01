@@ -2961,7 +2961,8 @@ async function handleRequest(req, res) {
     //  GET /api/ws/clients 
     if (method === 'GET' && reqPath === '/api/ws/clients') {
       var wss = refs.wsServer;
-      return json(res, 200, { clients: wss ? wss.getClients() : [], count: wss ? wss.clientCount : 0 });
+      const clientList = wss && wss._clients ? Array.from(wss._clients.keys()) : [];
+      return json(res, 200, { clients: clientList, count: wss ? wss.clientCount : 0 });
 
     // •• Desktop Control ••
     if (reqPath.startsWith('/api/desktop/')) {
