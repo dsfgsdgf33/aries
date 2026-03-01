@@ -9233,7 +9233,7 @@ async function _handleNewFeatureRoutes(reqPath, method, req, res) {
       return json(res, 200, { ok: true });
     } catch (e) { return json(res, 500, { error: e.message }); }
   }
-  if (reqPath === '/api/training/stats' && method === 'GET') {
+  if ((reqPath === '/api/training/stats' || reqPath === '/api/training/status') && method === 'GET') {
     try {
       if (!fs.existsSync(trainingDir)) fs.mkdirSync(trainingDir, { recursive: true });
       var feedbackFile = path.join(trainingDir, 'feedback.json');
@@ -10602,5 +10602,53 @@ try {
   console.log('[API] Agent Instincts routes registered');
 } catch (e) { console.error('[API] Agent Instincts init error:', e.message); }
 
+
+  // === Alias routes for dashboard compatibility ===
+
+  // /api/hive/status → same as /api/hive
+  addPluginRoute('GET', '/api/hive/status', async (req, res, json) => {
+    const hiveMgr = refs.hiveMind || null;
+    json(res, 200, hiveMgr ? { status: 'active', nodes: hiveMgr.getNodes ? hiveMgr.getNodes() : [], sharedMemories: hiveMgr.getSharedMemories ? hiveMgr.getSharedMemories() : [] } : { status: 'inactive', nodes: [], sharedMemories: [] });
+  });
+
+  // /api/reputation → leaderboard
+  addPluginRoute('GET', '/api/reputation', async (req, res, json) => {
+    try {
+      const loadRep = () => { try { return JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'data', 'reputation.json'), 'utf8')); } catch(e) { return {}; } };
+      const rep = loadRep();
+      const leaderboard = Object.entries(rep).map(([id, d]) => ({ id, ...d })).sort((a,b) => (b.score||0) - (a.score||0));
+      json(res, 200, { leaderboard });
+    } catch(e) { json(res, 200, { leaderboard: [] }); }
+  });
+
+  // /api/self-improve/status
+  addPluginRoute('GET', '/api/self-improve/status', async (req, res, json) => {
+    const improve = refs.selfImprove || null;
+    json(res, 200, improve ? { status: 'active', stats: improve.getStats ? improve.getStats() : {} } : { status: 'inactive', stats: {} });
+  });
+
+  // /api/templates
+  addPluginRoute('GET', '/api/templates', async (req, res, json) => {
+    try {
+      const fs = require('fs'), path = require('path');
+      const tDir = path.join(__dirname, '..', 'data', 'templates');
+      if (!fs.existsSync(tDir)) return json(res, 200, { templates: [] });
+      const files = fs.readdirSync(tDir).filter(f => f.endsWith('.json'));
+      const templates = files.map(f => { try { return JSON.parse(fs.readFileSync(path.join(tDir, f), 'utf8')); } catch(e) { return { name: f, error: true }; } });
+      json(res, 200, { templates });
+    } catch(e) { json(res, 200, { templates: [] }); }
+  });
+
+  // /api/breeding/population
+  addPluginRoute('GET', '/api/breeding/population', async (req, res, json) => {
+    const breeding = refs.agentBreeding || null;
+    if (breeding) {
+      json(res, 200, { population: breeding.getPopulation ? breeding.getPopulation() : [], fitness: breeding.getAllFitness ? breeding.getAllFitness() : {} });
+    } else {
+      json(res, 200, { population: [], fitness: {} });
+    }
+  });
+
+  console.log('[API] Dashboard alias routes registered');
 
 module.exports = { start, addPluginRoute, getPluginRouteAdder, wsBroadcast };

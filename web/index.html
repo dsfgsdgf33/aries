@@ -275,7 +275,7 @@
       </section>
 
       <!-- Agents Panel -->
-      <section id="panel-agents" class="panel" style="display:none"></section>
+      <section id="panel-agents" class="panel"></section>
       <section id="panel-subagents" class="panel">
         <div class="panel-header">
           <h2>&#x1F916; Subagents</h2>
@@ -1603,7 +1603,10 @@
       </section>
 
       <!-- Free Keys Panel -->
-      <section id="panel-free-keys" class="panel"></section>
+      <section id="panel-free-keys" class="panel">
+        <div class="panel-header"><h2>🔑 Free API Keys</h2></div>
+        <div style="padding:16px;color:#888;text-align:center"><p style="font-size:18px;margin:24px 0">🚧 Coming Soon</p><p>Free API key management will be available in a future update.</p></div>
+      </section>
 
       <!-- Gateway Panel -->
       <section id="panel-gateway" class="panel">
@@ -2583,7 +2586,7 @@
       </section>
 
       <!-- Hands Panel -->
-      <section id="panel-hands" class="panel" style="display:none">
+      <section id="panel-hands" class="panel">
         <div class="panel-header"><h2>🤖 Autonomous Hands</h2><div><button class="btn-sm" onclick="window.aries.refreshHands()">↻ Refresh</button></div></div>
         <p style="color:#888;font-size:13px;margin:0 0 16px">Hands are autonomous agents that work for you on schedules — no prompting needed.</p>
         <div id="handsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
@@ -2594,7 +2597,7 @@
       </section>
 
       <!-- Workflows Panel -->
-      <section id="panel-workflows" class="panel" style="display:none">
+      <section id="panel-workflows" class="panel">
         <div class="panel-header"><h2>⚡ Workflows</h2><div><button class="btn-sm" onclick="window.aries.refreshWorkflows()">↻ Refresh</button> <button class="btn-sm" onclick="window.aries.showCreateWorkflow()">+ New Workflow</button></div></div>
         <p style="color:#888;font-size:13px;margin:0 0 16px">Visual workflow builder — chain subagents into automated pipelines.</p>
         <div style="display:flex;gap:16px;height:calc(100vh - 180px);min-height:500px">
@@ -2649,26 +2652,26 @@
       </section>
 
       <!-- Analytics Panel -->
-      <section id="panel-analytics" class="panel" style="display:none">
+      <section id="panel-analytics" class="panel">
         <div class="panel-header"><h2>📊 Analytics</h2><div><button class="btn-sm" onclick="window.aries.refreshAnalytics()">↻ Refresh</button></div></div>
         <div id="analyticsContent"></div>
       </section>
 
       <!-- Knowledge Panel -->
-      <section id="panel-knowledge" class="panel" style="display:none">
+      <section id="panel-knowledge" class="panel">
         <div class="panel-header"><h2>🕸️ Knowledge Graph</h2><div><button class="btn-sm" onclick="window.aries.refreshKnowledge()">↻ Refresh</button></div></div>
         <div style="display:flex;gap:8px;margin-bottom:12px"><input id="kgSearchInput" type="text" class="input-field" placeholder="Search entities..." style="flex:1" /><button class="btn-primary" onclick="window.aries.searchKnowledge()">Search</button></div>
         <div id="knowledgeContent"></div>
       </section>
 
       <!-- Security Panel -->
-      <section id="panel-security" class="panel" style="display:none">
+      <section id="panel-security" class="panel">
         <div class="panel-header"><h2>🛡️ Security</h2><div><button class="btn-sm" onclick="window.aries.refreshSecurity()">↻ Refresh</button></div></div>
         <div id="securityContent"></div>
       </section>
 
       <!-- Channels Panel -->
-      <section id="panel-channels" class="panel" style="display:none">
+      <section id="panel-channels" class="panel">
         <div class="panel-header"><h2>💬 Channels</h2><div><button class="btn-sm" onclick="window.aries.refreshChannels()">↻ Refresh</button></div></div>
         <p style="color:#888;font-size:13px;margin:0 0 16px">Connect your agents to messaging platforms.</p>
         <div id="channelsContent"></div>
@@ -3302,7 +3305,7 @@
 
   <!-- ═══ Generational Memory (DNA) Panel ═══ -->
   <!-- Evolution Panel -->
-  <section id="panel-evolution" class="panel" style="display:none">
+  <section id="panel-evolution" class="panel">
     <div class="panel-header">
       <h2>🌀 Advanced Evolution</h2>
       <button class="btn-sm" onclick="loadEvolutionPanel()">🔄 Refresh</button>
@@ -3704,7 +3707,7 @@
   });
   </script>
 
-  <div id="panel-gen-dna" class="panel" style="display:none">
+  <div id="panel-gen-dna" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">🧬 Generational Memory — Digital DNA</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px" id="genDnaStats"></div>
 
@@ -3761,7 +3764,7 @@
   </div>
 
   <!-- ═══ Agent DNA Panel ═══ -->
-  <div id="panel-agent-dna" class="panel" style="display:none">
+  <div id="panel-agent-dna" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">🧬 Agent DNA — Genetic Code</h2>
     <div style="display:flex;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:320px">
@@ -3821,7 +3824,7 @@
   </div>
 
   <!-- ═══ Hive Mind Panel ═══ -->
-  <div id="panel-hive-mind" class="panel" style="display:none">
+  <div id="panel-hive-mind" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">🔗 Hive Mind — Shared Consciousness</h2>
     <div style="display:flex;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:320px">
@@ -3861,7 +3864,7 @@
   </div>
 
   <!-- ═══ Self-Architecture Panel ═══ -->
-  <section id="panel-self-arch" class="panel" style="display:none">
+  <section id="panel-self-arch" class="panel">
     <div class="panel-header">
       <h2>🧬 Self-Architecture</h2>
       <button class="btn-sm" onclick="loadSelfArch()">🔄 Refresh</button>
@@ -4079,7 +4082,7 @@
   </script>
 
   <!-- ═══ Knowledge Wiki Panel ═══ -->
-  <div id="panel-knowledge-wiki" class="panel" style="display:none">
+  <div id="panel-knowledge-wiki" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">📚 Knowledge Wiki</h2>
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <input id="wikiSearchInput" type="text" placeholder="Search wiki..." style="flex:1;min-width:200px;padding:10px 14px;background:#0a0a12;color:#e0e0e0;border:1px solid #2a2a3e;border-radius:6px;font-size:14px" onkeydown="if(event.key==='Enter')searchWiki()">
@@ -4107,7 +4110,7 @@
   </div>
 
   <!-- ═══ Reasoning Panel ═══ -->
-  <div id="panel-reasoning" class="panel" style="display:none">
+  <div id="panel-reasoning" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">🌳 Reasoning Chains</h2>
     <div style="display:flex;gap:12px;margin-bottom:16px">
       <input id="reasoningQuestion" type="text" placeholder="Ask a complex question..." style="flex:1;padding:10px 14px;background:#0a0a12;color:#e0e0e0;border:1px solid #2a2a3e;border-radius:6px;font-size:14px" onkeydown="if(event.key==='Enter')startReasoning()">
@@ -4123,7 +4126,7 @@
   </div>
 
   <!-- ═══ Skill Progress Panel ═══ -->
-  <div id="panel-skill-progress" class="panel" style="display:none">
+  <div id="panel-skill-progress" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">📈 Skill Progress</h2>
     <div id="skillWeakest" style="background:#0d0d1a;border:1px solid #ef4444;border-radius:8px;padding:12px;margin-bottom:16px;display:none">
       <h3 style="color:#ef4444;margin:0 0 8px;font-size:14px">⚠️ Needs Improvement</h3>
@@ -4777,7 +4780,7 @@
   });
   </script>
 
-  <div id="panel-instincts" class="panel" style="display:none">
+  <div id="panel-instincts" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">⚡ Agent Instincts — Pre-AI Reactions</h2>
     <div style="display:flex;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:400px">

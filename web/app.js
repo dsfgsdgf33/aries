@@ -282,7 +282,10 @@
     var targetItem = document.querySelector('.nav-item[data-panel="' + name + '"]');
     if (targetItem) targetItem.classList.add('active');
     var targetPanel = document.getElementById('panel-' + name);
-    if (targetPanel) targetPanel.classList.add('active');
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+      targetPanel.style.display = '';  // Remove inline display:none
+    }
     currentPanel = name;
     if (!_loadedPanels[name]) { _loadedPanels[name] = true; loadPanelData(name); }
     if (agentRefreshInterval) { clearInterval(agentRefreshInterval); agentRefreshInterval = null; }

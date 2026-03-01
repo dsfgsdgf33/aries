@@ -339,6 +339,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
       json(res, 501, { error: 'Arena module not available' }); return true;
     }
 
+    if (pathname === '/api/arena' && method === 'GET') {
+      json(res, 200, { leaderboard: arena.getLeaderboard ? arena.getLeaderboard() : [], history: arena.getHistory ? arena.getHistory(10) : [], status: 'ready' });
+      return true;
+    }
     if (pathname === '/api/arena/run' && method === 'POST') {
       const body = await jsonBody(req);
       json(res, 200, await arena.arena(body.prompt, body.models, body)); return true;
