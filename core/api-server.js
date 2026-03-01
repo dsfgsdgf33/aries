@@ -621,15 +621,18 @@ async function handleRequest(req, res) {
     } catch (e) { return json(res, 500, { error: 'Proxy error: ' + e.message }); }
   }
 
-  // Rate limiting
+  // Rate limiting (exempt localhost — dashboard makes many parallel requests)
   if (_rateLimiter) {
     const ip = req.socket?.remoteAddress || 'unknown';
-    const check = _rateLimiter.check(ip);
-    if (!check.allowed) {
-      audit.security('rate_limit', { ip, path: reqPath });
-      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': Math.ceil(check.retryAfterMs / 1000) });
-      res.end(JSON.stringify({ error: 'Rate limited', retryAfterMs: check.retryAfterMs }));
-      return;
+    const isLocal = (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1');
+    if (!isLocal) {
+      const check = _rateLimiter.check(ip);
+      if (!check.allowed) {
+        audit.security('rate_limit', { ip, path: reqPath });
+        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': Math.ceil(check.retryAfterMs / 1000) });
+        res.end(JSON.stringify({ error: 'Rate limited', retryAfterMs: check.retryAfterMs }));
+        return;
+      }
     }
   }
 

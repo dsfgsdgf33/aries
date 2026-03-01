@@ -258,13 +258,15 @@ class CognitiveDashboard {
 
   _getSoulDrift() {
     return safeCall(() => {
-      const M = require('./self-model');
-      const inst = new M();
-      const biases = inst.getBiases();
-      const blindSpots = inst.getBlindSpots();
-      const drift = ((biases || []).length * 5 + (blindSpots || []).length * 8);
-      return Math.min(100, drift);
-    }, 15);
+      // Use the actual soul-checksum module for real drift calculation
+      const SoulChecksum = require('./soul-checksum');
+      const soul = new SoulChecksum();
+      const status = soul.getStatus();
+      if (status && status.drift && typeof status.drift.percentage === 'number') {
+        return status.drift.percentage;
+      }
+      return 0;
+    }, 0);
   }
 
   _getActiveProblems() {

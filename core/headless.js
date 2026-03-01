@@ -1201,6 +1201,55 @@ async function startHeadless(configPath) {
     log.info('Auto-backup enabled');
   }
 
+  // ── Start Cognitive Systems ──
+  // These give Aries its "mind" — inner thoughts, emotions, consciousness stream
+  try {
+    const InnerMonologue = require(path.join(baseDir, 'core', 'inner-monologue'));
+    refs.innerMonologue = new InnerMonologue({ ai: refs.ai });
+    refs.innerMonologue.start();
+    log.info('Inner monologue started (thinking every 2-5 min)');
+  } catch (e) { console.error('[COGNITIVE] Inner monologue init error:', e.message); }
+
+  try {
+    const StreamOfConsciousness = require(path.join(baseDir, 'core', 'stream-of-consciousness'));
+    refs.streamOfConsciousness = new StreamOfConsciousness({ ai: refs.ai });
+    refs.streamOfConsciousness.start();
+    log.info('Stream of consciousness started');
+  } catch (e) { console.error('[COGNITIVE] Stream of consciousness init error:', e.message); }
+
+  try {
+    const EmotionalEngine = require(path.join(baseDir, 'core', 'emotional-engine'));
+    refs.emotionalEngine = new EmotionalEngine({});
+    if (typeof refs.emotionalEngine.start === 'function') refs.emotionalEngine.start();
+    log.info('Emotional engine started');
+  } catch (e) { console.error('[COGNITIVE] Emotional engine init error:', e.message); }
+
+  try {
+    const DriveSystem = require(path.join(baseDir, 'core', 'drive-system'));
+    refs.driveSystem = new DriveSystem({});
+    if (typeof refs.driveSystem.start === 'function') refs.driveSystem.start();
+    log.info('Drive system started');
+  } catch (e) { console.error('[COGNITIVE] Drive system init error:', e.message); }
+
+  try {
+    const GestaltEngine = require(path.join(baseDir, 'core', 'gestalt-engine'));
+    refs.gestaltEngine = new GestaltEngine(refs);
+    if (typeof refs.gestaltEngine.start === 'function') refs.gestaltEngine.start();
+    log.info('Gestalt engine started');
+  } catch (e) { console.error('[COGNITIVE] Gestalt engine init error:', e.message); }
+
+  // Dream engine is initialized in api-server.js (moonshot routes) — refs.agentDreams set there
+  if (refs.agentDreams) {
+    log.info('Dream engine already running (from api-server)');
+  } else {
+    try {
+      const AgentDreams = require(path.join(baseDir, 'core', 'agent-dreams'));
+      refs.agentDreams = new AgentDreams({ ai: refs.ai });
+      refs.agentDreams.startIdleWatch();
+      log.info('Dream engine started (idle-triggered after 30min)');
+    } catch (e) { console.error('[COGNITIVE] Dream engine init error:', e.message); }
+  }
+
   // Keepalive — prevent event loop from draining and killing the process
   setInterval(() => {}, 60000);
 

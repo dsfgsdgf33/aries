@@ -493,8 +493,16 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Agent Dreams v2 ──
   if (pathname.startsWith('/api/features/dreams')) {
     let dreams;
-    try { const AgentDreams = require('./agent-dreams'); dreams = new AgentDreams({ ...refs, ai: refs.ai || ai, broadcast: broadcast }); } catch (e) {
-      json(res, 501, { error: 'Dreams module not available' }); return true;
+    try {
+      if (refs && refs.agentDreams) {
+        dreams = refs.agentDreams;
+      } else {
+        console.log('[DREAMS-ROUTE] refs.agentDreams not found, creating new instance. refs keys:', refs ? Object.keys(refs).filter(k => k.includes('dream') || k.includes('Dream') || k.includes('agent')).join(',') : 'null');
+        const AgentDreams = require('./agent-dreams');
+        dreams = new AgentDreams({ ai: refs ? refs.ai : null });
+      }
+    } catch (e) {
+      json(res, 501, { error: 'Dreams module not available: ' + e.message }); return true;
     }
     if (pathname === '/api/features/dreams' && method === 'GET') {
       const date = parsed.searchParams.get('date') || null;
@@ -581,7 +589,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Inner Monologue (Thoughts) ──
   if (pathname.startsWith('/api/thoughts')) {
     let monologue;
-    try { const InnerMonologue = require('./inner-monologue'); monologue = new InnerMonologue(refs); } catch (e) {
+    try {
+      if (refs.innerMonologue) { monologue = refs.innerMonologue; }
+      else { const InnerMonologue = require('./inner-monologue'); monologue = new InnerMonologue(refs); }
+    } catch (e) {
       json(res, 501, { error: 'Inner monologue module not available: ' + e.message }); return true;
     }
     if (pathname === '/api/thoughts/stats' && method === 'GET') {
@@ -611,7 +622,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Emotional Engine (Consciousness) ──
   if (pathname.startsWith('/api/emotions')) {
     let engine;
-    try { const EmotionalEngine = require('./emotional-engine'); engine = new EmotionalEngine(); } catch (e) {
+    try {
+      if (refs.emotionalEngine) { engine = refs.emotionalEngine; }
+      else { const EmotionalEngine = require('./emotional-engine'); engine = new EmotionalEngine(); }
+    } catch (e) {
       json(res, 501, { error: 'Emotional engine module not available: ' + e.message }); return true;
     }
     if (pathname === '/api/emotions/history' && method === 'GET') {
@@ -1192,7 +1206,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Stream of Consciousness ──
   if (pathname.startsWith('/api/consciousness')) {
     let stream;
-    try { const StreamOfConsciousness = require('./stream-of-consciousness'); stream = new StreamOfConsciousness(refs); } catch (e) {
+    try {
+      if (refs.streamOfConsciousness) { stream = refs.streamOfConsciousness; }
+      else { const StreamOfConsciousness = require('./stream-of-consciousness'); stream = new StreamOfConsciousness(refs); }
+    } catch (e) {
       json(res, 501, { error: 'Stream of consciousness module not available: ' + e.message }); return true;
     }
     if (pathname === '/api/consciousness/stream' && method === 'GET') {
@@ -1703,7 +1720,7 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Gestalt Engine ──
   if (pathname.startsWith('/api/gestalt')) {
     let ge;
-    try { const GestaltEngine = require('./gestalt-engine'); ge = new GestaltEngine(refs); } catch (e) {
+    try { if (refs.gestaltEngine) { ge = refs.gestaltEngine; } else { const GestaltEngine = require('./gestalt-engine'); ge = new GestaltEngine(refs); } } catch (e) {
       json(res, 501, { error: 'Gestalt engine not available: ' + e.message }); return true;
     }
     if (pathname === '/api/gestalt/coherence' && method === 'GET') {
