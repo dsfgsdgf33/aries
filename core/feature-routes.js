@@ -2605,9 +2605,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Skeletal System ──
   if (pathname.startsWith('/api/skeleton')) {
     let skeleton;
-    try { const SkeletalSystem = require('./skeletal-system'); skeleton = new SkeletalSystem(); } catch (e) {
-      json(res, 501, { error: 'Skeletal system not available' }); return true;
-    }
+    try {
+      if (refs.skeletalSystem) { skeleton = refs.skeletalSystem; }
+      else { const SkeletalSystem = require('./skeletal-system'); skeleton = new SkeletalSystem(); }
+    } catch (e) { json(res, 501, { error: 'Skeletal system not available' }); return true; }
     if (pathname === '/api/skeleton/protected' && method === 'GET') {
       json(res, 200, { files: skeleton.getProtectedFiles() }); return true;
     }
@@ -2630,9 +2631,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Circulatory System ──
   if (pathname.startsWith('/api/circulatory')) {
     let circulatory;
-    try { const CirculatorySystem = require('./circulatory-system'); circulatory = new CirculatorySystem(); } catch (e) {
-      json(res, 501, { error: 'Circulatory system not available' }); return true;
-    }
+    try {
+      if (refs.circulatorySystem) { circulatory = refs.circulatorySystem; }
+      else { const CirculatorySystem = require('./circulatory-system'); circulatory = new CirculatorySystem(); }
+    } catch (e) { json(res, 501, { error: 'Circulatory system not available' }); return true; }
     if (pathname === '/api/circulatory/oxygen' && method === 'GET') {
       json(res, 200, circulatory.getOxygenLevel()); return true;
     }
@@ -2651,9 +2653,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Immune System ──
   if (pathname.startsWith('/api/immune')) {
     let immune;
-    try { const ImmuneSystem = require('./immune-system'); immune = new ImmuneSystem(); } catch (e) {
-      json(res, 501, { error: 'Immune system not available' }); return true;
-    }
+    try {
+      if (refs.immuneSystem) { immune = refs.immuneSystem; }
+      else { const ImmuneSystem = require('./immune-system'); immune = new ImmuneSystem(); }
+    } catch (e) { json(res, 501, { error: 'Immune system not available' }); return true; }
     if (pathname === '/api/immune/threats' && method === 'GET') {
       const status = parsed.searchParams.get('status') || null;
       json(res, 200, { threats: immune.getThreats(status), history: immune.getThreatHistory() }); return true;
@@ -2683,9 +2686,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Muscle Memory (Reflexes) ──
   if (pathname.startsWith('/api/reflexes')) {
     let muscle;
-    try { const MuscleMemory = require('./muscle-memory'); muscle = new MuscleMemory(); } catch (e) {
-      json(res, 501, { error: 'Muscle memory not available' }); return true;
-    }
+    try {
+      if (refs.muscleMemory) { muscle = refs.muscleMemory; }
+      else { const MuscleMemory = require('./muscle-memory'); muscle = new MuscleMemory(); }
+    } catch (e) { json(res, 501, { error: 'Muscle memory not available' }); return true; }
     if (pathname === '/api/reflexes/automatic' && method === 'GET') {
       json(res, 200, { reflexes: muscle.getAutomatic() }); return true;
     }

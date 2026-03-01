@@ -100,59 +100,72 @@ class CirculatorySystem {
 
   _pollModules() {
     const now = Date.now();
-    // Attempt to read from known modules — all wrapped in try/catch
-    const modulePaths = {
-      emotion: './emotional-engine',
-      rhythm: './cognitive-rhythms',
-      flow: './flow-state',
-      weather: './cognitive-weather',
-      drive: './drive-system',
-      gestalt: './gestalt-engine',
-      attention: './attention-system',
-      empathy: './user-empathy',
-      persona: './persona-forking',
-      thought: './inner-monologue'
-    };
+    const r = this._refs || {};
 
-    for (const [key, modPath] of Object.entries(modulePaths)) {
-      try {
-        const Mod = require(modPath);
-        const inst = typeof Mod.getInstance === 'function' ? Mod.getInstance() : new Mod();
-        let data = null;
-
-        if (key === 'emotion' && inst.getState) {
-          const s = inst.getState();
-          data = { state: s.dominant || s.state || 'neutral', intensity: s.intensity || 0, timestamp: now };
-        } else if (key === 'rhythm' && inst.getCurrentRhythm) {
-          const r = inst.getCurrentRhythm();
-          data = { current: r.rhythm || r.current || 'normal', hints: r.hints || [], timestamp: now };
-        } else if (key === 'flow' && (inst.getFlowState || inst.getFlowScore)) {
-          const f = inst.getFlowState ? inst.getFlowState() : inst.getFlowScore();
-          data = { state: f.state || 'idle', score: f.score || f.flowScore || 0, timestamp: now };
-        } else if (key === 'weather' && inst.getCurrentWeather) {
-          const w = inst.getCurrentWeather();
-          data = { type: w.type || w.weather || 'clear', advisory: w.advisory || '', timestamp: now };
-        } else if (key === 'drive' && (inst.getDominantDrive || inst.getActiveDrives)) {
+    // Poll from live singleton instances (set via refs from headless.js)
+    // Falls back to requiring modules if no singleton available
+    const polls = [
+      { key: 'emotion', ref: r.emotionalEngine, fallback: './emotional-engine',
+        extract: (inst) => {
+          const s = inst.getState ? inst.getState() : {};
+          return { state: s.dominant || s.state || 'neutral', intensity: s.intensity || 0, timestamp: now };
+        }},
+      { key: 'rhythm', ref: null, fallback: './cognitive-rhythms',
+        extract: (inst) => {
+          const v = inst.getCurrentRhythm ? inst.getCurrentRhythm() : {};
+          return { current: v.rhythm || v.current || 'normal', hints: v.hints || [], timestamp: now };
+        }},
+      { key: 'weather', ref: null, fallback: './cognitive-weather',
+        extract: (inst) => {
+          const w = inst.getCurrentWeather ? inst.getCurrentWeather() : {};
+          return { type: w.type || w.weather || 'clear', advisory: w.advisory || '', timestamp: now };
+        }},
+      { key: 'drive', ref: r.driveSystem, fallback: './drive-system',
+        extract: (inst) => {
           const d = inst.getDominantDrive ? inst.getDominantDrive() : {};
-          data = { dominant: d.name || d.drive || 'curiosity', strength: d.strength || d.intensity || 50, timestamp: now };
-        } else if (key === 'gestalt' && (inst.getCoherence || inst.getState)) {
-          const g = inst.getCoherence ? inst.getCoherence() : inst.getState();
-          data = { coherence: g.coherence || 100, tension: g.tension || 0, mood: g.mood || 'stable', timestamp: now };
-        } else if (key === 'attention' && inst.getSpotlight) {
-          const a = inst.getSpotlight();
-          data = { spotlight: a.target || a.spotlight || null, budget: a.budget || a.remaining || 100, timestamp: now };
-        } else if (key === 'empathy' && inst.getUserState) {
-          const e = inst.getUserState();
-          data = { userMood: e.mood || e.userMood || 'unknown', engagement: e.engagement || 0, timestamp: now };
-        } else if (key === 'persona' && (inst.getCurrentPersona || inst.listPersonas)) {
+          return { dominant: d.name || d.drive || 'curiosity', strength: d.strength || d.intensity || 50, timestamp: now };
+        }},
+      { key: 'gestalt', ref: r.gestaltEngine, fallback: './gestalt-engine',
+        extract: (inst) => {
+          const g = inst.getCoherence ? inst.getCoherence() : (inst.getState ? inst.getState() : {});
+          return { coherence: g.coherence || 100, tension: g.tension || 0, mood: g.mood || 'stable', timestamp: now };
+        }},
+      { key: 'attention', ref: null, fallback: './attention-system',
+        extract: (inst) => {
+          const a = inst.getSpotlight ? inst.getSpotlight() : {};
+          return { spotlight: a.target || a.spotlight || null, budget: a.budget || a.remaining || 100, timestamp: now };
+        }},
+      { key: 'empathy', ref: null, fallback: './user-empathy',
+        extract: (inst) => {
+          const e = inst.getUserState ? inst.getUserState() : {};
+          return { userMood: e.mood || e.userMood || 'unknown', engagement: e.engagement || 0, timestamp: now };
+        }},
+      { key: 'persona', ref: null, fallback: './persona-forking',
+        extract: (inst) => {
           const p = inst.getCurrentPersona ? inst.getCurrentPersona() : {};
-          data = { active: p.name || p.id || 'default', traits: p.traits || [], timestamp: now };
-        } else if (key === 'thought' && (inst.getThoughtStream || inst.getStats)) {
+          return { active: p.name || p.id || 'default', traits: p.traits || [], timestamp: now };
+        }},
+      { key: 'thought', ref: r.innerMonologue, fallback: './inner-monologue',
+        extract: (inst) => {
           const t = inst.getStats ? inst.getStats() : {};
-          data = { current: t.lastThought || t.current || 'idle', type: t.lastType || 'observation', timestamp: now };
-        }
+          return { current: t.lastThought || t.current || 'idle', type: t.lastType || 'observation', timestamp: now };
+        }},
+      { key: 'flow', ref: null, fallback: './flow-state',
+        extract: (inst) => {
+          const f = inst.getFlowState ? inst.getFlowState() : (inst.getFlowScore ? inst.getFlowScore() : {});
+          return { state: f.state || 'idle', score: f.score || f.flowScore || 0, timestamp: now };
+        }},
+    ];
 
-        if (data) this.inject(key, data);
+    for (const p of polls) {
+      try {
+        let inst = p.ref;
+        if (!inst) {
+          const Mod = require(p.fallback);
+          inst = typeof Mod.getInstance === 'function' ? Mod.getInstance() : new Mod();
+        }
+        const data = p.extract(inst);
+        if (data) this.inject(p.key, data);
       } catch (_) { /* module not available, keep last known state */ }
     }
   }

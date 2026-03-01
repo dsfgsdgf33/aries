@@ -1238,6 +1238,39 @@ async function startHeadless(configPath) {
     log.info('Gestalt engine started');
   } catch (e) { console.error('[COGNITIVE] Gestalt engine init error:', e.message); }
 
+  // ── Start Body Systems ──
+  try {
+    const CirculatorySystem = require(path.join(baseDir, 'core', 'circulatory-system'));
+    refs.circulatorySystem = new CirculatorySystem();
+    // Inject live module refs so circulatory can poll real data
+    refs.circulatorySystem._refs = refs;
+    log.info('Circulatory system started (pumping every 5s)');
+  } catch (e) { console.error('[BODY] Circulatory system init error:', e.message); }
+
+  try {
+    const ImmuneSystem = require(path.join(baseDir, 'core', 'immune-system'));
+    refs.immuneSystem = new ImmuneSystem();
+    log.info('Immune system started (patrol every 60s)');
+  } catch (e) { console.error('[BODY] Immune system init error:', e.message); }
+
+  try {
+    const SkeletalSystem = require(path.join(baseDir, 'core', 'skeletal-system'));
+    refs.skeletalSystem = new SkeletalSystem();
+    log.info('Skeletal system started');
+  } catch (e) { console.error('[BODY] Skeletal system init error:', e.message); }
+
+  try {
+    const MuscleMemory = require(path.join(baseDir, 'core', 'muscle-memory'));
+    refs.muscleMemory = new MuscleMemory();
+    log.info('Muscle memory started');
+  } catch (e) { console.error('[BODY] Muscle memory init error:', e.message); }
+
+  try {
+    const NeuralBus = require(path.join(baseDir, 'core', 'neural-bus'));
+    refs.neuralBus = typeof NeuralBus === 'function' ? new NeuralBus() : NeuralBus;
+    log.info('Neural bus started');
+  } catch (e) { console.error('[BODY] Neural bus init error:', e.message); }
+
   // Dream engine is initialized in api-server.js (moonshot routes) — refs.agentDreams set there
   if (refs.agentDreams) {
     log.info('Dream engine already running (from api-server)');
