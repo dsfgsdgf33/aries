@@ -2753,8 +2753,8 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     try { const CF = require('./cognitive-freeze'); cf = new CF(refs); } catch (e) {
       json(res, 501, { error: 'Cognitive freeze not available: ' + e.message }); return true;
     }
-    if (pathname === '/api/cognitive-freeze' && method === 'GET') {
-      json(res, 200, { freezes: cf.listFreezes() }); return true;
+    if ((pathname === '/api/cognitive-freeze' || pathname === '/api/cognitive-freeze/snapshots') && method === 'GET') {
+      json(res, 200, { freezes: cf.listFreezes(), snapshots: cf.listFreezes() }); return true;
     }
     if (pathname === '/api/cognitive-freeze/freeze' && method === 'POST') {
       const body = await jsonBody(req);
@@ -2787,10 +2787,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     try { const CognitiveDebt = require('./cognitive-debt'); debt = new CognitiveDebt(); } catch (e) {
       json(res, 501, { error: 'Cognitive debt module not available' }); return true;
     }
-    if (pathname === '/api/cognitive-debt' && method === 'GET') {
-      json(res, 200, { debt: debt.getDebt(), report: debt.getDebtReport() }); return true;
+    if ((pathname === '/api/cognitive-debt' || pathname === '/api/cognitive-debt/items') && method === 'GET') {
+      json(res, 200, { debt: debt.getDebt(), items: debt.getDebt(), report: debt.getDebtReport() }); return true;
     }
-    if (pathname === '/api/cognitive-debt/critical' && method === 'GET') {
+    if ((pathname === '/api/cognitive-debt/critical' || pathname === '/api/cognitive-debt/stats') && method === 'GET') {
       json(res, 200, { critical: debt.getCritical() }); return true;
     }
     if (pathname === '/api/cognitive-debt/report' && method === 'GET') {
