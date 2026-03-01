@@ -155,6 +155,17 @@ class CirculatorySystem {
           const f = inst.getFlowState ? inst.getFlowState() : (inst.getFlowScore ? inst.getFlowScore() : {});
           return { state: f.state || 'idle', score: f.score || f.flowScore || 0, timestamp: now };
         }},
+      { key: 'perception', ref: r.perception, fallback: './true-perception',
+        extract: (inst) => {
+          const snap = inst.getEnvironmentSnapshot ? inst.getEnvironmentSnapshot() : {};
+          return {
+            activeWindow: snap.activeWindow || snap.window || null,
+            recentChanges: snap.recentChanges || [],
+            audioState: snap.audio || snap.audioState || 'unknown',
+            processCount: snap.processCount || 0,
+            timestamp: now
+          };
+        }},
     ];
 
     for (const p of polls) {

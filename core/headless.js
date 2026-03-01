@@ -1222,6 +1222,15 @@ async function startHeadless(configPath) {
     refs.emotionalEngine = new EmotionalEngine({});
     if (typeof refs.emotionalEngine.start === 'function') refs.emotionalEngine.start();
     log.info('Emotional engine started');
+
+    // Idle emotion trigger
+    let _lastChatActivity = Date.now();
+    refs._updateChatActivity = () => { _lastChatActivity = Date.now(); };
+    setInterval(() => {
+      if (Date.now() - _lastChatActivity > 10 * 60 * 1000) {
+        refs.emotionalEngine.onIdle();
+      }
+    }, 5 * 60 * 1000);
   } catch (e) { console.error('[COGNITIVE] Emotional engine init error:', e.message); }
 
   try {
@@ -1270,6 +1279,18 @@ async function startHeadless(configPath) {
     refs.neuralBus = typeof NeuralBus === 'function' ? new NeuralBus() : NeuralBus;
     log.info('Neural bus started');
   } catch (e) { console.error('[BODY] Neural bus init error:', e.message); }
+
+  // 👁️ Start True Perception
+  try {
+    const TruePerception = require(path.join(baseDir, 'core', 'true-perception'));
+    refs.perception = new TruePerception({
+      ai: refs.ai,
+      monologue: refs.innerMonologue,
+      interval: 30, // 30 seconds between perception cycles
+    });
+    refs.perception.startPerception();
+    log.info('True Perception started (30s cycles — window, files, clipboard, processes, network, audio)');
+  } catch (e) { console.error('[PERCEPTION] Init error:', e.message); }
 
   // Dream engine is initialized in api-server.js (moonshot routes) — refs.agentDreams set there
   if (refs.agentDreams) {

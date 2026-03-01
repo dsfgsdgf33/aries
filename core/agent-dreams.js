@@ -1316,6 +1316,128 @@ class AgentDreams {
   }
 
   // ═══════════════════════════════════════
+  //  PROPOSAL PIPELINE (Auto-Apply)
+  // ═══════════════════════════════════════
+
+  getPendingProposals() {
+    return readJSON(PROPOSALS_PATH, []).filter(p => p.status === 'proposed');
+  }
+
+  getActionableProposals() {
+    return readJSON(PROPOSALS_PATH, []).filter(p => p.status === 'approved');
+  }
+
+  getAppliedHistory() {
+    return readJSON(path.join(DATA_DIR, 'applied.json'), []);
+  }
+
+  applyProposal(id) {
+    const all = readJSON(PROPOSALS_PATH, []);
+    const p = all.find(x => x.id === id);
+    if (!p) return { error: 'Proposal not found' };
+    if (p.status !== 'approved') return { error: 'Proposal must be approved before applying. Current status: ' + p.status };
+
+    const ariesRoot = path.resolve(path.join(__dirname, '..'));
+    const files = p.files || [];
+    const action = p.action || 'modify';
+    const code = p.code || null;
+    const results = [];
+
+    try {
+      for (const rawFile of files) {
+        // Resolve file path - could be absolute or relative basename
+        let filePath = fs.existsSync(rawFile) ? rawFile : path.join(CORE_DIR, path.basename(rawFile));
+        filePath = path.resolve(filePath);
+
+        // Safety: must be under aries directory
+        if (!filePath.startsWith(ariesRoot)) {
+          throw new Error('Safety violation: file path outside aries directory: ' + filePath);
+        }
+
+        if (action === 'create') {
+          const dir = path.dirname(filePath);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(filePath, code || '// Created by dream proposal ' + id + '\n');
+          results.push({ file: filePath, action: 'created' });
+        } else if (action === 'delete') {
+          if (fs.existsSync(filePath)) {
+            const bakPath = filePath + '.bak.' + Date.now();
+            fs.renameSync(filePath, bakPath);
+            results.push({ file: filePath, action: 'backed-up', backup: bakPath });
+          } else {
+            results.push({ file: filePath, action: 'skipped', reason: 'file not found' });
+          }
+        } else if (action === 'modify' && code) {
+          if (!fs.existsSync(filePath)) {
+            results.push({ file: filePath, action: 'skipped', reason: 'file not found' });
+            continue;
+          }
+          const original = fs.readFileSync(filePath, 'utf8');
+          // Append code to end of file (safest default for modifications)
+          const modified = original + '\n' + code + '\n';
+          fs.writeFileSync(filePath, modified);
+          results.push({ file: filePath, action: 'modified', bytesAdded: code.length });
+        } else {
+          results.push({ file: filePath, action: 'skipped', reason: 'no code provided or unknown action' });
+        }
+      }
+
+      p.status = 'applied';
+      p.appliedAt = Date.now();
+      writeJSON(PROPOSALS_PATH, all);
+
+      // Log to applied.json
+      const appliedLog = readJSON(path.join(DATA_DIR, 'applied.json'), []);
+      appliedLog.push({
+        proposalId: id,
+        title: p.title,
+        type: p.type,
+        action: action,
+        files: results,
+        appliedAt: Date.now(),
+        success: true
+      });
+      writeJSON(path.join(DATA_DIR, 'applied.json'), appliedLog);
+
+      this._updateStatsField('proposalsApplied', 1);
+      return { success: true, proposal: p, results };
+    } catch (e) {
+      p.status = 'failed';
+      p.failedAt = Date.now();
+      p.failReason = e.message;
+      writeJSON(PROPOSALS_PATH, all);
+
+      // Log failure
+      const appliedLog = readJSON(path.join(DATA_DIR, 'applied.json'), []);
+      appliedLog.push({
+        proposalId: id,
+        title: p.title,
+        type: p.type,
+        action: action,
+        files: results,
+        appliedAt: Date.now(),
+        success: false,
+        error: e.message
+      });
+      writeJSON(path.join(DATA_DIR, 'applied.json'), appliedLog);
+
+      return { error: e.message, proposal: p };
+    }
+  }
+
+  applyAllApproved() {
+    const approved = this.getActionableProposals();
+    // Sort by priority descending (higher priority first)
+    approved.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    const results = [];
+    for (const p of approved) {
+      const result = this.applyProposal(p.id);
+      results.push({ id: p.id, title: p.title, ...result });
+    }
+    return { applied: results.filter(r => r.success), failed: results.filter(r => r.error), total: results.length };
+  }
+
+  // ═══════════════════════════════════════
   //  DREAM EVOLUTION
   // ═══════════════════════════════════════
   _evolveWeights() {

@@ -799,6 +799,21 @@ async function handleRequest(req, res) {
       if (refs.emotionEngine) { _moodData = refs.emotionEngine.analyze(message); wsBroadcast({ type: 'mood', mood: _moodData.mood, emoji: _moodData.emoji, confidence: _moodData.confidence }); }
       if (refs.agentDreams) refs.agentDreams.touch();
 
+      // Feed emotional engine
+      refs._updateChatActivity?.();
+      if (refs.emotionalEngine) {
+        const lower = message.toLowerCase();
+        if (lower.includes('thanks') || lower.includes('perfect') || lower.includes('awesome') || lower.includes('great job')) {
+          refs.emotionalEngine.onSuccess('User expressed satisfaction');
+        } else if (lower.includes('wrong') || lower.includes('broken') || lower.includes('fix') || lower.includes('bug') || lower.includes('error')) {
+          refs.emotionalEngine.feel('DETERMINED', 40, 'User reported issue: ' + message.slice(0, 80));
+        } else if (lower.includes('?') || lower.includes('how') || lower.includes('what') || lower.includes('why') || lower.includes('explain')) {
+          refs.emotionalEngine.onNewTopic(message.slice(0, 80));
+        } else if (lower.includes('build') || lower.includes('create') || lower.includes('make') || lower.includes('implement')) {
+          refs.emotionalEngine.onDeepWork();
+        }
+      }
+
       // Agent Instincts - fire before AI reasoning
       let _instinctPrefix = '';
       try {
@@ -841,6 +856,15 @@ async function handleRequest(req, res) {
       if (refs.savePersistentChat) refs.savePersistentChat('assistant', response);
       refs.saveHistory?.();
 
+      // Emotional engine: success on completing a response
+      if (refs.emotionalEngine) {
+        if (result.iterations > 3) {
+          refs.emotionalEngine.feel('PROUD', 30, 'Complex task completed in ' + result.iterations + ' iterations');
+        } else {
+          refs.emotionalEngine.onSuccess('Response delivered');
+        }
+      }
+
       wsBroadcast({ type: 'chat', role: 'assistant', content: response, timestamp: Date.now() });
       audit.request(req, 200, Date.now() - startMs);
       return json(res, 200, { response, iterations: result.iterations });
@@ -867,6 +891,21 @@ async function handleRequest(req, res) {
       let _streamMood = null;
       if (refs.emotionEngine) { _streamMood = refs.emotionEngine.analyze(message); wsBroadcast({ type: 'mood', mood: _streamMood.mood, emoji: _streamMood.emoji, confidence: _streamMood.confidence }); safeWrite('data: ' + JSON.stringify({ type: 'mood', mood: _streamMood.mood, emoji: _streamMood.emoji }) + '\n\n'); }
       if (refs.agentDreams) refs.agentDreams.touch();
+
+      // Feed emotional engine
+      refs._updateChatActivity?.();
+      if (refs.emotionalEngine) {
+        const lower = message.toLowerCase();
+        if (lower.includes('thanks') || lower.includes('perfect') || lower.includes('awesome') || lower.includes('great job')) {
+          refs.emotionalEngine.onSuccess('User expressed satisfaction');
+        } else if (lower.includes('wrong') || lower.includes('broken') || lower.includes('fix') || lower.includes('bug') || lower.includes('error')) {
+          refs.emotionalEngine.feel('DETERMINED', 40, 'User reported issue: ' + message.slice(0, 80));
+        } else if (lower.includes('?') || lower.includes('how') || lower.includes('what') || lower.includes('why') || lower.includes('explain')) {
+          refs.emotionalEngine.onNewTopic(message.slice(0, 80));
+        } else if (lower.includes('build') || lower.includes('create') || lower.includes('make') || lower.includes('implement')) {
+          refs.emotionalEngine.onDeepWork();
+        }
+      }
 
       // Agent Instincts - fire before AI reasoning (stream)
       let _streamInstinctPrefix = '';
@@ -961,9 +1000,19 @@ async function handleRequest(req, res) {
         refs.saveHistory?.();
         wsBroadcast({ type: 'chat', role: 'assistant', content: clean, timestamp: Date.now() });
 
+        // Emotional engine: success on completing a response
+        if (refs.emotionalEngine) {
+          if (result.iterations > 3) {
+            refs.emotionalEngine.feel('PROUD', 30, 'Complex task completed in ' + result.iterations + ' iterations');
+          } else {
+            refs.emotionalEngine.onSuccess('Response delivered');
+          }
+        }
+
         safeWrite(`data: ${JSON.stringify({ type: 'done', stats: { tokens: Math.ceil(clean.length / 4), iterations: result.iterations } })}\n\n`);
         safeWrite('data: [DONE]\n\n');
       } catch (e) {
+        if (refs.emotionalEngine) refs.emotionalEngine.onError(e.message);
         safeWrite(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
       }
       res.end();
@@ -9583,6 +9632,7 @@ function registerMoonshotRoutes(refs) {
       else if (action === 'build') result = dreams.buildProposal(id);
       else if (action === 'reject') result = dreams.rejectProposal(id);
       else if (action === 'complete') result = dreams.completeProposal(id);
+      else if (action === 'apply') result = dreams.applyProposal(id);
       else if (action === 'rate') {
         try {
           const data = JSON.parse(body || '{}');
@@ -9592,6 +9642,20 @@ function registerMoonshotRoutes(refs) {
       else return json(res, 400, { error: 'Unknown action: ' + action });
       json(res, 200, result);
     }, { prefix: true });
+
+    // Proposal pipeline routes
+    addPluginRoute('GET', '/api/dreams/proposals/pending', async (req, res, json) => {
+      json(res, 200, { proposals: dreams.getPendingProposals() });
+    });
+    addPluginRoute('GET', '/api/dreams/proposals/approved', async (req, res, json) => {
+      json(res, 200, { proposals: dreams.getActionableProposals() });
+    });
+    addPluginRoute('GET', '/api/dreams/proposals/applied', async (req, res, json) => {
+      json(res, 200, { history: dreams.getAppliedHistory() });
+    });
+    addPluginRoute('POST', '/api/dreams/proposals/apply-all', async (req, res, json) => {
+      json(res, 200, dreams.applyAllApproved());
+    });
 
     // Dream model config
     addPluginRoute('GET', '/api/dreams/model-config', async (req, res, json) => {

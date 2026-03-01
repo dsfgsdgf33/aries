@@ -9658,8 +9658,8 @@
   var _proposalStatusColors = { proposed:'#00e5ff', approved:'#eab308', building:'#f97316', complete:'#22c55e', rejected:'#ef4444', graveyard:'#666' };
 
   function switchDreamTab(tab, btn) {
-    var tabs = ['dreamsContent','dreamsUpgrades','dreamsStats','dreamsLive'];
-    var ids = { journal:'dreamsContent', upgrades:'dreamsUpgrades', stats:'dreamsStats', live:'dreamsLive' };
+    var tabs = ['dreamsContent','dreamsUpgrades','dreamsStats','dreamsLive','dreamsApprovals'];
+    var ids = { journal:'dreamsContent', upgrades:'dreamsUpgrades', stats:'dreamsStats', live:'dreamsLive', approvals:'dreamsApprovals' };
     tabs.forEach(function(t) { var e = document.getElementById(t); if(e) e.style.display = 'none'; });
     var target = document.getElementById(ids[tab]);
     if (target) target.style.display = 'block';
@@ -9672,6 +9672,7 @@
     else if (tab === 'upgrades') loadDreamUpgrades();
     else if (tab === 'stats') loadDreamStats();
     else if (tab === 'live') loadDreamLive();
+    else if (tab === 'approvals') loadDreamApprovals();
   }
 
   // ═══════════════════════════════════════

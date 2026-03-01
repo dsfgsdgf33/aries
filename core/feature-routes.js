@@ -1267,7 +1267,10 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── True Perception v2 ──
   if (pathname.startsWith('/api/perception')) {
     let perception;
-    try { const TruePerception = require('./true-perception'); perception = new TruePerception(refs); } catch (e) {
+    try {
+      if (refs.perception) { perception = refs.perception; }
+      else { const TruePerception = require('./true-perception'); perception = new TruePerception(refs); }
+    } catch (e) {
       json(res, 501, { error: 'True perception module not available: ' + e.message }); return true;
     }
     if (pathname === '/api/perception' && method === 'GET') {
