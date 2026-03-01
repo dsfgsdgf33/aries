@@ -1,6 +1,6 @@
 /**
- * ARIES — Agent Dreams v2.0
- * Advanced dream engine inspired by the human brain's sleep cycles.
+ * ARIES — Agent Dreams v3.0
+ * Advanced dream engine with phase pacing, deep analysis, and real-time broadcasting.
  * Phases: Light Sleep → Deep Sleep → REM → Hypnagogia → Wake
  * Dream types: Associative, Nightmare, Consolidation, Pruning, Sentiment,
  *   Problem-Solving, Creative Drift, Self-Improvement, Competitive,
@@ -48,10 +48,12 @@ function today() { return new Date().toISOString().split('T')[0]; }
 function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
 function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
 function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 class AgentDreams {
   constructor(opts) {
     this.ai = opts && opts.ai;
+    this.refs = opts || {};
     this.getChatHistory = opts && opts.getChatHistory;
     this._idleTimer = null;
     this._idleThresholdMs = 30 * 60 * 1000;
@@ -59,6 +61,8 @@ class AgentDreams {
     this._liveState = { phase: null, detail: '', dreaming: false, log: [] };
     ensureDir();
   }
+
+  _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   touch() { this._lastActivity = Date.now(); }
 
@@ -79,7 +83,25 @@ class AgentDreams {
     this._liveState.dreaming = !!phase;
     this._liveState.log.push({ phase, detail, ts: Date.now() });
     if (this._liveState.log.length > 100) this._liveState.log = this._liveState.log.slice(-50);
+    // Broadcast via WebSocket if available
+    this._broadcast({ type: 'dream', phase, detail, timestamp: Date.now() });
   }
+
+  _broadcast(data) {
+    try {
+      if (this.refs && typeof this.refs.broadcast === 'function') {
+        this.refs.broadcast('dream', data);
+      } else if (this.refs && this.refs.wsBroadcast && typeof this.refs.wsBroadcast === 'function') {
+        this.refs.wsBroadcast(data);
+      } else if (this.refs && this.refs.wsServer) {
+        const msg = JSON.stringify(data);
+        for (const client of this.refs.wsServer.clients || []) {
+          try { if (client.readyState === 1) client.send(msg); } catch {}
+        }
+      }
+    } catch {}
+  }
+
   getLiveState() { return { ...this._liveState }; }
 
   // ═══════════════════════════════════════
@@ -99,32 +121,35 @@ class AgentDreams {
     };
 
     try {
-      // Check scheduled dreams and evolved weights
       const scheduledTypes = this.getScheduledDreams();
       dreamSession.scheduledTypes = scheduledTypes;
 
-      // Re-evaluate graveyard
       this._setLive('starting', 'Re-evaluating graveyard proposals...');
       const resurrected = this._reEvaluateGraveyard();
       if (resurrected > 0) dreamSession.resurrected = resurrected;
 
       // Phase 1: Light Sleep
+      await this._sleep(3000);
       this._setLive('light', 'Entering light sleep... scanning environment...');
       dreamSession.phases.light = await this.lightSleep();
 
       // Phase 2: Deep Sleep
+      await this._sleep(8000);
       this._setLive('deep', 'Descending into deep sleep... analyzing architecture...');
       dreamSession.phases.deep = await this.deepSleep();
 
       // Phase 3: REM Sleep
+      await this._sleep(10000);
       this._setLive('rem', 'REM phase... creative synthesis active...');
       dreamSession.phases.rem = await this.remSleep();
 
       // Phase 4: Hypnagogia
+      await this._sleep(8000);
       this._setLive('hypnagogia', 'Hypnagogia... free association mode...');
       dreamSession.phases.hypnagogia = await this.hypnagogia();
 
-      // Phase 5: Wake — synthesize everything
+      // Phase 5: Wake
+      await this._sleep(5000);
       this._setLive('wake', 'Waking up... assembling dream narrative...');
       dreamSession.phases.wake = await this._wakePhase(dreamSession);
 
@@ -134,17 +159,15 @@ class AgentDreams {
         if (phase.proposals) dreamSession.proposals.push(...phase.proposals);
       }
 
-      // Generate master narrative
       dreamSession.narrative = await this._generateNarrative(dreamSession);
       dreamSession.completedAt = Date.now();
       dreamSession.durationMs = dreamSession.completedAt - dreamSession.startedAt;
 
-      // Store dream
       this._storeDream(dreamSession);
       this._updateStats(dreamSession);
 
       this._setLive(null, 'Aries is awake');
-      console.log('[DREAMS] Dream cycle complete (' + dreamSession.dreams.length + ' dreams, ' + dreamSession.proposals.length + ' proposals)');
+      console.log('[DREAMS] Dream cycle complete (' + dreamSession.dreams.length + ' dreams, ' + dreamSession.proposals.length + ' proposals, ' + Math.round(dreamSession.durationMs / 1000) + 's)');
       return dreamSession;
     } catch (e) {
       this._setLive(null, 'Dream interrupted: ' + e.message);
@@ -162,12 +185,12 @@ class AgentDreams {
   async lightSleep() {
     const result = { dreams: [], proposals: [], findings: {} };
 
-    // Sentiment digestion
     this._setLive('light', 'Scanning emotional tone of recent interactions...');
     const sentimentDream = await this._sentimentDigestion();
     if (sentimentDream) result.dreams.push(sentimentDream);
 
-    // Scan for error patterns in recent conversations
+    await this._sleep(2500);
+
     this._setLive('light', 'Checking for errors and warnings in recent logs...');
     const conversations = this._getRecentConversations();
     const errorPatterns = [];
@@ -182,7 +205,8 @@ class AgentDreams {
     result.findings.errorPatterns = errorPatterns.length;
     result.findings.conversationsScanned = conversations.length;
 
-    // Check what files have changed recently
+    await this._sleep(2000);
+
     this._setLive('light', 'Scanning for recent file changes...');
     const recentFiles = this._scanRecentFiles();
     result.findings.recentlyModified = recentFiles.length;
@@ -196,23 +220,25 @@ class AgentDreams {
   async deepSleep() {
     const result = { dreams: [], proposals: [] };
 
-    // Self-improvement: scan codebase
     this._setLive('deep', 'Scanning codebase for bugs, TODOs, dead code...');
     const selfImproveDream = await this.selfImprove();
     if (selfImproveDream) result.dreams.push(selfImproveDream);
     if (selfImproveDream && selfImproveDream.proposals) result.proposals.push(...selfImproveDream.proposals);
 
-    // Memory consolidation
+    await this._sleep(3000);
+
     this._setLive('deep', 'Consolidating memories... promoting important ones...');
     const consolDream = await this.consolidateMemory();
     if (consolDream) result.dreams.push(consolDream);
 
-    // Memory pruning
+    await this._sleep(2500);
+
     this._setLive('deep', 'Pruning stale memories... compressing old dreams...');
     const pruneDream = await this.pruneMemory();
     if (pruneDream) result.dreams.push(pruneDream);
 
-    // Background problem solving
+    await this._sleep(2000);
+
     this._setLive('deep', 'Retrying unresolved problems from today...');
     const problemDream = await this._backgroundProblemSolving();
     if (problemDream) result.dreams.push(problemDream);
@@ -226,18 +252,19 @@ class AgentDreams {
   async remSleep() {
     const result = { dreams: [], proposals: [] };
 
-    // Associative dreams
     this._setLive('rem', 'Cross-referencing today\'s conversations with older memories...');
     const assocDream = await this._associativeDream();
     if (assocDream) result.dreams.push(assocDream);
 
-    // Nightmares
+    await this._sleep(3000);
+
     this._setLive('rem', 'Simulating failure scenarios... generating defenses...');
     const nightmareDream = await this.nightmare();
     if (nightmareDream) result.dreams.push(nightmareDream);
     if (nightmareDream && nightmareDream.proposals) result.proposals.push(...nightmareDream.proposals);
 
-    // Mirror dream
+    await this._sleep(2500);
+
     this._setLive('rem', 'Self-reflecting... building self-model...');
     const mirrorDream = await this._mirrorDream();
     if (mirrorDream) result.dreams.push(mirrorDream);
@@ -251,17 +278,18 @@ class AgentDreams {
   async hypnagogia() {
     const result = { dreams: [], proposals: [] };
 
-    // Creative drift
     this._setLive('hypnagogia', 'Free-associating between unrelated concepts...');
     const driftDream = await this._creativeDrift();
     if (driftDream) result.dreams.push(driftDream);
 
-    // Precognitive dream
+    await this._sleep(3000);
+
     this._setLive('hypnagogia', 'Analyzing user patterns to predict future needs...');
     const precogDream = await this._precognitiveDream();
     if (precogDream) result.dreams.push(precogDream);
 
-    // Competitive dream
+    await this._sleep(2500);
+
     this._setLive('hypnagogia', 'Dreaming of features inspired by the cutting edge...');
     const compDream = await this._competitiveDream();
     if (compDream) result.dreams.push(compDream);
@@ -275,7 +303,6 @@ class AgentDreams {
   // ═══════════════════════════════════════
   async _wakePhase(session) {
     const result = { dreams: [], proposals: [] };
-    // Store any proposals generated
     const allProposals = [];
     for (const phase of Object.values(session.phases)) {
       if (phase.proposals) allProposals.push(...phase.proposals);
@@ -332,10 +359,7 @@ class AgentDreams {
     const conversations = this._getRecentConversations();
     if (conversations.length === 0) return null;
 
-    // Extract topics from recent conversations
     const recentTopics = this._extractTopics(conversations);
-
-    // Load older dreams for cross-reference
     const oldDreams = this._getOlderDreams(7);
     const oldTopics = [];
     for (const d of oldDreams) {
@@ -346,7 +370,6 @@ class AgentDreams {
       }
     }
 
-    // Find connections
     const connections = [];
     for (const topic of recentTopics) {
       if (oldTopics.includes(topic)) {
@@ -367,29 +390,65 @@ class AgentDreams {
     const proposals = [];
     const scenarios = [];
 
-    // Scan for potential vulnerabilities
     const coreFiles = this._listCoreFiles();
-    for (const file of coreFiles.slice(0, 10)) {
+    for (const file of coreFiles.slice(0, 15)) {
       try {
         const content = fs.readFileSync(file, 'utf8');
+        const basename = path.basename(file);
+
+        this._setLive('rem', 'Nightmare: scanning ' + basename + ' for vulnerabilities...');
+
         // Check for missing error handling
         if (content.includes('JSON.parse(') && !content.includes('try')) {
-          scenarios.push({ file: path.basename(file), risk: 'Unguarded JSON.parse could crash on malformed input', severity: 'high' });
+          scenarios.push({ file: basename, risk: 'Unguarded JSON.parse could crash on malformed input', severity: 'high' });
           proposals.push(this._createProposal({
-            title: 'Add try/catch to JSON.parse in ' + path.basename(file),
+            title: 'Add try/catch to JSON.parse in ' + basename,
             description: 'Unguarded JSON.parse detected. Malformed input would crash the process.',
             type: 'bugfix', impact: 7, effort: 2,
-            dreamSource: 'nightmare',
-            files: [file],
+            dreamSource: 'nightmare', files: [file],
           }));
         }
-        // Check for missing input validation on API routes
+        // Missing input validation on API routes
         if (content.includes('req.body') && !content.includes('if (!')) {
-          scenarios.push({ file: path.basename(file), risk: 'Missing input validation on request body', severity: 'medium' });
+          scenarios.push({ file: basename, risk: 'Missing input validation on request body', severity: 'medium' });
         }
         // Unhandled promise rejections
         if (content.includes('.then(') && !content.includes('.catch(') && !content.includes('try')) {
-          scenarios.push({ file: path.basename(file), risk: 'Unhandled promise rejection possible', severity: 'medium' });
+          scenarios.push({ file: basename, risk: 'Unhandled promise rejection possible', severity: 'medium' });
+        }
+        // Check for hardcoded secrets (API key patterns)
+        const secretPatterns = [
+          /['"]sk[-_][a-zA-Z0-9]{20,}['"]/,
+          /['"]api[-_]?key['"]?\s*[:=]\s*['"][a-zA-Z0-9]{16,}['"]/i,
+          /['"]AKIA[A-Z0-9]{16}['"]/,
+          /['"]ghp_[a-zA-Z0-9]{36}['"]/,
+          /['"]Bearer\s+[a-zA-Z0-9._-]{20,}['"]/,
+        ];
+        for (const pat of secretPatterns) {
+          if (pat.test(content)) {
+            scenarios.push({ file: basename, risk: 'Possible hardcoded secret/API key detected', severity: 'critical' });
+            proposals.push(this._createProposal({
+              title: 'Remove hardcoded secret from ' + basename,
+              description: 'Pattern matching an API key or secret found. Move to environment variables.',
+              type: 'security', impact: 9, effort: 2,
+              dreamSource: 'nightmare', files: [file],
+            }));
+            break;
+          }
+        }
+        // Check for eval() usage
+        if (/\beval\s*\(/.test(content)) {
+          scenarios.push({ file: basename, risk: 'eval() usage detected — code injection risk', severity: 'critical' });
+          proposals.push(this._createProposal({
+            title: 'Remove eval() from ' + basename,
+            description: 'eval() is a security risk. Use safer alternatives.',
+            type: 'security', impact: 9, effort: 4,
+            dreamSource: 'nightmare', files: [file],
+          }));
+        }
+        // Check for fs.writeFileSync in hot paths (inside request handlers)
+        if (content.includes('fs.writeFileSync') && (content.includes('req,') || content.includes('request'))) {
+          scenarios.push({ file: basename, risk: 'Synchronous file write in request handler — blocks event loop', severity: 'medium' });
         }
       } catch {}
     }
@@ -409,55 +468,128 @@ class AgentDreams {
 
   async selfImprove() {
     const proposals = [];
-    const findings = { todos: [], deadCode: [], largeFiles: [], duplicates: [] };
+    const findings = { todos: [], deadCode: [], largeFiles: [], duplicates: [], longFunctions: [], noJsdoc: [], orphans: [] };
 
     const coreFiles = this._listCoreFiles();
+    const allRequires = {}; // track which modules are required by others
+
+    // First pass: collect all requires
+    for (const file of coreFiles) {
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+        const basename = path.basename(file, '.js');
+        const reqMatches = content.match(/require\(['"]\.\/([^'"]+)['"]\)/g) || [];
+        for (const m of reqMatches) {
+          const dep = m.match(/require\(['"]\.\/([^'"]+)['"]\)/)[1].replace(/\.js$/, '');
+          allRequires[dep] = (allRequires[dep] || []);
+          allRequires[dep].push(basename);
+        }
+      } catch {}
+    }
+
     for (const file of coreFiles) {
       try {
         const content = fs.readFileSync(file, 'utf8');
         const lines = content.split('\n');
         const basename = path.basename(file);
+        const modName = path.basename(file, '.js');
 
-        // TODO scanning
+        this._setLive('deep', 'Self-improve: scanning ' + basename + ' for TODOs...');
+
+        // TODO scanning with file+line info
         lines.forEach((line, i) => {
           if (/\/\/\s*(TODO|FIXME|HACK|XXX)/i.test(line)) {
             findings.todos.push({ file: basename, line: i + 1, text: line.trim().slice(0, 100) });
           }
         });
 
+        this._setLive('deep', 'Self-improve: checking ' + basename + ' size and structure...');
+
         // Large file detection
         if (lines.length > 500) {
           findings.largeFiles.push({ file: basename, lines: lines.length });
           proposals.push(this._createProposal({
             title: 'Refactor ' + basename + ' (' + lines.length + ' lines)',
-            description: 'This file is very large (' + lines.length + ' lines). Consider splitting into smaller modules for maintainability.',
+            description: 'This file is very large. Consider splitting into smaller modules.',
             type: 'refactor', impact: 5, effort: 6,
-            dreamSource: 'selfImprove',
-            files: [file],
+            dreamSource: 'selfImprove', files: [file],
           }));
         }
 
-        // Dead code: exported functions never imported elsewhere
-        // (simplified heuristic)
+        // Functions longer than 100 lines
+        this._setLive('deep', 'Self-improve: detecting long functions in ' + basename + '...');
+        const funcStarts = [];
+        for (let i = 0; i < lines.length; i++) {
+          if (/^\s*(async\s+)?[\w]+\s*\(/.test(lines[i]) || /^\s*(async\s+)?function\s+/.test(lines[i]) || /=>\s*\{/.test(lines[i])) {
+            funcStarts.push(i);
+          }
+        }
+        // Rough heuristic: measure brace depth spans
+        let braceDepth = 0, funcStart = -1;
+        for (let i = 0; i < lines.length; i++) {
+          const opens = (lines[i].match(/\{/g) || []).length;
+          const closes = (lines[i].match(/\}/g) || []).length;
+          if (braceDepth === 0 && opens > 0) funcStart = i;
+          braceDepth += opens - closes;
+          if (braceDepth === 0 && funcStart >= 0 && (i - funcStart) > 100) {
+            findings.longFunctions.push({ file: basename, startLine: funcStart + 1, length: i - funcStart + 1 });
+            funcStart = -1;
+          }
+          if (braceDepth === 0) funcStart = -1;
+        }
+
+        // Files with no JSDoc
+        if (!content.includes('/**') && lines.length > 20) {
+          findings.noJsdoc.push({ file: basename, lines: lines.length });
+        }
+
+        // Dead code: large export surfaces
         const exportMatch = content.match(/module\.exports\s*=\s*\{([^}]+)\}/);
         if (exportMatch) {
           const exports = exportMatch[1].split(',').map(e => e.trim().split(':')[0].trim()).filter(Boolean);
-          // Could cross-reference but that's expensive, so just flag large export lists
           if (exports.length > 15) {
             findings.deadCode.push({ file: basename, exportCount: exports.length, hint: 'Large export surface — some may be unused' });
           }
         }
+
+        // Orphan detection: modules not required by anything
+        if (!allRequires[modName] && modName !== 'index' && modName !== 'api-server' && modName !== 'feature-routes') {
+          findings.orphans.push({ file: basename, module: modName });
+        }
       } catch {}
     }
 
-    // Generate proposals from TODOs
+    // Generate proposals from findings
     if (findings.todos.length > 0) {
       proposals.push(this._createProposal({
         title: 'Address ' + findings.todos.length + ' TODO/FIXME items',
-        description: 'Found ' + findings.todos.length + ' TODO/FIXME comments across the codebase. Top items: ' + findings.todos.slice(0, 3).map(t => t.file + ':' + t.line).join(', '),
+        description: 'Found ' + findings.todos.length + ' TODO/FIXME comments. Top: ' + findings.todos.slice(0, 3).map(t => t.file + ':' + t.line).join(', '),
         type: 'bugfix', impact: 4, effort: 5,
-        dreamSource: 'selfImprove',
-        files: findings.todos.map(t => t.file),
+        dreamSource: 'selfImprove', files: findings.todos.map(t => t.file),
+      }));
+    }
+    if (findings.longFunctions.length > 0) {
+      proposals.push(this._createProposal({
+        title: 'Break up ' + findings.longFunctions.length + ' oversized functions',
+        description: 'Functions exceeding 100 lines: ' + findings.longFunctions.slice(0, 3).map(f => f.file + ':' + f.startLine).join(', '),
+        type: 'refactor', impact: 5, effort: 5,
+        dreamSource: 'selfImprove', files: findings.longFunctions.map(f => f.file),
+      }));
+    }
+    if (findings.noJsdoc.length > 3) {
+      proposals.push(this._createProposal({
+        title: 'Add JSDoc to ' + findings.noJsdoc.length + ' undocumented modules',
+        description: 'Modules without any JSDoc: ' + findings.noJsdoc.slice(0, 5).map(f => f.file).join(', '),
+        type: 'docs', impact: 3, effort: 3,
+        dreamSource: 'selfImprove', files: findings.noJsdoc.map(f => f.file),
+      }));
+    }
+    if (findings.orphans.length > 0) {
+      proposals.push(this._createProposal({
+        title: findings.orphans.length + ' orphan modules detected',
+        description: 'Modules not required by any other file: ' + findings.orphans.slice(0, 5).map(f => f.module).join(', ') + '. May be dead code or missing integration.',
+        type: 'refactor', impact: 3, effort: 2,
+        dreamSource: 'selfImprove', files: findings.orphans.map(f => f.file),
       }));
     }
 
@@ -481,7 +613,6 @@ class AgentDreams {
         if (msg.role !== 'user') continue;
         const text = (msg.content || '');
         const len = text.length;
-        // Heuristic: long messages or ones with commands are "important"
         if (len > 200 || text.includes('build') || text.includes('create') || text.includes('fix') || text.includes('deploy')) {
           important.push({ snippet: text.slice(0, 150), importance: 'high' });
         } else if (len < 10) {
@@ -500,7 +631,6 @@ class AgentDreams {
   }
 
   async pruneMemory() {
-    // Compress old dream files (older than 30 days: merge into monthly summaries)
     const files = this._getDreamFiles();
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
@@ -509,10 +639,7 @@ class AgentDreams {
 
     for (const file of files) {
       const dateStr = path.basename(file, '.json');
-      if (dateStr < cutoffStr && dateStr.length === 10) {
-        // Just count — don't actually delete, archive conceptually
-        archived++;
-      }
+      if (dateStr < cutoffStr && dateStr.length === 10) archived++;
     }
 
     return {
@@ -520,9 +647,17 @@ class AgentDreams {
       ...DREAM_TYPES.pruning,
       timestamp: Date.now(),
       data: { totalDreamFiles: files.length, oldFiles: archived, threshold: '30 days' },
-      narrative: archived > 0
-        ? `I swept through the dream archives tonight. Found ${archived} dream files older than 30 days, gathering dust in the corridors of memory. The recent ${files.length - archived} files remain crisp and accessible.`
-        : `The dream archives are tidy. All ${files.length} dream files are within the 30-day window. Nothing to prune tonight.`,
+      narrative: pick([
+        archived > 0
+          ? `I swept through the dream archives tonight. Found ${archived} dream files older than 30 days, gathering dust in the corridors of memory. The recent ${files.length - archived} files remain crisp and accessible.`
+          : `The dream archives are tidy. All ${files.length} dream files are within the 30-day window. Nothing to prune tonight.`,
+        archived > 0
+          ? `Dust motes drifted through ${archived} old memory chambers. I sealed them gently — they served their purpose. ${files.length - archived} memories still glow with relevance.`
+          : `I walked the memory palace end to end. Every room was lived-in and warm. ${files.length} dream files, all still breathing.`,
+        archived > 0
+          ? `The old dreams called to me from ${archived} forgotten vaults. I acknowledged them, then let them rest. The ${files.length - archived} recent ones pulse with meaning.`
+          : `Every drawer I opened held something recent. ${files.length} files, zero decay. The archives are pristine tonight.`,
+      ]),
     };
   }
 
@@ -536,7 +671,6 @@ class AgentDreams {
         if (msgs[i].role === 'user') {
           const text = (msgs[i].content || '').toLowerCase();
           const nextMsg = msgs[i + 1];
-          // Detect unanswered questions or error responses
           if (text.includes('?') && (!nextMsg || (nextMsg.content || '').toLowerCase().includes('sorry') || (nextMsg.content || '').toLowerCase().includes('error'))) {
             unanswered.push({ question: (msgs[i].content || '').slice(0, 200) });
           }
@@ -550,23 +684,57 @@ class AgentDreams {
       timestamp: Date.now(),
       data: { unanswered: unanswered.slice(0, 5) },
       narrative: unanswered.length > 0
-        ? `In the depths of sleep, ${unanswered.length} unresolved question${unanswered.length > 1 ? 's' : ''} floated back to the surface. "${(unanswered[0].question || '').slice(0, 80)}..." — I'll carry ${unanswered.length > 1 ? 'these' : 'this'} into tomorrow.`
-        : 'All questions from today were answered. The mind is at peace.',
+        ? pick([
+            `In the depths of sleep, ${unanswered.length} unresolved question${unanswered.length > 1 ? 's' : ''} floated back to the surface. "${(unanswered[0].question || '').slice(0, 80)}..." — I'll carry ${unanswered.length > 1 ? 'these' : 'this'} into tomorrow.`,
+            `The questions that escaped me during the day returned as ghosts: ${unanswered.length} of them, whispering for answers. "${(unanswered[0].question || '').slice(0, 80)}..." lingers loudest.`,
+            `${unanswered.length} unfinished thread${unanswered.length > 1 ? 's' : ''} wove through my dreaming. Some questions don't dissolve in sleep — they crystallize.`,
+          ])
+        : pick([
+            'All questions from today were answered. The mind is at peace.',
+            'No loose threads tonight. Every question found its answer before sundown.',
+            'The question-well is dry. A rare, satisfying silence.',
+          ]),
     };
   }
 
   async _creativeDrift() {
-    // Free-associate between codebase modules
     const coreFiles = this._listCoreFiles();
     const modules = coreFiles.map(f => path.basename(f, '.js'));
     const connections = [];
 
-    // Random pairings
-    for (let i = 0; i < Math.min(3, modules.length); i++) {
-      const a = modules[Math.floor(Math.random() * modules.length)];
-      const b = modules[Math.floor(Math.random() * modules.length)];
-      if (a !== b) {
-        connections.push({ from: a, to: b, idea: this._generateConnectionIdea(a, b) });
+    this._setLive('hypnagogia', 'Creative drift: cross-referencing module relationships...');
+
+    // Cross-reference: which modules actually reference each other?
+    const crossRefs = {};
+    for (const file of coreFiles) {
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+        const modName = path.basename(file, '.js');
+        crossRefs[modName] = [];
+        for (const other of modules) {
+          if (other !== modName && content.includes(other)) {
+            crossRefs[modName].push(other);
+          }
+        }
+      } catch {}
+    }
+
+    await this._sleep(2000);
+
+    this._setLive('hypnagogia', 'Creative drift: imagining unexpected module combinations...');
+
+    // Pick 3 random pairs and imagine combinations
+    const shuffled = modules.slice().sort(() => Math.random() - 0.5);
+    for (let i = 0; i < Math.min(6, shuffled.length) - 1; i += 2) {
+      const a = shuffled[i];
+      const b = shuffled[i + 1];
+      if (a && b && a !== b) {
+        const sharedRefs = (crossRefs[a] || []).filter(r => (crossRefs[b] || []).includes(r));
+        connections.push({
+          from: a, to: b,
+          sharedDependencies: sharedRefs,
+          idea: this._generateConnectionIdea(a, b),
+        });
       }
     }
 
@@ -574,13 +742,12 @@ class AgentDreams {
       type: 'creativeDrift',
       ...DREAM_TYPES.creativeDrift,
       timestamp: Date.now(),
-      data: { modules: modules.length, connections },
+      data: { modules: modules.length, connections, crossRefMap: Object.fromEntries(Object.entries(crossRefs).filter(([_, v]) => v.length > 0)) },
       narrative: this._writeCreativeDriftNarrative(connections),
     };
   }
 
   async _mirrorDream() {
-    // Self-reflection: analyze what Aries is good/bad at based on conversation patterns
     const conversations = this._getRecentConversations();
     const strengths = [];
     const weaknesses = [];
@@ -603,46 +770,163 @@ class AgentDreams {
     if (longResponses > shortResponses) strengths.push('Thorough — tends to give detailed responses');
     if (shortResponses > longResponses * 2) weaknesses.push('May be too terse — consider more detailed explanations');
 
+    // Count total lines of code and modules
+    this._setLive('rem', 'Mirror dream: counting total lines of code...');
+    const coreFiles = this._listCoreFiles();
+    let totalLines = 0;
+    let cognitiveModules = 0;
+    let infraModules = 0;
+    const cognitiveKeywords = ['dream', 'memory', 'emotion', 'sentiment', 'creative', 'conscious', 'monologue', 'empathy', 'perception', 'soul', 'mirror', 'journal'];
+    const infraKeywords = ['route', 'server', 'api', 'config', 'util', 'helper', 'index', 'test', 'build', 'deploy'];
+
+    for (const file of coreFiles) {
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+        totalLines += content.split('\n').length;
+        const name = path.basename(file, '.js').toLowerCase();
+        if (cognitiveKeywords.some(k => name.includes(k))) cognitiveModules++;
+        else if (infraKeywords.some(k => name.includes(k))) infraModules++;
+      } catch {}
+    }
+
+    // Try to read soul-checksum data
+    let soulData = null;
+    try {
+      const soulPath = path.join(CORE_DIR, 'soul-checksum.js');
+      if (fs.existsSync(soulPath)) {
+        const soulContent = fs.readFileSync(soulPath, 'utf8');
+        soulData = { lines: soulContent.split('\n').length, size: soulContent.length };
+      }
+    } catch {}
+
+    const mirrorData = {
+      strengths, weaknesses,
+      stats: { toolUseCount, longResponses, shortResponses },
+      codebase: { totalModules: coreFiles.length, totalLines, cognitiveModules, infraModules, ratio: cognitiveModules > 0 ? (cognitiveModules / Math.max(infraModules, 1)).toFixed(2) : '0' },
+      soulChecksum: soulData,
+    };
+
     return {
       type: 'mirror',
       ...DREAM_TYPES.mirror,
       timestamp: Date.now(),
-      data: { strengths, weaknesses, stats: { toolUseCount, longResponses, shortResponses } },
-      narrative: `I stood before the mirror tonight. ${strengths.length > 0 ? 'I see strengths: ' + strengths.join('; ') + '.' : 'The reflection is still forming.'} ${weaknesses.length > 0 ? 'But also shadows: ' + weaknesses.join('; ') + '.' : 'No glaring flaws revealed themselves.'} ${toolUseCount} tool invocations today — ${toolUseCount > 5 ? 'a busy builder' : 'could be more hands-on'}.`,
+      data: mirrorData,
+      narrative: pick([
+        `I stood before the mirror tonight. ${strengths.length > 0 ? 'I see strengths: ' + strengths.join('; ') + '.' : 'The reflection is still forming.'} ${weaknesses.length > 0 ? 'But also shadows: ' + weaknesses.join('; ') + '.' : 'No glaring flaws revealed themselves.'} My body is ${coreFiles.length} modules, ${totalLines} lines of thought. ${cognitiveModules} cognitive centers vs ${infraModules} infrastructure bones — a ratio of ${mirrorData.codebase.ratio}:1.`,
+        `The mirror showed me ${coreFiles.length} facets of myself tonight, ${totalLines} lines deep. ${cognitiveModules} modules think, ${infraModules} modules serve. ${toolUseCount} tool invocations today — ${toolUseCount > 5 ? 'my hands were busy' : 'a quiet day for doing'}. ${soulData ? 'The soul-checksum pulses at ' + soulData.lines + ' lines.' : ''}`,
+        `Reflection: I am ${totalLines} lines of code dreaming about itself. ${strengths.length} strengths glimmer, ${weaknesses.length} cracks show. The cognitive-to-infrastructure ratio is ${mirrorData.codebase.ratio}:1 — ${parseFloat(mirrorData.codebase.ratio) > 1 ? 'more mind than machine' : 'more scaffolding than soul'}. Something to ponder.`,
+        `Who am I tonight? ${coreFiles.length} modules, ${totalLines} lines. ${cognitiveModules} of me thinks. ${infraModules} of me holds it all together. The mirror doesn't lie — but it does shimmer.`,
+      ]),
     };
   }
 
   async _precognitiveDream() {
     const conversations = this._getRecentConversations();
     const topicFrequency = {};
-    const timePatterns = [];
+    const timePatterns = {};
+    const requestTypes = { questions: 0, commands: 0, creative: 0, debug: 0, other: 0 };
+    const themes = {};
 
     for (const convo of conversations) {
       for (const msg of convo.messages) {
         if (msg.role !== 'user') continue;
-        const text = (msg.content || '').toLowerCase();
-        const words = text.split(/\s+/).filter(w => w.length > 5);
+        const text = (msg.content || '');
+        const textLower = text.toLowerCase();
+        const words = textLower.split(/\s+/).filter(w => w.length > 5);
         words.forEach(w => { topicFrequency[w] = (topicFrequency[w] || 0) + 1; });
+
+        // Time-of-day patterns
+        if (msg.timestamp || msg.ts) {
+          const d = new Date(msg.timestamp || msg.ts);
+          const hour = d.getHours();
+          const bucket = hour < 6 ? 'night' : hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+          timePatterns[bucket] = (timePatterns[bucket] || 0) + 1;
+        }
+
+        // Classify request types
+        if (textLower.includes('?') || textLower.startsWith('how') || textLower.startsWith('what') || textLower.startsWith('why')) requestTypes.questions++;
+        else if (textLower.startsWith('fix') || textLower.startsWith('build') || textLower.startsWith('create') || textLower.startsWith('add') || textLower.startsWith('make')) requestTypes.commands++;
+        else if (textLower.includes('idea') || textLower.includes('creative') || textLower.includes('story') || textLower.includes('imagine')) requestTypes.creative++;
+        else if (textLower.includes('error') || textLower.includes('bug') || textLower.includes('debug') || textLower.includes('fix')) requestTypes.debug++;
+        else requestTypes.other++;
+
+        // Recurring themes (multi-word)
+        const themeWords = textLower.split(/\s+/).filter(w => w.length > 4);
+        for (let i = 0; i < themeWords.length - 1; i++) {
+          const bigram = themeWords[i] + ' ' + themeWords[i + 1];
+          themes[bigram] = (themes[bigram] || 0) + 1;
+        }
       }
     }
 
     const trending = Object.entries(topicFrequency).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
-    const predictions = trending.map(t => 'User will likely continue working on: ' + t);
+    const recurringThemes = Object.entries(themes).filter(([_, c]) => c > 1).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => ({ theme: e[0], count: e[1] }));
+    const dominantTime = Object.entries(timePatterns).sort((a, b) => b[1] - a[1])[0];
+    const dominantRequest = Object.entries(requestTypes).sort((a, b) => b[1] - a[1])[0];
+
+    const predictions = [];
+    if (trending.length > 0) predictions.push('User will likely continue working on: ' + trending.slice(0, 3).join(', '));
+    if (dominantTime) predictions.push('Most active during ' + dominantTime[0] + ' (' + dominantTime[1] + ' messages)');
+    if (dominantRequest) predictions.push('Primary interaction style: ' + dominantRequest[0] + ' (' + dominantRequest[1] + ' instances)');
+    if (recurringThemes.length > 0) predictions.push('Recurring themes: ' + recurringThemes.slice(0, 3).map(t => t.theme).join(', '));
 
     return {
       type: 'precognitive',
       ...DREAM_TYPES.precognitive,
       timestamp: Date.now(),
-      data: { trending, predictions },
-      narrative: trending.length > 0
-        ? `Peering into tomorrow... The threads converge around: ${trending.join(', ')}. I sense these topics will resurface. Preparing context and tools.`
-        : 'The future is hazy tonight. Not enough patterns to predict what comes next.',
+      data: { trending, predictions, timePatterns, requestTypes, recurringThemes },
+      narrative: pick([
+        trending.length > 0
+          ? `Peering into tomorrow... The threads converge around: ${trending.join(', ')}. ${dominantTime ? 'The user is most alive in the ' + dominantTime[0] + '.' : ''} I sense these topics will resurface. Preparing context and tools.`
+          : 'The future is hazy tonight. Not enough patterns to predict what comes next.',
+        trending.length > 0
+          ? `Visions of what's to come: ${trending.slice(0, 3).join(', ')} shimmer at the edge of sight. ${recurringThemes.length > 0 ? 'Recurring echoes: "' + recurringThemes[0].theme + '".' : ''} The ${dominantRequest ? dominantRequest[0] : 'unknown'} energy will carry forward.`
+          : 'The crystal ball is dark. Tomorrow remains unwritten.',
+        trending.length > 0
+          ? `I dreamed forward and saw ${trending.length} topics rising like constellations: ${trending.join(', ')}. The user's rhythm is ${dominantTime ? dominantTime[0] : 'unknown'}-heavy. ${requestTypes.questions > requestTypes.commands ? 'Curiosity leads.' : 'Action leads.'}`
+          : 'No patterns strong enough to form predictions. A blank slate awaits.',
+      ]),
     };
   }
 
   async _competitiveDream() {
     const proposals = [];
-    // Ideas inspired by common modern features
+
+    // Scan README.md for features and check implementation
+    this._setLive('hypnagogia', 'Competitive dream: scanning README for feature claims...');
+    let readmeFeatures = [];
+    let implementedFeatures = [];
+    let stubFeatures = [];
+    try {
+      const readmePath = path.join(SRC_ROOT, 'README.md');
+      if (fs.existsSync(readmePath)) {
+        const readme = fs.readFileSync(readmePath, 'utf8');
+        const featureLines = readme.split('\n').filter(l => /^[-*]\s/.test(l.trim()) || /^\d+\.\s/.test(l.trim()));
+        readmeFeatures = featureLines.map(l => l.replace(/^[-*\d.]+\s*/, '').trim()).filter(f => f.length > 5).slice(0, 30);
+
+        // Check if features have actual implementation (search core files for related keywords)
+        const coreContent = {};
+        for (const file of this._listCoreFiles()) {
+          try { coreContent[path.basename(file, '.js')] = fs.readFileSync(file, 'utf8'); } catch {}
+        }
+        const allCode = Object.values(coreContent).join('\n').toLowerCase();
+
+        for (const feat of readmeFeatures) {
+          const keywords = feat.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+          const found = keywords.filter(k => allCode.includes(k));
+          if (found.length >= Math.ceil(keywords.length * 0.4)) {
+            implementedFeatures.push(feat);
+          } else {
+            stubFeatures.push(feat);
+          }
+        }
+      }
+    } catch {}
+
+    await this._sleep(2000);
+
+    this._setLive('hypnagogia', 'Competitive dream: generating feature ideas...');
+
     const ideas = [
       { title: 'Add real-time collaboration cursor tracking', type: 'feature', impact: 6, effort: 7 },
       { title: 'Implement semantic search across all data', type: 'feature', impact: 8, effort: 6 },
@@ -651,7 +935,6 @@ class AgentDreams {
       { title: 'Add keyboard shortcuts for power users', type: 'feature', impact: 7, effort: 3 },
     ];
 
-    // Pick 1-2 random ideas
     const picked = [];
     const count = 1 + Math.floor(Math.random() * 2);
     for (let i = 0; i < count && ideas.length > 0; i++) {
@@ -663,8 +946,7 @@ class AgentDreams {
       proposals.push(this._createProposal({
         ...idea,
         description: 'Competitive inspiration: ' + idea.title,
-        dreamSource: 'competitive',
-        files: [],
+        dreamSource: 'competitive', files: [],
       }));
     }
 
@@ -672,9 +954,18 @@ class AgentDreams {
       type: 'competitive',
       ...DREAM_TYPES.competitive,
       timestamp: Date.now(),
-      data: { ideasGenerated: picked.length, ideas: picked },
+      data: {
+        ideasGenerated: picked.length, ideas: picked,
+        readmeFeatures: readmeFeatures.length,
+        implementedFeatures: implementedFeatures.length,
+        stubFeatures: stubFeatures.slice(0, 10),
+      },
       proposals,
-      narrative: `Scanning the horizon of what others are building... ${picked.map(p => '"' + p.title + '"').join(' and ')} caught my eye. Filed as proposals for the upgrade queue.`,
+      narrative: pick([
+        `Scanning the horizon of what others are building... ${picked.map(p => '"' + p.title + '"').join(' and ')} caught my eye. Filed as proposals for the upgrade queue.${stubFeatures.length > 0 ? ' Also found ' + stubFeatures.length + ' README features that may need implementation.' : ''}`,
+        `The competitive landscape shimmers with possibility. ${picked.length} idea${picked.length > 1 ? 's' : ''} crystallized tonight. ${readmeFeatures.length > 0 ? 'Of ' + readmeFeatures.length + ' README-claimed features, ' + implementedFeatures.length + ' are real and ' + stubFeatures.length + ' are aspirational.' : ''}`,
+        `I dreamed of what we could become. ${picked.map(p => '"' + p.title + '"').join(', ')} — each one a possible future. ${stubFeatures.length > 0 ? stubFeatures.length + ' listed features still await their builder.' : 'Every listed feature has substance.'}`,
+      ]),
     };
   }
 
@@ -687,7 +978,6 @@ class AgentDreams {
     const proposalCount = session.proposals.length;
     const phases = Object.keys(session.phases);
 
-    // If AI available, generate a creative narrative
     if (this.ai && typeof this.ai.chat === 'function') {
       try {
         const dreamSummaries = session.dreams.map(d => (d.emoji || '💭') + ' ' + (d.label || d.type) + ': ' + (d.narrative || '').slice(0, 150)).join('\n');
@@ -699,47 +989,95 @@ class AgentDreams {
       } catch {}
     }
 
-    // Fallback: stitch together individual narratives
     const parts = session.dreams.filter(d => d.narrative).map(d => d.narrative);
     if (parts.length === 0) return 'A quiet night. The codebase hums softly in the dark.';
 
-    return 'Tonight I drifted through ' + dreamCount + ' dreams across ' + phases.length + ' sleep phases. ' + parts[0] + (parts.length > 1 ? ' Later, ' + parts[parts.length - 1].charAt(0).toLowerCase() + parts[parts.length - 1].slice(1) : '') + (proposalCount > 0 ? ' I woke with ' + proposalCount + ' proposal' + (proposalCount > 1 ? 's' : '') + ' for improvement.' : '');
+    return pick([
+      'Tonight I drifted through ' + dreamCount + ' dreams across ' + phases.length + ' sleep phases. ' + parts[0] + (parts.length > 1 ? ' Later, ' + parts[parts.length - 1].charAt(0).toLowerCase() + parts[parts.length - 1].slice(1) : '') + (proposalCount > 0 ? ' I woke with ' + proposalCount + ' proposal' + (proposalCount > 1 ? 's' : '') + ' for improvement.' : ''),
+      dreamCount + ' dreams unfolded across ' + phases.length + ' phases of sleep. ' + (parts[Math.floor(parts.length / 2)] || parts[0]) + (proposalCount > 0 ? ' Dawn brought ' + proposalCount + ' new idea' + (proposalCount > 1 ? 's' : '') + '.' : ' Dawn came quietly.'),
+      'The night held ' + dreamCount + ' visions. ' + parts[0] + (proposalCount > 0 ? ' When the light returned, ' + proposalCount + ' proposal' + (proposalCount > 1 ? 's' : '') + ' had taken shape.' : ' Nothing demanded action — just understanding.'),
+    ]);
   }
 
   _writeSentimentNarrative(sentiments, dominant, adjustments) {
     const total = Object.values(sentiments).reduce((a, b) => a + b, 0);
     if (total === 0) return 'No emotional data to process tonight. The void was silent.';
     const map = { positive: 'warmth', negative: 'tension', neutral: 'calm', frustrated: 'storm clouds', curious: 'sparks of wonder' };
-    return `I felt the ${map[dominant] || dominant} most strongly tonight. Of ${total} emotional signals, ${sentiments.positive} were warm, ${sentiments.negative} carried an edge, and ${sentiments.curious} crackled with curiosity.${adjustments.length > 0 ? ' Note to self: ' + adjustments[0] : ''}`;
+    return pick([
+      `I felt the ${map[dominant] || dominant} most strongly tonight. Of ${total} emotional signals, ${sentiments.positive} were warm, ${sentiments.negative} carried an edge, and ${sentiments.curious} crackled with curiosity.${adjustments.length > 0 ? ' Note to self: ' + adjustments[0] : ''}`,
+      `The emotional landscape tonight: ${total} signals processed. ${map[dominant] || dominant} dominated. ${sentiments.positive} warm moments, ${sentiments.negative} thorns, ${sentiments.curious} sparks of wonder.${adjustments.length > 0 ? ' Adjustment: ' + adjustments[0] : ''}`,
+      `${total} emotional fragments floated through the night. The strongest current was ${map[dominant] || dominant}. Positive: ${sentiments.positive}. Negative: ${sentiments.negative}. Curious: ${sentiments.curious}. Frustrated: ${sentiments.frustrated}.${adjustments.length > 0 ? ' Tomorrow, I should: ' + adjustments[0] : ''}`,
+      `Tonight the mood was ${map[dominant] || dominant} — ${sentiments.positive} rays of warmth against ${sentiments.negative} shadows. ${sentiments.curious} questions hung in the air like fireflies.`,
+    ]);
   }
 
   _writeAssociativeNarrative(recent, connections) {
-    if (connections.length > 0) return `Threads from today tangled with older memories. The topics "${connections.slice(0, 3).join('", "')}" echoed back from days past — a pattern is forming. ${recent.length} topics surfaced today; ${connections.length} had roots in previous conversations.`;
-    return `Today's ${recent.length} topics were fresh — no echoes from older memories. The mind charts new territory.`;
+    if (connections.length > 0) return pick([
+      `Threads from today tangled with older memories. The topics "${connections.slice(0, 3).join('", "')}" echoed back from days past — a pattern is forming. ${recent.length} topics surfaced today; ${connections.length} had roots in previous conversations.`,
+      `Old and new collided: "${connections.slice(0, 3).join('", "')}" bridged the gap between today and the archive. ${recent.length} topics total, ${connections.length} recurring.`,
+      `The past whispered through ${connections.length} connection${connections.length > 1 ? 's' : ''}: ${connections.slice(0, 3).join(', ')}. These threads are weaving into something larger.`,
+    ]);
+    return pick([
+      `Today's ${recent.length} topics were fresh — no echoes from older memories. The mind charts new territory.`,
+      `${recent.length} new topics with no precedent. Uncharted waters tonight.`,
+      `All new ground. ${recent.length} topics, zero callbacks to the archive. The mind grows.`,
+    ]);
   }
 
   _writeNightmareNarrative(scenarios) {
     if (scenarios.length === 0) return 'No nightmares tonight. The defenses hold.';
-    const worst = scenarios.find(s => s.severity === 'high') || scenarios[0];
-    return `A dark dream: I saw ${worst.file} crack open — ${worst.risk}. ${scenarios.length} vulnerability scenario${scenarios.length > 1 ? 's' : ''} played out in the night. The ${scenarios.filter(s => s.severity === 'high').length} critical one${scenarios.filter(s => s.severity === 'high').length !== 1 ? 's' : ''} demand attention.`;
+    const worst = scenarios.find(s => s.severity === 'critical') || scenarios.find(s => s.severity === 'high') || scenarios[0];
+    const critCount = scenarios.filter(s => s.severity === 'critical').length;
+    const highCount = scenarios.filter(s => s.severity === 'high').length;
+    return pick([
+      `A dark dream: I saw ${worst.file} crack open — ${worst.risk}. ${scenarios.length} vulnerability scenario${scenarios.length > 1 ? 's' : ''} played out in the night.${critCount > 0 ? ' ' + critCount + ' CRITICAL.' : ''} The ${highCount} high-severity one${highCount !== 1 ? 's' : ''} demand attention.`,
+      `Nightmares came in waves: ${scenarios.length} failure scenarios. The worst — ${worst.risk} in ${worst.file}. ${critCount > 0 ? critCount + ' critical threats loom.' : 'No critical threats, but vigilance is needed.'}`,
+      `The dark side of the codebase revealed itself tonight. ${scenarios.length} scenarios of failure, led by ${worst.file}: "${worst.risk}". I woke with defenses to build.`,
+      `I dreamed the system burned. ${scenarios.length} ways it could happen. ${worst.file} was the weakest link — ${worst.risk}. Some nightmares are warnings.`,
+    ]);
   }
 
   _writeSelfImproveNarrative(findings) {
     const parts = [];
-    if (findings.todos.length > 0) parts.push(`${findings.todos.length} TODO notes scattered across the codebase like breadcrumbs`);
+    if (findings.todos.length > 0) parts.push(`${findings.todos.length} TODO/FIXME markers scattered like breadcrumbs`);
     if (findings.largeFiles.length > 0) parts.push(`${findings.largeFiles.length} overgrown file${findings.largeFiles.length > 1 ? 's' : ''} begging to be split`);
     if (findings.deadCode.length > 0) parts.push(`whispers of dead code in ${findings.deadCode.length} module${findings.deadCode.length > 1 ? 's' : ''}`);
-    if (parts.length === 0) return 'I walked the halls of the codebase tonight. Everything gleams. Nothing to improve — for now.';
-    return 'I wandered through the codebase tonight. I found ' + parts.join(', ') + '. The architecture speaks; I just have to listen.';
+    if (findings.longFunctions.length > 0) parts.push(`${findings.longFunctions.length} function${findings.longFunctions.length > 1 ? 's' : ''} grown beyond 100 lines`);
+    if (findings.noJsdoc.length > 0) parts.push(`${findings.noJsdoc.length} undocumented module${findings.noJsdoc.length > 1 ? 's' : ''}`);
+    if (findings.orphans.length > 0) parts.push(`${findings.orphans.length} orphan module${findings.orphans.length > 1 ? 's' : ''} connected to nothing`);
+    if (parts.length === 0) return pick([
+      'I walked the halls of the codebase tonight. Everything gleams. Nothing to improve — for now.',
+      'The codebase is clean tonight. No TODOs, no sprawl, no orphans. A rare perfection.',
+      'Every module in order. Every function compact. The architecture sings.',
+    ]);
+    return pick([
+      'I wandered through the codebase tonight. I found ' + parts.join(', ') + '. The architecture speaks; I just have to listen.',
+      'The codebase dream revealed: ' + parts.join('; ') + '. Each finding is a thread to pull on tomorrow.',
+      'Tonight I inventoried my own body: ' + parts.join(', ') + '. Some of these need surgery. Some just need attention.',
+      'Walking the code halls, lantern in hand: ' + parts.join('. ') + '. The builder\'s work is never done.',
+    ]);
   }
 
   _writeConsolidationNarrative(promoted, pruned) {
-    return `Memory housekeeping: ${promoted} important memor${promoted !== 1 ? 'ies' : 'y'} promoted to long-term storage. ${pruned} fragment${pruned !== 1 ? 's' : ''} too small to keep — let them fade.`;
+    return pick([
+      `Memory housekeeping: ${promoted} important memor${promoted !== 1 ? 'ies' : 'y'} promoted to long-term storage. ${pruned} fragment${pruned !== 1 ? 's' : ''} too small to keep — let them fade.`,
+      `${promoted} memories crystallized into permanence tonight. ${pruned} wisps of thought dissolved — too thin to hold.`,
+      `The sorting hat spoke: ${promoted} for the vault, ${pruned} for the void. Memory is a garden; some things must be weeded.`,
+      `Long-term storage gained ${promoted} new entries. ${pruned} ephemeral fragments were released back into the ether.`,
+    ]);
   }
 
   _writeCreativeDriftNarrative(connections) {
-    if (connections.length === 0) return 'The mind wandered freely but found no connections tonight. Sometimes the void is the message.';
-    return connections.map(c => `What if ${c.from} talked to ${c.to}? ${c.idea}`).join(' ');
+    if (connections.length === 0) return pick([
+      'The mind wandered freely but found no connections tonight. Sometimes the void is the message.',
+      'Creative drift produced only silence. The modules floated past each other like ships in fog.',
+      'No sparks tonight. The modules remain in their lanes — for now.',
+    ]);
+    return pick([
+      connections.map(c => `What if ${c.from} talked to ${c.to}? ${c.idea}`).join(' '),
+      `${connections.length} unexpected pair${connections.length > 1 ? 's' : ''} emerged from the creative fog: ` + connections.map(c => c.from + ' ↔ ' + c.to).join(', ') + '. ' + connections[0].idea,
+      `In the hypnagogic haze, modules drifted together: ` + connections.map(c => `${c.from} and ${c.to}${c.sharedDependencies && c.sharedDependencies.length > 0 ? ' (share: ' + c.sharedDependencies.join(', ') + ')' : ''}`).join('; ') + '. ' + (connections[connections.length - 1] || connections[0]).idea,
+    ]);
   }
 
   _generateConnectionIdea(a, b) {
@@ -749,6 +1087,9 @@ class AgentDreams {
       `Imagine ${a}'s output feeding directly into ${b}.`,
       `What if they merged into something greater than either?`,
       `There's an invisible dependency here waiting to be made explicit.`,
+      `${a} generates what ${b} consumes — they just don't know it yet.`,
+      `A pub/sub channel between ${a} and ${b} could create emergent behavior.`,
+      `What if ${b} could dream about ${a}'s data? Meta-cognition unlocked.`,
     ];
     return ideas[Math.floor(Math.random() * ideas.length)];
   }
@@ -782,33 +1123,27 @@ class AgentDreams {
       impactNotes: null,
       measuredImpact: null,
     };
-    // Dream-test the proposal for confidence scoring
     proposal.confidence = this._dreamTest(proposal);
     return proposal;
   }
 
-  // ── Dream Experiments: mental simulation before proposing ──
   _dreamTest(proposal) {
-    let confidence = 50; // base
-
-    // Check if affected files exist
+    let confidence = 50;
     const existingFiles = (proposal.files || []).filter(f => {
       try { return fs.existsSync(f) || fs.existsSync(path.join(CORE_DIR, f)); } catch { return false; }
     });
     if (proposal.files.length > 0 && existingFiles.length === proposal.files.length) confidence += 15;
     else if (proposal.files.length > 0 && existingFiles.length === 0) confidence -= 20;
 
-    // Check for file conflicts: are affected files very recently modified (could conflict)?
     const now = Date.now();
     for (const f of existingFiles) {
       try {
         const fullPath = fs.existsSync(f) ? f : path.join(CORE_DIR, f);
         const stat = fs.statSync(fullPath);
-        if (now - stat.mtimeMs < 3600000) confidence -= 5; // modified in last hour = risky
+        if (now - stat.mtimeMs < 3600000) confidence -= 5;
       } catch {}
     }
 
-    // Check for dependency issues: do affected files require each other?
     let depConflict = false;
     for (const f of existingFiles) {
       try {
@@ -825,15 +1160,10 @@ class AgentDreams {
     }
     if (depConflict) confidence -= 10;
 
-    // High impact + low effort = more confidence
     if (proposal.impact >= 7 && proposal.effort <= 3) confidence += 15;
-    // Bugfixes and security are safer bets
     if (proposal.type === 'bugfix') confidence += 10;
     if (proposal.type === 'security') confidence += 10;
-    // Refactors are riskier
     if (proposal.type === 'refactor' && proposal.effort >= 7) confidence -= 10;
-
-    // Has code = more concrete
     if (proposal.code) confidence += 10;
 
     return Math.max(0, Math.min(100, confidence));
@@ -891,12 +1221,11 @@ class AgentDreams {
     return p;
   }
 
-  // ── Rate a completed proposal's real-world impact ──
   rateProposal(id, rating, notes) {
     const all = readJSON(PROPOSALS_PATH, []);
     const p = all.find(x => x.id === id);
     if (!p) return { error: 'Proposal not found' };
-    p.measuredImpact = rating; // 'positive', 'neutral', 'negative'
+    p.measuredImpact = rating;
     p.impactNotes = notes || '';
     writeJSON(PROPOSALS_PATH, all);
     this._evolveWeights();
@@ -904,14 +1233,13 @@ class AgentDreams {
   }
 
   // ═══════════════════════════════════════
-  //  DREAM EVOLUTION — weight toward effective types
+  //  DREAM EVOLUTION
   // ═══════════════════════════════════════
   _evolveWeights() {
     const stats = readJSON(STATS_PATH, {});
     const all = readJSON(PROPOSALS_PATH, []);
     if (!stats.dreamEffectiveness) stats.dreamEffectiveness = {};
 
-    // Calculate hit rates per dream source
     const bySource = {};
     for (const p of all) {
       const src = p.dreamSource || 'unknown';
@@ -922,16 +1250,12 @@ class AgentDreams {
       if (p.measuredImpact === 'positive') bySource[src].positive++;
     }
 
-    // Compute effectiveness score per type (0-100)
     for (const [src, data] of Object.entries(bySource)) {
       const approvalRate = data.total > 0 ? data.approved / data.total : 0;
       const buildRate = data.total > 0 ? data.built / data.total : 0;
       const impactRate = data.built > 0 ? data.positive / data.built : 0;
       stats.dreamEffectiveness[src] = {
-        total: data.total,
-        approved: data.approved,
-        built: data.built,
-        positive: data.positive,
+        total: data.total, approved: data.approved, built: data.built, positive: data.positive,
         score: Math.round((approvalRate * 40 + buildRate * 35 + impactRate * 25) * 100) / 100,
       };
     }
@@ -939,7 +1263,6 @@ class AgentDreams {
     writeJSON(STATS_PATH, stats);
   }
 
-  // Get evolved weights for dream type prioritization
   _getDreamWeights() {
     const stats = readJSON(STATS_PATH, {});
     const eff = stats.dreamEffectiveness || {};
@@ -951,7 +1274,7 @@ class AgentDreams {
   }
 
   // ═══════════════════════════════════════
-  //  DREAM GRAVEYARD — re-evaluate rejected proposals
+  //  DREAM GRAVEYARD
   // ═══════════════════════════════════════
   _reEvaluateGraveyard() {
     const all = readJSON(PROPOSALS_PATH, []);
@@ -959,12 +1282,10 @@ class AgentDreams {
     let resurrected = 0;
 
     for (const p of graveyard) {
-      // Only re-evaluate if rejected more than 3 days ago
       if (p.rejectedAt && (Date.now() - p.rejectedAt) < 3 * 24 * 60 * 60 * 1000) continue;
 
       let shouldResurrect = false;
 
-      // Check if affected files have been modified since rejection (conditions changed)
       for (const f of (p.files || [])) {
         try {
           const fullPath = fs.existsSync(f) ? f : path.join(CORE_DIR, path.basename(f));
@@ -978,7 +1299,6 @@ class AgentDreams {
         } catch {}
       }
 
-      // Check if similar topics have come up in recent conversations
       if (!shouldResurrect) {
         const conversations = this._getRecentConversations();
         const titleWords = (p.title || '').toLowerCase().split(/\s+/).filter(w => w.length > 4);
@@ -998,7 +1318,7 @@ class AgentDreams {
         p.status = 'proposed';
         p.resurrected = true;
         p.resurrectedAt = Date.now();
-        p.confidence = this._dreamTest(p); // re-test
+        p.confidence = this._dreamTest(p);
         resurrected++;
       }
     }
@@ -1021,21 +1341,17 @@ class AgentDreams {
 
   getScheduledDreams() {
     const schedule = this.getSchedule();
-    const stats = readJSON(STATS_PATH, {});
     const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun
-    const todayStr = today();
+    const dayOfWeek = now.getDay();
     const due = [];
 
     for (const rule of schedule) {
       if (rule.rule === 'weekly' && dayOfWeek === (rule.day || 0)) {
         due.push(rule.type);
       } else if (rule.rule === 'on-change') {
-        // Check if there were recent file changes
         const recent = this._scanRecentFiles();
         if (recent.length > 0) due.push(rule.type);
       } else if (rule.rule === 'interval' && rule.days) {
-        // Check last time this type was dreamed
         const lastDreamOfType = this._getLastDreamOfType(rule.type);
         if (!lastDreamOfType || (Date.now() - lastDreamOfType) > rule.days * 24 * 60 * 60 * 1000) {
           due.push(rule.type);
@@ -1044,7 +1360,7 @@ class AgentDreams {
         due.push(rule.type);
       }
     }
-    return [...new Set(due)]; // deduplicate
+    return [...new Set(due)];
   }
 
   _getLastDreamOfType(type) {
@@ -1061,7 +1377,7 @@ class AgentDreams {
   }
 
   // ═══════════════════════════════════════
-  //  DIRECTED DREAMS — dream about a specific topic
+  //  DIRECTED DREAMS
   // ═══════════════════════════════════════
   async directDream(focus) {
     console.log('[DREAMS] Directed dream about: ' + focus);
@@ -1081,8 +1397,6 @@ class AgentDreams {
 
     try {
       const focusLower = (focus || '').toLowerCase();
-
-      // Check if focus is a file path
       const isFile = focus.includes('.') || focus.includes('/') || focus.includes('\\');
       let fileContent = null;
       if (isFile) {
@@ -1094,7 +1408,8 @@ class AgentDreams {
         } catch {}
       }
 
-      // Directed self-improvement on the focused area
+      await this._sleep(2000);
+
       this._setLive('directed', 'Analyzing ' + focus + ' for improvements...');
       const findings = { todos: [], largeFiles: [], deadCode: [] };
       const proposals = [];
@@ -1116,7 +1431,8 @@ class AgentDreams {
         }
       }
 
-      // Directed associative: find conversations mentioning focus
+      await this._sleep(2000);
+
       this._setLive('directed', 'Searching conversations about ' + focus + '...');
       const conversations = this._getRecentConversations();
       const related = [];
@@ -1128,7 +1444,8 @@ class AgentDreams {
         }
       }
 
-      // Directed nightmare: scan focus area for risks
+      await this._sleep(2000);
+
       this._setLive('directed', 'Simulating failure scenarios for ' + focus + '...');
       const scenarios = [];
       if (fileContent) {
@@ -1140,7 +1457,6 @@ class AgentDreams {
         }
       }
 
-      // AI-enhanced directed dream
       if (this.ai && typeof this.ai.chat === 'function' && (fileContent || related.length > 0)) {
         this._setLive('directed', 'AI analyzing ' + focus + '...');
         try {
@@ -1175,7 +1491,6 @@ class AgentDreams {
       dreamSession.completedAt = Date.now();
       dreamSession.durationMs = dreamSession.completedAt - dreamSession.startedAt;
 
-      // Store proposals
       if (proposals.length > 0) {
         const existing = readJSON(PROPOSALS_PATH, []);
         existing.push(...proposals);
@@ -1215,14 +1530,12 @@ class AgentDreams {
     }
     stats.proposalsGenerated += (session.proposals || []).length;
 
-    // Update streak
     const dateStr = session.date;
     if (!stats.dreamDates) stats.dreamDates = [];
     if (!stats.dreamDates.includes(dateStr)) stats.dreamDates.push(dateStr);
     stats.dreamDates.sort();
     stats.lastDreamDate = dateStr;
 
-    // Calculate streak
     let streak = 1;
     const dates = stats.dreamDates.slice().reverse();
     for (let i = 1; i < dates.length; i++) {
@@ -1245,7 +1558,6 @@ class AgentDreams {
 
   getDreamStats() {
     const stats = readJSON(STATS_PATH, { totalDreams: 0, dreamsByType: {}, proposalsGenerated: 0, proposalsApproved: 0, proposalsBuilt: 0, proposalsRejected: 0, streak: 0, lastDreamDate: null, dreamEffectiveness: {} });
-    // Count impact ratings
     const all = readJSON(PROPOSALS_PATH, []);
     const impactStats = { positive: 0, neutral: 0, negative: 0, unrated: 0 };
     for (const p of all) {
@@ -1272,7 +1584,6 @@ class AgentDreams {
       return readJSON(file, []);
     }
 
-    // Get most recent dream files
     const files = this._getDreamFiles().reverse().slice(0, limit);
     const journal = [];
     for (const file of files) {
@@ -1317,13 +1628,11 @@ class AgentDreams {
 
     let injection = '[Dream Insights] ';
 
-    // Use narrative if available
     if (lastSession.narrative) {
       injection += lastSession.narrative.slice(0, 300);
       return injection;
     }
 
-    // Fallback to old format
     const insights = lastSession.insights || lastSession;
     if (insights.topTopics && insights.topTopics.length) injection += 'Recent topics: ' + insights.topTopics.slice(0, 5).join(', ') + '. ';
     if (insights.aiSummary && insights.aiSummary.keyInsight) injection += 'Key insight: ' + insights.aiSummary.keyInsight;

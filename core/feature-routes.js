@@ -493,7 +493,7 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
   // ── Agent Dreams v2 ──
   if (pathname.startsWith('/api/features/dreams')) {
     let dreams;
-    try { const AgentDreams = require('./agent-dreams'); dreams = new AgentDreams(refs); } catch (e) {
+    try { const AgentDreams = require('./agent-dreams'); dreams = new AgentDreams({ ...refs, ai: refs.ai || ai, broadcast: broadcast }); } catch (e) {
       json(res, 501, { error: 'Dreams module not available' }); return true;
     }
     if (pathname === '/api/features/dreams' && method === 'GET') {
