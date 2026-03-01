@@ -10499,6 +10499,9 @@ try {
   addPluginRoute('GET', '/api/hive/', async (req, res, json) => {
     const parts = req.url.split('/api/hive/')[1]?.split('?')[0]?.split('/');
     const id = parts && parts[0];
+    if (id === 'status') {
+      return json(res, 200, { status: 'active', sessions: hiveMind.list ? hiveMind.list() : [], sharedMemories: hiveMind.getSharedMemories ? hiveMind.getSharedMemories() : [] });
+    }
     if (!id || id === 'start') return json(res, 400, { error: 'session id required' });
     if (parts[1] === 'memory') {
       const mem = hiveMind.getMemory(id);
