@@ -10607,7 +10607,7 @@ try {
 
   // /api/hive/status → same as /api/hive
   addPluginRoute('GET', '/api/hive/status', async (req, res, json) => {
-    const hiveMgr = refs.hiveMind || null;
+    const hiveMgr = (_refs && _refs.hiveMind) || null;
     json(res, 200, hiveMgr ? { status: 'active', nodes: hiveMgr.getNodes ? hiveMgr.getNodes() : [], sharedMemories: hiveMgr.getSharedMemories ? hiveMgr.getSharedMemories() : [] } : { status: 'inactive', nodes: [], sharedMemories: [] });
   });
 
@@ -10623,7 +10623,7 @@ try {
 
   // /api/self-improve/status
   addPluginRoute('GET', '/api/self-improve/status', async (req, res, json) => {
-    const improve = refs.selfImprove || null;
+    const improve = (_refs && _refs.selfImprove) || null;
     json(res, 200, improve ? { status: 'active', stats: improve.getStats ? improve.getStats() : {} } : { status: 'inactive', stats: {} });
   });
 
@@ -10641,7 +10641,7 @@ try {
 
   // /api/breeding/population
   addPluginRoute('GET', '/api/breeding/population', async (req, res, json) => {
-    const breeding = refs.agentBreeding || null;
+    const breeding = (_refs && _refs.agentBreeding) || null;
     if (breeding) {
       json(res, 200, { population: breeding.getPopulation ? breeding.getPopulation() : [], fitness: breeding.getAllFitness ? breeding.getAllFitness() : {} });
     } else {
