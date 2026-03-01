@@ -394,6 +394,7 @@
       case 'agent-dna': loadAgentDnaPanel(); break;
       case 'hive-mind': loadHiveMindPanel(); break;
       case 'instincts': loadInstinctsPanel(); break;
+      case 'body': if (window.loadBodyPanel) window.loadBodyPanel(); break;
     }
   }
 
@@ -9747,7 +9748,31 @@
   setInterval(loadEmotionState, 60000);
   setTimeout(loadEmotionState, 3000);
 
+  function loadDreamModelConfig() {
+    api('GET', 'dreams/model-config').then(function(cfg) {
+      var sel = document.getElementById('dreamModelSelect');
+      if (!sel) return;
+      sel.innerHTML = '';
+      var models = cfg.availableModels || [{ id: 'default', label: 'Default (use main config)' }];
+      models.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.label || m.id;
+        if (m.id === cfg.model) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }).catch(function() {});
+  }
+
+  function setDreamModel(model) {
+    api('POST', 'dreams/model-config', { model: model }).then(function() {
+      var badge = document.getElementById('dreamModelSaved');
+      if (badge) { badge.style.opacity = '1'; setTimeout(function() { badge.style.opacity = '0'; }, 1500); }
+    }).catch(function(e) { toast('Failed to set dream model: ' + e.message, 'error'); });
+  }
+
   function loadDreams() {
+    loadDreamModelConfig();
     loadDreamJournal();
   }
 
@@ -10591,7 +10616,7 @@
       sendCollabChat: sendCollabChat, toggleCollabChat: toggleCollabChat,
       loadConsciousness: loadConsciousness, switchConscTab: switchConscTab,
       loadThoughts: loadThoughts, filterThoughts: filterThoughts, triggerThought: triggerThought,
-      loadDreams: loadDreams, triggerDream: triggerDream, switchDreamTab: switchDreamTab, loadDreamUpgrades: loadDreamUpgrades, dreamAction: dreamAction, triggerDirectedDream: triggerDirectedDream, rateProposal: rateProposal,
+      loadDreams: loadDreams, triggerDream: triggerDream, switchDreamTab: switchDreamTab, loadDreamUpgrades: loadDreamUpgrades, dreamAction: dreamAction, triggerDirectedDream: triggerDirectedDream, rateProposal: rateProposal, setDreamModel: setDreamModel,
       loadJournals: loadJournals, loadAgentJournal: loadAgentJournal,
       updateContextViz: updateContextViz,
       refreshReputation: refreshReputation, submitRating: submitRating, _setRepScore: _setRepScore,

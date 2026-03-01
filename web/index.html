@@ -475,6 +475,13 @@
           <h2>&#x1F4AD; Agent Dreams</h2>
           <button class="btn-sm" onclick="window.aries.loadDreams()">&#x1F504; Refresh</button>
           <button class="btn-primary" onclick="window.aries.triggerDream()">&#x1F31C; Trigger Dream Cycle</button>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:6px">
+            <label style="color:#888;font-size:12px;white-space:nowrap">🤖 Model:</label>
+            <select id="dreamModelSelect" onchange="window.aries.setDreamModel(this.value)" style="background:#1a1a2e;color:#a78bfa;border:1px solid #7c3aed44;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer">
+              <option value="default">Default (use main config)</option>
+            </select>
+            <span id="dreamModelSaved" style="color:#22c55e;font-size:12px;opacity:0;transition:opacity 0.3s">✓</span>
+          </span>
         </div>
         <!-- Sub-tabs -->
         <div style="display:flex;gap:0;border-bottom:1px solid #333;margin-bottom:16px">
@@ -7113,6 +7120,11 @@
   function loadBodyPanel() {
     loadSkeletonTab();
   }
+  window.loadBodyPanel = loadBodyPanel;
+  window.loadSkeletonTab = loadSkeletonTab;
+  window.loadCirculatoryTab = loadCirculatoryTab;
+  window.loadImmuneTab = loadImmuneTab;
+  window.loadReflexesTab = loadReflexesTab;
 
   // ── Wire up panel loading ──
   (function() {

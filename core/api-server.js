@@ -9593,6 +9593,20 @@ function registerMoonshotRoutes(refs) {
       json(res, 200, result);
     }, { prefix: true });
 
+    // Dream model config
+    addPluginRoute('GET', '/api/dreams/model-config', async (req, res, json) => {
+      json(res, 200, dreams.getDreamModelConfig());
+    });
+
+    addPluginRoute('POST', '/api/dreams/model-config', async (req, res, json, body) => {
+      try {
+        const data = JSON.parse(body || '{}');
+        if (!data.model) return json(res, 400, { error: 'Missing model field' });
+        const result = dreams.setDreamModel(data.model);
+        json(res, 200, result);
+      } catch (e) { json(res, 400, { error: e.message }); }
+    });
+
     console.log('[API] Agent Dreams v2 routes registered');
   } catch (e) { console.error('[API] Agent Dreams init error:', e.message); }
 

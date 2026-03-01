@@ -11,7 +11,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+const https = require('https');
+const http = require('http');
+
 const DATA_DIR = path.join(__dirname, '..', 'data', 'dreams');
+const DREAM_MODEL_CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const PROPOSALS_PATH = path.join(DATA_DIR, 'proposals.json');
 const STATS_PATH = path.join(DATA_DIR, 'stats.json');
 const SCHEDULE_PATH = path.join(DATA_DIR, 'schedule.json');
@@ -63,6 +67,85 @@ class AgentDreams {
   }
 
   _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  getDreamModelConfig() {
+    return readJSON(DREAM_MODEL_CONFIG_PATH, { model: 'default', provider: 'auto', availableModels: [{ id: 'default', label: 'Default (use main config)', provider: 'auto' }] });
+  }
+
+  setDreamModel(model) {
+    const cfg = this.getDreamModelConfig();
+    const found = cfg.availableModels.find(m => m.id === model);
+    if (found) { cfg.model = model; cfg.provider = found.provider; }
+    else { cfg.model = model; cfg.provider = 'auto'; }
+    writeJSON(DREAM_MODEL_CONFIG_PATH, cfg);
+    return cfg;
+  }
+
+  async _dreamChat(messages) {
+    const dreamCfg = this.getDreamModelConfig();
+    if (!dreamCfg.model || dreamCfg.model === 'default') {
+      if (this.ai && typeof this.ai.chat === 'function') return this.ai.chat(messages);
+      return null;
+    }
+    const model = dreamCfg.model;
+    const provider = dreamCfg.provider;
+
+    // Google/Gemini direct caller
+    if (provider === 'google') {
+      const mainCfg = readJSON(path.join(__dirname, '..', 'data', 'config.json'), {});
+      const apiKey = mainCfg.google?.apiKey || mainCfg.gemini?.apiKey || process.env.GOOGLE_API_KEY;
+      if (!apiKey) { console.error('[DREAMS] No Google API key configured'); return this.ai?.chat?.(messages) || null; }
+      const geminiMessages = messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+      // Gemini doesn't support 'system' role in contents; prepend as user message
+      const contents = geminiMessages.filter(m => m.role !== 'user' || true).map(m => {
+        if (m.role === 'user') return m;
+        return { role: 'user', parts: m.parts };
+      });
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      try {
+        const body = JSON.stringify({ contents });
+        const resp = await this._httpsPost(url, body);
+        const text = resp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return { response: text };
+      } catch (e) { console.error('[DREAMS] Gemini API error:', e.message); return this.ai?.chat?.(messages) || null; }
+    }
+
+    // AI Gateway (OpenAI-compat) for ollama, anthropic, etc.
+    try {
+      const body = JSON.stringify({ model, messages, max_tokens: 1024 });
+      const resp = await this._httpPost('http://localhost:18800/v1/chat/completions', body);
+      const text = resp?.choices?.[0]?.message?.content || '';
+      return { response: text };
+    } catch (e) { console.error('[DREAMS] Gateway API error:', e.message); return this.ai?.chat?.(messages) || null; }
+  }
+
+  _httpsPost(url, body) {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const req = https.request({ hostname: parsed.hostname, path: parsed.pathname + parsed.search, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } }, res => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => { try { resolve(JSON.parse(data)); } catch { reject(new Error('Invalid JSON: ' + data.slice(0, 200))); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
+
+  _httpPost(url, body) {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const req = http.request({ hostname: parsed.hostname, port: parsed.port, path: parsed.pathname, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } }, res => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => { try { resolve(JSON.parse(data)); } catch { reject(new Error('Invalid JSON: ' + data.slice(0, 200))); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
 
   touch() { this._lastActivity = Date.now(); }
 
@@ -978,10 +1061,10 @@ class AgentDreams {
     const proposalCount = session.proposals.length;
     const phases = Object.keys(session.phases);
 
-    if (this.ai && typeof this.ai.chat === 'function') {
+    if (this.ai && (typeof this.ai.chat === 'function' || this.getDreamModelConfig().model !== 'default')) {
       try {
         const dreamSummaries = session.dreams.map(d => (d.emoji || '💭') + ' ' + (d.label || d.type) + ': ' + (d.narrative || '').slice(0, 150)).join('\n');
-        const response = await this.ai.chat([
+        const response = await this._dreamChat([
           { role: 'system', content: 'You are the dream narrator for an AI agent named Aries. Write a short, engaging dream journal entry (3-5 sentences). Make it feel like a genuine dream — surreal, poetic, but with real insights about the codebase and conversations. Use first person. Be creative and evocative, not corporate.' },
           { role: 'user', content: 'Tonight\'s dreams:\n' + dreamSummaries + '\n\nProposals generated: ' + proposalCount + '\nWrite the dream journal entry.' }
         ]);
@@ -1457,11 +1540,11 @@ class AgentDreams {
         }
       }
 
-      if (this.ai && typeof this.ai.chat === 'function' && (fileContent || related.length > 0)) {
+      if ((this.ai && typeof this.ai.chat === 'function' || this.getDreamModelConfig().model !== 'default') && (fileContent || related.length > 0)) {
         this._setLive('directed', 'AI analyzing ' + focus + '...');
         try {
           const context = fileContent ? 'File content (first 2000 chars):\n' + fileContent.slice(0, 2000) : 'Related conversations:\n' + related.slice(0, 5).map(r => r.role + ': ' + r.snippet).join('\n');
-          const resp = await this.ai.chat([
+          const resp = await this._dreamChat([
             { role: 'system', content: 'You are an AI dream analyst. Analyze the given code/context and suggest 1-2 specific improvements. Return JSON: { suggestions: [{ title, description, type, impact, effort }], narrative: "dream story" }' },
             { role: 'user', content: 'Directed dream focus: "' + focus + '"\n\n' + context }
           ]);
