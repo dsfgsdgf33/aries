@@ -151,7 +151,7 @@ class DreamIntegrationWeb extends EventEmitter {
 
       // Stranger: appears at Layer 3+ with 40% probability
       if (stranger && depth >= 3 && Math.random() < STRANGER_PROBABILITY) this._safe('stranger-consult', () => {
-        const verdict = stranger.consult(content);
+        const verdict = stranger.consult(content, 'dream-layer-' + depth);
         this.emit('stranger-appeared', { depth, verdict });
         this._stat('stranger-appearance');
       });
@@ -165,10 +165,10 @@ class DreamIntegrationWeb extends EventEmitter {
 
       // Anti-memory: deeper insights → more aggressive forgetting
       if (antiMemory) this._safe('anti-memory-insight', () => {
-        if (depth >= 3 && insight.category) {
-          antiMemory.markForReview(insight.category, 'deep-dream-insight-layer-' + depth);
+        if (depth >= 3 && insight.replacesMemory) {
+          antiMemory.forget(insight.replacesMemory, 'COMPRESSION', 'deep-dream-insight-layer-' + depth);
         } else if (insight.replacesMemory) {
-          antiMemory.forget(insight.replacesMemory, 'dream-superseded');
+          antiMemory.forget(insight.replacesMemory, 'SUPERSEDED', 'dream-superseded');
         }
         this._stat('anti-memory-insight-process');
       });
@@ -195,11 +195,13 @@ class DreamIntegrationWeb extends EventEmitter {
 
       // Pain: deep dreams heal
       if (pain && depth >= 3) this._safe('pain-heal', () => {
-        const activePains = (typeof pain.getActive === 'function') ? pain.getActive() : [];
-        for (const p of activePains) {
-          pain.heal(p.id || p);
-          this.emit('dream-pain-processed', { painId: p.id || p, dreamId, depth });
-          this._stat('pain-dream-heal');
+        const dashboard = (typeof pain.getPainMap === 'function') ? pain.getPainMap() : {};
+        for (const [region, info] of Object.entries(dashboard)) {
+          if (info && ((info.activePains && info.activePains.length > 0) || info.level > 0)) {
+            pain.heal(region, 15);
+            this.emit('dream-pain-processed', { region, dreamId, depth });
+            this._stat('pain-dream-heal');
+          }
         }
       });
 

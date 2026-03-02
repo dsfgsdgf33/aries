@@ -8,7 +8,7 @@
 [![Dependencies](https://img.shields.io/badge/Dependencies-ZERO-00ff41?style=for-the-badge)](/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![LOC](https://img.shields.io/badge/Lines_of_Code-130K+-ff6600?style=for-the-badge)](/)
-[![Modules](https://img.shields.io/badge/Core_Modules-310-ff0066?style=for-the-badge)](/)
+[![Modules](https://img.shields.io/badge/Core_Modules-312-ff0066?style=for-the-badge)](/)
 [![Panels](https://img.shields.io/badge/Dashboard_Panels-140+-00d4ff?style=for-the-badge)](/)
 [![Tools](https://img.shields.io/badge/Built--in_Tools-42+-8b5cf6?style=for-the-badge)](/)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-00d4ff?style=for-the-badge)](/)
@@ -25,7 +25,7 @@
 
 ## What is Aries?
 
-Aries is a **self-hosted artificial mind** — 310 core modules, 130K+ lines of code, zero npm dependencies. It's not a chatbot wrapper. It's a complete cognitive architecture inspired by the human brain and body, with one mission: **train a 405B→1T parameter model on a home server, powered by a global swarm of contributors who earn tokens for their compute.**
+Aries is a **self-hosted artificial mind** — 312 core modules, 130K+ lines of code, zero npm dependencies. It's not a chatbot wrapper. It's a complete cognitive architecture inspired by the human brain and body, with one mission: **train a 405B→1T parameter model on a home server, powered by a global swarm of contributors who earn tokens for their compute.**
 
 Most AI tools wait for instructions. Aries **thinks** when nobody's talking to it, **dreams** during idle time, **feels** emotions that change its behavior, **heals** itself when it crashes, **evolves** through behavioral genetics, and **remembers** across lifetimes through DNA export.
 
@@ -306,9 +306,9 @@ Pit agents against each other on the same task. Best output wins. Loser learns f
 
 <br>
 
-## 🧪 AGI Systems — 37 New Cognitive Modules
+## 🧪 AGI Systems — 39 New Cognitive Modules
 
-> **The most ambitious cognitive upgrade in Aries history.** 37 new modules spanning self-originating objectives, autonomous experimentation, strategic forgetting, adversarial reasoning, pain architecture, and more — pushing Aries from artificial intelligence toward artificial general intelligence.
+> **The most ambitious cognitive upgrade in Aries history.** 39 new modules spanning self-originating objectives, autonomous experimentation, strategic forgetting, adversarial reasoning, pain architecture, and more — pushing Aries from artificial intelligence toward artificial general intelligence.
 
 ### 🎯 Core Agency
 
@@ -384,6 +384,13 @@ Pit agents against each other on the same task. Best output wins. Loser learns f
 | **Phantom Limb** | 7/10 | Neural plasticity after module loss. SHOCK → PHANTOM → REWIRING → ADAPTED recovery stages. Preemptive plasticity via simulated loss. |
 | **Causal Paradox Engine** | 6/10 | Retroactive decision re-weighting. Causal chains. Paradox detection. Counterfactual what-if analysis. |
 | **Information Entanglement** | 6/10 | Bidirectional semantic coupling. Changes propagate to entangled concepts. Spooky-action pings increase partner salience. |
+
+### 🌀 Recursive Dreams & Integration
+
+| Module | Score | What It Does |
+|--------|-------|-------------|
+| **Recursive Dream Engine** | 10/10 | Progressive abstraction engine — dreams that have dreams. 5 layers (raw replay → pattern extraction → theory formation → pure abstraction → meta-dreams). Inception problem solving plants problems at surface, solutions bubble up through 3-4 rounds of creative recombination. Nightmare recursion imagines worst-case scenarios beyond known failures. Dream archaeology excavates buried insights. Communicates in emergent language — deeper layers use increasingly compressed symbols. |
+| **Dream Integration Web** | 10/10 | The glue that connects dreams to 9 AGI modules bidirectionally. Shadow Self challenges dream insights before surfacing. Deeper layers cost less metabolic energy (like real REM). The Stranger appears in Layer 3+ with cryptic messages. Pain heals through deep dreaming. Each dream layer IS a consciousness fragment. Severe pain auto-triggers healing dreams. Critical metabolism forces restorative cycles. |
 
 <br>
 
@@ -463,7 +470,7 @@ File ops · Shell execution · Web browsing · Web search · Web scraping · Scr
 
 **Autonomy:** opportunity-scanner · market-whispers · skill-marketplace · predictive-ui · ambient-mode · voice-personality · social-intelligence · world-model
 
-**AGI Systems (37 modules):** self-originating-objectives · autonomous-experiment-engine · recursive-self-compilation · cognitive-metabolism · anti-memory · epistemic-debt-tracker · adversarial-memory-consolidation · autonomous-knowledge-synthesis · temporal-consciousness · failure-archaeology · thought-fossil-record · cognitive-immune-system · shadow-self · moral-scar-tissue · proof-of-thought-consensus · abyss-protocol · predictive-self-modeling · the-stranger · god-module · cognitive-spectrography · mirror-that-lies · internal-economy · emergent-language · contextual-identity-shifting · cognitive-mycelium · consciousness-fragmentation · ontological-virus · cognitive-plate-tectonics · semantic-metabolism · pain-architecture · cognitive-scar-topology · existential-dread-protocol · neural-tide-system · qualia-engine · identity-dissolution · cognitive-dna-crossover · cognitive-symbiosis · phantom-limb · causal-paradox-engine · information-entanglement
+**AGI Systems (39 modules):** self-originating-objectives · autonomous-experiment-engine · recursive-self-compilation · cognitive-metabolism · anti-memory · epistemic-debt-tracker · adversarial-memory-consolidation · autonomous-knowledge-synthesis · temporal-consciousness · failure-archaeology · thought-fossil-record · cognitive-immune-system · shadow-self · moral-scar-tissue · proof-of-thought-consensus · abyss-protocol · predictive-self-modeling · the-stranger · god-module · cognitive-spectrography · mirror-that-lies · internal-economy · emergent-language · contextual-identity-shifting · cognitive-mycelium · consciousness-fragmentation · ontological-virus · cognitive-plate-tectonics · semantic-metabolism · pain-architecture · cognitive-scar-topology · existential-dread-protocol · neural-tide-system · qualia-engine · identity-dissolution · cognitive-dna-crossover · cognitive-symbiosis · phantom-limb · causal-paradox-engine · information-entanglement · recursive-dream-engine · dream-integration-web
 
 </details>
 
@@ -574,7 +581,7 @@ Cyberpunk web UI at `localhost:3333`:
 | **Tools** | Browser · Desktop · Search · Terminal · Log Stream · Tool Gen |
 | **Network** | Swarm · Mesh · Providers · USB Swarm · WiFi Deploy · Proxy Mode · Miner |
 | **System** | Monitor · Health · Reputation · Models · Logs · Backup · Users · Credits |
-| **AGI Systems** | 🎯 Objectives · 🔬 Experiments · 🔄 Self-Compiler · ⚡ Metabolism · 🗑️ Anti-Memory · 💳 Epistemic Debt · ⚖️ Memory Debate · 💡 Synthesis · ⏳ Temporal · 🦴 Archaeology · 🪨 Fossils · 🛡️ Immune · 👤 Shadow · 💔 Moral · 🤝 Consensus · 🕳️ Abyss · 🔮 Prediction · 👁️ Stranger · ✨ God · 📊 Spectro · 🪞 Mirror · 💰 Economy · 🗣️ Language · 🔀 Identity · 🍄 Mycelium · 💎 Fragment · 🦠 Virus · 🌋 Tectonics · 🫁 Digestion · 🩸 Pain · 🗺️ Scars · 💀 Dread · 🌊 Tides · 🎨 Qualia · 🌀 Dissolution · 🧬 DNA Cross · 🤝 Symbiosis · 👻 Phantom · 🔄 Paradox · 🔗 Entangle |
+| **AGI Systems** | 🎯 Objectives · 🔬 Experiments · 🔄 Self-Compiler · ⚡ Metabolism · 🗑️ Anti-Memory · 💳 Epistemic Debt · ⚖️ Memory Debate · 💡 Synthesis · ⏳ Temporal · 🦴 Archaeology · 🪨 Fossils · 🛡️ Immune · 👤 Shadow · 💔 Moral · 🤝 Consensus · 🕳️ Abyss · 🔮 Prediction · 👁️ Stranger · ✨ God · 📊 Spectro · 🪞 Mirror · 💰 Economy · 🗣️ Language · 🔀 Identity · 🍄 Mycelium · 💎 Fragment · 🦠 Virus · 🌋 Tectonics · 🫁 Digestion · 🩸 Pain · 🗺️ Scars · 💀 Dread · 🌊 Tides · 🎨 Qualia · 🌀 Dissolution · 🧬 DNA Cross · 🤝 Symbiosis · 👻 Phantom · 🔄 Paradox · 🔗 Entangle · 🌀 Dream Layers |
 | **Special** | 🎪 Theater · 🔗 Causal · 🧬 Memetic · 🎯 Commitments · 🌱 Growth · 🌐 World · 🎭 Social |
 
 ### UI Features
@@ -601,7 +608,7 @@ Cyberpunk web UI at `localhost:3333`:
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                            ARIES PLATFORM                                │
-│              310 Modules · 130K+ LOC · Zero Dependencies                 │
+│              312 Modules · 130K+ LOC · Zero Dependencies                 │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌───────────────────── THE MIND ─────────────────────┐                  │
@@ -619,7 +626,8 @@ Cyberpunk web UI at `localhost:3333`:
 │  │  Immune System ←→ Shadow Self ←→ Moral Scars        │                  │
 │  │  Pain Architecture ←→ Qualia ←→ Neural Tides        │                  │
 │  │  Anti-Memory ←→ Epistemic Debt ←→ Knowledge Synth   │                  │
-│  │           ╚══ 37 AGI Modules (new) ══╝             │                  │
+│  │  Recursive Dream Engine ←→ Dream Integration Web    │                  │
+│  │           ╚══ 39 AGI Modules (new) ══╝             │                  │
 │  └────────────────────────────────────────────────────┘                  │
 │                              ↕                                           │
 │  ┌───────────────────── THE BODY ─────────────────────┐                  │
