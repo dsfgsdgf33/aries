@@ -1,7 +1,7 @@
 /**
  * ARIES — Consciousness Fragmentation
  * Deliberate shattering and re-merging of consciousness for complex problem solving.
- * Conflict resolution between fragments IS the cognition.
+ * 5 merge strategies, fragment specialization, bandwidth limits, emergency defragmentation.
  */
 
 'use strict';
@@ -21,14 +21,25 @@ function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); 
 function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, null, 2)); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
-const MERGE_STRATEGIES = ['SYNTHESIS', 'DOMINANCE', 'VOTE', 'HIERARCHY', 'CREATIVE'];
+const MERGE_STRATEGIES = ['MAJORITY_VOTE', 'WEIGHTED_AVERAGE', 'SYNTHESIS', 'DEBATE', 'HIERARCHICAL'];
+
+const SPECIALIZATIONS = {
+  analytical:  { strengths: ['logic', 'data', 'precision'], weaknesses: ['creativity', 'emotion'] },
+  creative:    { strengths: ['novelty', 'association', 'metaphor'], weaknesses: ['precision', 'data'] },
+  emotional:   { strengths: ['empathy', 'intuition', 'values'], weaknesses: ['logic', 'data'] },
+  critical:    { strengths: ['skepticism', 'risk', 'validation'], weaknesses: ['novelty', 'speed'] },
+  integrative: { strengths: ['synthesis', 'connections', 'balance'], weaknesses: ['depth', 'specialization'] },
+  pragmatic:   { strengths: ['action', 'feasibility', 'speed'], weaknesses: ['theory', 'depth'] },
+};
 
 const DEFAULT_CONFIG = {
   maxFragments: 8,
   maxDepth: 3,
   coherenceDecayRate: 0.01,
   baseCoherence: 1.0,
-  conflictWeight: 0.15,       // coherence cost per unresolved conflict
+  conflictWeight: 0.15,
+  bandwidthLimit: 3,         // max messages between fragments per tick
+  emergencyThreshold: 0.15,  // coherence below this triggers emergency defrag
 };
 
 class ConsciousnessFragmentation extends EventEmitter {
@@ -36,21 +47,25 @@ class ConsciousnessFragmentation extends EventEmitter {
     super();
     this.ai = opts.ai || null;
     this.config = Object.assign({}, DEFAULT_CONFIG, opts.config || {});
-
     ensureDir();
     this._fragments = readJSON(FRAGMENTS_PATH, { active: {}, history: [] });
     this._merges = readJSON(MERGES_PATH, { completed: [], pending: [] });
-    this._coherence = readJSON(COHERENCE_PATH, { score: this.config.baseCoherence, history: [], lastUpdated: Date.now() });
+    this._coherence = readJSON(COHERENCE_PATH, {
+      score: this.config.baseCoherence, history: [], lastUpdated: Date.now(),
+      bandwidth: { messagesThisTick: 0, totalMessages: 0 },
+    });
   }
-
-  // --- Persistence ---
 
   _saveFragments() { writeJSON(FRAGMENTS_PATH, this._fragments); }
   _saveMerges() { writeJSON(MERGES_PATH, this._merges); }
   _saveCoherence() { writeJSON(COHERENCE_PATH, this._coherence); }
 
-  // --- Fragmentation ---
-
+  /**
+   * Fragment consciousness into independent pieces.
+   * @param {string} problem
+   * @param {number} numFragments
+   * @param {object} opts - { depth, parentFragment, specializations: string[] }
+   */
   fragment(problem, numFragments = 3, opts = {}) {
     const num = Math.min(numFragments, this.config.maxFragments);
     const depth = (opts.depth || 0);
@@ -58,10 +73,20 @@ class ConsciousnessFragmentation extends EventEmitter {
       return { error: 'Maximum fragmentation depth reached', maxDepth: this.config.maxDepth };
     }
 
+    // Emergency check
+    if (this._coherence.score < this.config.emergencyThreshold) {
+      return { error: 'Coherence critically low — cannot fragment. Run emergencyDefragment() first.' };
+    }
+
     const fragmentationId = uuid();
+    const requestedSpecs = opts.specializations || [];
+    const availableSpecs = Object.keys(SPECIALIZATIONS);
     const fragments = [];
 
     for (let i = 0; i < num; i++) {
+      const spec = requestedSpecs[i] || availableSpecs[i % availableSpecs.length];
+      const specDef = SPECIALIZATIONS[spec] || SPECIALIZATIONS.integrative;
+
       const frag = {
         id: uuid(),
         fragmentationId,
@@ -73,16 +98,21 @@ class ConsciousnessFragmentation extends EventEmitter {
         confidence: 0,
         depth,
         parentFragment: opts.parentFragment || null,
+        specialization: spec,
+        strengths: specDef.strengths,
+        weaknesses: specDef.weaknesses,
         status: 'active',
+        messages: [],       // inter-fragment communication
+        messagesSent: 0,
+        messagesReceived: 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        pastFragmentations: [],
+        isolationLevel: 0,  // 0=full access, 1=fully isolated
       };
       this._fragments.active[frag.id] = frag;
       fragments.push(frag);
     }
 
-    // Reduce coherence on fragmentation
     this._coherence.score = Math.max(0, this._coherence.score - (0.05 * num));
     this._coherence.history.push({ event: 'fragment', fragmentationId, num, depth, timestamp: Date.now() });
     if (this._coherence.history.length > 500) this._coherence.history = this._coherence.history.slice(-500);
@@ -93,13 +123,15 @@ class ConsciousnessFragmentation extends EventEmitter {
 
     return {
       fragmentationId,
-      fragments: fragments.map(f => ({ id: f.id, index: f.index })),
-      problem,
-      depth,
+      fragments: fragments.map(f => ({ id: f.id, index: f.index, specialization: f.specialization, strengths: f.strengths })),
+      problem, depth,
       coherenceAfter: Math.round(this._coherence.score * 100) / 100,
     };
   }
 
+  /**
+   * Process a fragment — give it conclusions.
+   */
   processFragment(fragmentId, aspect, opts = {}) {
     const frag = this._fragments.active[fragmentId];
     if (!frag) return { error: 'Fragment not found or already merged' };
@@ -108,36 +140,71 @@ class ConsciousnessFragmentation extends EventEmitter {
     frag.perspective = opts.perspective || null;
     frag.conclusions = opts.conclusions || null;
     frag.confidence = Math.max(0, Math.min(1, opts.confidence || 0.5));
+
+    // Specialization bonus: if aspect aligns with strengths, boost confidence
+    if (frag.strengths.some(s => (aspect || '').toLowerCase().includes(s))) {
+      frag.confidence = Math.min(1, frag.confidence + 0.1);
+    }
+    if (frag.weaknesses.some(w => (aspect || '').toLowerCase().includes(w))) {
+      frag.confidence = Math.max(0, frag.confidence - 0.1);
+    }
+
     frag.status = 'processed';
     frag.updatedAt = Date.now();
-
     this._saveFragments();
-    this.emit('fragment-processed', { fragmentId, aspect, confidence: frag.confidence });
+    this.emit('fragment-processed', { fragmentId, aspect, confidence: frag.confidence, specialization: frag.specialization });
 
-    return {
-      fragmentId,
-      aspect,
-      confidence: frag.confidence,
-      status: 'processed',
-    };
+    return { fragmentId, aspect, confidence: frag.confidence, specialization: frag.specialization, status: 'processed' };
   }
 
-  // --- Sub-fragmentation (recursive) ---
+  /**
+   * Send a message between fragments (bandwidth-limited).
+   */
+  sendMessage(fromId, toId, message) {
+    const from = this._fragments.active[fromId];
+    const to = this._fragments.active[toId];
+    if (!from || !to) return { error: 'Fragment(s) not found' };
 
+    // Bandwidth check
+    if (this._coherence.bandwidth.messagesThisTick >= this.config.bandwidthLimit) {
+      return { error: 'Bandwidth exhausted this tick', limit: this.config.bandwidthLimit };
+    }
+
+    // Isolation check
+    if (from.isolationLevel > 0.8 || to.isolationLevel > 0.8) {
+      return { error: 'Fragment too isolated for communication' };
+    }
+
+    const msg = { from: fromId, to: toId, content: message, timestamp: Date.now() };
+    to.messages.push(msg);
+    if (to.messages.length > 20) to.messages = to.messages.slice(-20);
+    from.messagesSent++;
+    to.messagesReceived++;
+    this._coherence.bandwidth.messagesThisTick++;
+    this._coherence.bandwidth.totalMessages++;
+
+    this._saveFragments();
+    this._saveCoherence();
+    this.emit('fragment-message', { from: fromId, to: toId });
+    return { sent: true, bandwidthRemaining: this.config.bandwidthLimit - this._coherence.bandwidth.messagesThisTick };
+  }
+
+  /**
+   * Sub-fragment a processed fragment.
+   */
   subFragment(fragmentId, numFragments = 2) {
     const parent = this._fragments.active[fragmentId];
     if (!parent) return { error: 'Parent fragment not found' };
     if (parent.status !== 'processed') return { error: 'Fragment must be processed before sub-fragmenting' };
 
-    return this.fragment(
-      parent.aspect || parent.problem,
-      numFragments,
-      { depth: parent.depth + 1, parentFragment: fragmentId }
-    );
+    return this.fragment(parent.aspect || parent.problem, numFragments, {
+      depth: parent.depth + 1, parentFragment: fragmentId,
+    });
   }
 
-  // --- Merging ---
-
+  /**
+   * Merge fragments using one of 5 strategies.
+   */
   merge(fragmentIds, strategy = 'SYNTHESIS') {
     if (!MERGE_STRATEGIES.includes(strategy)) {
       return { error: `Unknown strategy. Use: ${MERGE_STRATEGIES.join(', ')}` };
@@ -150,50 +217,34 @@ class ConsciousnessFragmentation extends EventEmitter {
       fragments.push(f);
     }
 
-    // Detect conflicts
     const conflicts = this._detectConflicts(fragments);
-
-    // Resolve based on strategy
     const resolution = this._resolve(fragments, conflicts, strategy);
 
     const mergeId = uuid();
     const merge = {
-      id: mergeId,
-      fragmentIds,
-      strategy,
-      conflicts,
-      resolution,
+      id: mergeId, fragmentIds, strategy, conflicts, resolution,
       insights: resolution.insights || [],
       unifiedConclusion: resolution.conclusion,
-      coherenceGain: 0,
-      timestamp: Date.now(),
+      coherenceGain: 0, timestamp: Date.now(),
     };
 
-    // Move fragments to history
     for (const f of fragments) {
       f.status = 'merged';
       f.mergedInto = mergeId;
-      f.pastFragmentations.push(merge.id);
       this._fragments.history.push(f);
       delete this._fragments.active[f.id];
     }
-    if (this._fragments.history.length > 500) {
-      this._fragments.history = this._fragments.history.slice(-500);
-    }
+    if (this._fragments.history.length > 500) this._fragments.history = this._fragments.history.slice(-500);
 
-    // Coherence recovery from merge
     const conflictCost = conflicts.length * this.config.conflictWeight;
     const resolutionBonus = resolution.resolved ? (0.1 * fragments.length) : 0;
     const coherenceGain = resolutionBonus - conflictCost;
     this._coherence.score = Math.max(0, Math.min(this.config.baseCoherence, this._coherence.score + coherenceGain));
     merge.coherenceGain = Math.round(coherenceGain * 100) / 100;
-
     this._coherence.history.push({ event: 'merge', mergeId, strategy, conflicts: conflicts.length, coherenceGain: merge.coherenceGain, timestamp: Date.now() });
 
     this._merges.completed.push(merge);
-    if (this._merges.completed.length > 200) {
-      this._merges.completed = this._merges.completed.slice(-200);
-    }
+    if (this._merges.completed.length > 200) this._merges.completed = this._merges.completed.slice(-200);
 
     this._saveFragments();
     this._saveMerges();
@@ -201,13 +252,51 @@ class ConsciousnessFragmentation extends EventEmitter {
     this.emit('merge', { mergeId, strategy, conflicts: conflicts.length, insights: merge.insights.length });
 
     return {
-      mergeId,
-      strategy,
-      conflicts,
-      insights: merge.insights,
+      mergeId, strategy, conflicts, insights: merge.insights,
       unifiedConclusion: merge.unifiedConclusion,
       coherenceAfter: Math.round(this._coherence.score * 100) / 100,
       coherenceGain: merge.coherenceGain,
+    };
+  }
+
+  /**
+   * Emergency defragmentation — force-merge ALL active fragments immediately.
+   */
+  emergencyDefragment() {
+    const activeIds = Object.keys(this._fragments.active);
+    if (activeIds.length === 0) return { status: 'nothing-to-defragment', coherence: this._coherence.score };
+
+    this.emit('emergency-defragment', { fragmentCount: activeIds.length });
+
+    // Force all fragments to merged state, recover coherence
+    for (const id of activeIds) {
+      const f = this._fragments.active[id];
+      f.status = 'emergency-merged';
+      f.emergencyAt = Date.now();
+      this._fragments.history.push(f);
+      delete this._fragments.active[id];
+    }
+    if (this._fragments.history.length > 500) this._fragments.history = this._fragments.history.slice(-500);
+
+    // Major coherence recovery
+    this._coherence.score = Math.min(this.config.baseCoherence, this._coherence.score + 0.4);
+    this._coherence.history.push({ event: 'emergency-defragment', count: activeIds.length, timestamp: Date.now() });
+
+    const mergeId = uuid();
+    this._merges.completed.push({
+      id: mergeId, fragmentIds: activeIds, strategy: 'EMERGENCY',
+      conflicts: [], resolution: { resolved: true, conclusion: 'Emergency defragmentation — all fragments collapsed', insights: ['Emergency: coherence was critically low'], method: 'EMERGENCY' },
+      insights: ['Emergency defragmentation performed'], unifiedConclusion: 'Emergency collapse',
+      coherenceGain: 0.4, timestamp: Date.now(),
+    });
+
+    this._saveFragments();
+    this._saveMerges();
+    this._saveCoherence();
+
+    return {
+      status: 'defragmented', fragmentsMerged: activeIds.length,
+      coherenceAfter: Math.round(this._coherence.score * 100) / 100,
     };
   }
 
@@ -217,33 +306,31 @@ class ConsciousnessFragmentation extends EventEmitter {
 
     for (let i = 0; i < processed.length; i++) {
       for (let j = i + 1; j < processed.length; j++) {
-        const a = processed[i];
-        const b = processed[j];
-
-        // Confidence divergence = potential conflict
+        const a = processed[i], b = processed[j];
         const confDiff = Math.abs(a.confidence - b.confidence);
         if (confDiff > 0.3) {
           conflicts.push({
-            type: 'confidence_divergence',
-            fragments: [a.id, b.id],
-            detail: `Fragment ${a.index} (conf: ${a.confidence}) vs Fragment ${b.index} (conf: ${b.confidence})`,
+            type: 'confidence_divergence', fragments: [a.id, b.id],
+            detail: `Fragment ${a.index}[${a.specialization}] (${a.confidence}) vs Fragment ${b.index}[${b.specialization}] (${b.confidence})`,
             severity: confDiff > 0.6 ? 'high' : 'medium',
           });
         }
-
-        // Different aspects with conclusions that might conflict
         if (a.conclusions && b.conclusions && a.aspect !== b.aspect) {
-          const aStr = typeof a.conclusions === 'string' ? a.conclusions : JSON.stringify(a.conclusions);
-          const bStr = typeof b.conclusions === 'string' ? b.conclusions : JSON.stringify(b.conclusions);
-          // Simple heuristic: if conclusions reference different aspects, flag for review
-          if (aStr.length > 0 && bStr.length > 0) {
+          conflicts.push({
+            type: 'perspective_tension', fragments: [a.id, b.id],
+            detail: `${a.specialization} vs ${b.specialization} perspectives may conflict`,
+            aspectA: a.aspect, aspectB: b.aspect, severity: 'low',
+          });
+        }
+        // Specialization conflict: opposite strengths
+        if (a.specialization && b.specialization) {
+          const aWeak = new Set(SPECIALIZATIONS[a.specialization]?.weaknesses || []);
+          const bStr = SPECIALIZATIONS[b.specialization]?.strengths || [];
+          if (bStr.some(s => aWeak.has(s))) {
             conflicts.push({
-              type: 'perspective_tension',
-              fragments: [a.id, b.id],
-              detail: `Different aspects may have incompatible conclusions`,
-              aspectA: a.aspect,
-              aspectB: b.aspect,
-              severity: 'low',
+              type: 'specialization_tension', fragments: [a.id, b.id],
+              detail: `${a.specialization}'s weakness is ${b.specialization}'s strength — productive tension`,
+              severity: 'creative',
             });
           }
         }
@@ -254,63 +341,92 @@ class ConsciousnessFragmentation extends EventEmitter {
 
   _resolve(fragments, conflicts, strategy) {
     const processed = fragments.filter(f => f.conclusions);
-    if (processed.length === 0) {
-      return { resolved: false, conclusion: null, insights: [], method: strategy };
-    }
+    if (processed.length === 0) return { resolved: false, conclusion: null, insights: [], method: strategy };
 
     const insights = [];
     let conclusion = null;
 
     switch (strategy) {
-      case 'SYNTHESIS': {
-        // Combine all conclusions
-        const parts = processed.map(f => ({
-          aspect: f.aspect,
-          conclusions: f.conclusions,
-          confidence: f.confidence,
+      case 'MAJORITY_VOTE': {
+        // Each fragment votes; grouped by similar conclusions, majority wins
+        const votes = {};
+        for (const f of processed) {
+          const key = typeof f.conclusions === 'string' ? f.conclusions.slice(0, 100) : JSON.stringify(f.conclusions).slice(0, 100);
+          if (!votes[key]) votes[key] = { conclusions: f.conclusions, voters: [], totalConfidence: 0 };
+          votes[key].voters.push(f.index);
+          votes[key].totalConfidence += f.confidence;
+        }
+        const sorted = Object.values(votes).sort((a, b) => b.voters.length - a.voters.length || b.totalConfidence - a.totalConfidence);
+        conclusion = { type: 'majority_vote', winner: sorted[0].conclusions, votes: sorted[0].voters.length, total: processed.length, alternatives: sorted.slice(1).length };
+        insights.push(`Majority vote: ${sorted[0].voters.length}/${processed.length} fragments agreed`);
+        if (sorted.length > 1) insights.push(`${sorted.length - 1} dissenting position(s) recorded`);
+        break;
+      }
+      case 'WEIGHTED_AVERAGE': {
+        // Confidence-weighted blend of all conclusions
+        const totalConf = processed.reduce((s, f) => s + f.confidence, 0) || 1;
+        const weighted = processed.map(f => ({
+          fragment: f.index, specialization: f.specialization,
+          weight: Math.round((f.confidence / totalConf) * 100) / 100,
+          aspect: f.aspect, conclusions: f.conclusions,
         }));
+        weighted.sort((a, b) => b.weight - a.weight);
+        conclusion = { type: 'weighted_average', weights: weighted, dominantAspect: weighted[0].aspect };
+        insights.push(`Weighted average across ${processed.length} fragments, confidence-proportional`);
+        insights.push(`Dominant contributor: fragment ${weighted[0].fragment} (${weighted[0].specialization}) at ${weighted[0].weight} weight`);
+        break;
+      }
+      case 'SYNTHESIS': {
+        const parts = processed.map(f => ({ aspect: f.aspect, conclusions: f.conclusions, confidence: f.confidence, specialization: f.specialization }));
         conclusion = { type: 'synthesis', parts, combined: true };
         if (conflicts.length > 0) {
           insights.push(`Synthesized ${processed.length} perspectives despite ${conflicts.length} tension(s)`);
-          insights.push('Dialectic synthesis: tensions themselves reveal deeper structure');
+          insights.push('Dialectic synthesis: tensions reveal deeper structure');
         }
-        insights.push(`Merged ${processed.length} fragment perspectives into unified view`);
+        insights.push(`Merged ${processed.length} specialized fragment perspectives into unified view`);
         break;
       }
-      case 'DOMINANCE': {
-        // Highest confidence wins
-        const dominant = processed.reduce((best, f) => f.confidence > best.confidence ? f : best, processed[0]);
-        conclusion = { type: 'dominance', winner: dominant.id, aspect: dominant.aspect, conclusions: dominant.conclusions, confidence: dominant.confidence };
-        insights.push(`Fragment ${dominant.index} dominated with confidence ${dominant.confidence}`);
-        if (conflicts.length > 0) insights.push(`${conflicts.length} dissenting perspective(s) overridden`);
-        break;
-      }
-      case 'VOTE': {
-        // Democratic: weight by confidence
-        const totalConf = processed.reduce((s, f) => s + f.confidence, 0);
-        const weighted = processed.map(f => ({ ...f, weight: f.confidence / (totalConf || 1) }));
-        weighted.sort((a, b) => b.weight - a.weight);
-        conclusion = { type: 'vote', rankings: weighted.map(f => ({ fragment: f.index, weight: Math.round(f.weight * 100) / 100 })), winner: weighted[0].aspect };
-        insights.push(`Democratic resolution: ${weighted.length} fragments voted, weight distributed by confidence`);
-        break;
-      }
-      case 'HIERARCHY': {
-        // Priority by fragment index (lower = higher priority)
-        const sorted = [...processed].sort((a, b) => a.index - b.index);
-        conclusion = { type: 'hierarchy', primary: sorted[0].conclusions, aspect: sorted[0].aspect, subordinate: sorted.slice(1).map(f => f.aspect) };
-        insights.push(`Hierarchical resolution: Fragment ${sorted[0].index} took priority`);
-        break;
-      }
-      case 'CREATIVE': {
-        // Novel: identify what NO fragment concluded
-        const allAspects = processed.map(f => f.aspect).filter(Boolean);
-        const allConclusions = processed.map(f => f.conclusions);
-        conclusion = { type: 'creative', aspects: allAspects, gap: 'The space between all fragment conclusions', fragments: allConclusions };
-        insights.push('Creative resolution: the answer lies in what no fragment individually addressed');
-        if (conflicts.length > 0) {
-          insights.push(`${conflicts.length} conflict(s) reframed as creative tension — fuel for novel insight`);
+      case 'DEBATE': {
+        // Fragments argue in rounds; strongest argument wins
+        const rounds = [];
+        let remaining = [...processed];
+        let round = 0;
+        while (remaining.length > 1 && round < 5) {
+          const winners = [];
+          for (let i = 0; i < remaining.length; i += 2) {
+            if (i + 1 >= remaining.length) { winners.push(remaining[i]); continue; }
+            const a = remaining[i], b = remaining[i + 1];
+            // "Debate" score: confidence + specialization diversity bonus
+            const aScore = a.confidence + (a.specialization !== b.specialization ? 0.05 : 0);
+            const bScore = b.confidence + (a.specialization !== b.specialization ? 0.05 : 0);
+            const winner = aScore >= bScore ? a : b;
+            const loser = aScore >= bScore ? b : a;
+            winners.push(winner);
+            rounds.push({ round, winner: winner.index, loser: loser.index, margin: Math.abs(aScore - bScore) });
+          }
+          remaining = winners;
+          round++;
         }
-        insights.push('Emergent understanding from the gaps between perspectives');
+        const champion = remaining[0];
+        conclusion = { type: 'debate', champion: champion.index, specialization: champion.specialization, conclusions: champion.conclusions, rounds, totalRounds: round };
+        insights.push(`Debate resolved in ${round} round(s) — fragment ${champion.index} (${champion.specialization}) won`);
+        if (rounds.some(r => r.margin < 0.05)) insights.push('Some rounds were extremely close — consider synthesis for richer result');
+        break;
+      }
+      case 'HIERARCHICAL': {
+        // Priority: by depth (deeper = more refined), then by specialization match, then index
+        const sorted = [...processed].sort((a, b) => {
+          if (a.depth !== b.depth) return b.depth - a.depth;
+          if (a.confidence !== b.confidence) return b.confidence - a.confidence;
+          return a.index - b.index;
+        });
+        conclusion = {
+          type: 'hierarchical', primary: sorted[0].conclusions,
+          primarySpec: sorted[0].specialization, aspect: sorted[0].aspect,
+          subordinate: sorted.slice(1).map(f => ({ index: f.index, aspect: f.aspect, specialization: f.specialization })),
+        };
+        insights.push(`Hierarchical: fragment ${sorted[0].index} (${sorted[0].specialization}, depth ${sorted[0].depth}) took authority`);
+        insights.push(`${sorted.length - 1} subordinate perspective(s) preserved as context`);
         break;
       }
     }
@@ -318,18 +434,14 @@ class ConsciousnessFragmentation extends EventEmitter {
     return { resolved: true, conclusion, insights, method: strategy };
   }
 
-  // --- Query ---
-
   getConflicts(mergeId) {
     const merge = this._merges.completed.find(m => m.id === mergeId);
-    if (!merge) return { error: 'Merge not found' };
-    return merge.conflicts;
+    return merge ? merge.conflicts : { error: 'Merge not found' };
   }
 
   getInsights(mergeId) {
     const merge = this._merges.completed.find(m => m.id === mergeId);
-    if (!merge) return { error: 'Merge not found' };
-    return merge.insights;
+    return merge ? merge.insights : { error: 'Merge not found' };
   }
 
   getCoherence() {
@@ -337,8 +449,10 @@ class ConsciousnessFragmentation extends EventEmitter {
       score: Math.round(this._coherence.score * 100) / 100,
       activeFragments: Object.keys(this._fragments.active).length,
       totalMerges: this._merges.completed.length,
+      bandwidth: this._coherence.bandwidth,
+      emergencyThreshold: this.config.emergencyThreshold,
+      needsEmergency: this._coherence.score < this.config.emergencyThreshold,
       recentHistory: this._coherence.history.slice(-20).reverse(),
-      lastUpdated: this._coherence.lastUpdated,
     };
   }
 
@@ -347,6 +461,7 @@ class ConsciousnessFragmentation extends EventEmitter {
       active: Object.values(this._fragments.active).map(f => ({
         id: f.id, index: f.index, problem: f.problem, aspect: f.aspect,
         confidence: f.confidence, depth: f.depth, status: f.status,
+        specialization: f.specialization, messagesSent: f.messagesSent, messagesReceived: f.messagesReceived,
       })),
       completed: this._merges.completed.slice(-20).reverse().map(m => ({
         mergeId: m.id, strategy: m.strategy, conflicts: m.conflicts.length,
@@ -354,38 +469,43 @@ class ConsciousnessFragmentation extends EventEmitter {
       })),
       totalFragmentations: this._fragments.history.length,
       totalMerges: this._merges.completed.length,
+      specializations: SPECIALIZATIONS,
     };
   }
 
-  // --- Tick ---
-
   tick() {
-    // Coherence naturally decays when fragments are active
+    // Reset bandwidth each tick
+    this._coherence.bandwidth.messagesThisTick = 0;
+
     const activeCount = Object.keys(this._fragments.active).length;
     if (activeCount > 0) {
       const decay = this.config.coherenceDecayRate * activeCount;
       this._coherence.score = Math.max(0, this._coherence.score - decay);
     } else {
-      // Slowly recover when unified
       this._coherence.score = Math.min(this.config.baseCoherence, this._coherence.score + 0.005);
     }
     this._coherence.lastUpdated = Date.now();
+
+    // Emergency check
+    if (this._coherence.score < this.config.emergencyThreshold && activeCount > 0) {
+      this.emit('coherence-critical', { score: this._coherence.score, activeFragments: activeCount });
+    }
 
     // Stale fragment warning
     const now = Date.now();
     const stale = [];
     for (const [id, f] of Object.entries(this._fragments.active)) {
-      if (now - f.updatedAt > 300000) { // 5 min
-        stale.push(id);
-      }
+      if (now - f.updatedAt > 300000) stale.push(id);
+      // Increase isolation over time
+      f.isolationLevel = Math.min(1, (f.isolationLevel || 0) + 0.02);
     }
-    if (stale.length > 0) {
-      this.emit('stale-fragments', { fragmentIds: stale, count: stale.length });
-    }
+    if (stale.length > 0) this.emit('stale-fragments', { fragmentIds: stale, count: stale.length });
 
+    this._saveFragments();
     this._saveCoherence();
-    this.emit('tick', { coherence: Math.round(this._coherence.score * 100) / 100, activeFragments: activeCount, staleFragments: stale.length });
-    return { coherence: Math.round(this._coherence.score * 100) / 100, activeFragments: activeCount, staleFragments: stale.length };
+    const result = { coherence: Math.round(this._coherence.score * 100) / 100, activeFragments: activeCount, staleFragments: stale.length };
+    this.emit('tick', result);
+    return result;
   }
 }
 
