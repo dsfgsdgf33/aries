@@ -97,4 +97,16 @@ function stopPolling() {
   if (_interval) { clearInterval(_interval); _interval = null; }
 }
 
-module.exports = { refresh, get, getProcs, startPolling, stopPolling, cached };
+function formatUptime(seconds) {
+  if (!seconds || seconds < 0) return '0m';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0 || parts.length === 0) parts.push(`${m}m`);
+  return parts.join(' ');
+}
+
+module.exports = { refresh, get, getProcs, startPolling, stopPolling, cached, formatUptime };

@@ -74,6 +74,10 @@ function getSignature(entry) {
     const modMatch = msg.match(/Cannot find module '([^']+)'/);
     return `MODULE_MISSING:${modMatch ? modMatch[1] : 'unknown'}`;
   }
+  if (msg.includes('is not a function')) {
+    const fnMatch = msg.match(/(\w+(?:\.\w+)*)\s+is not a function/);
+    return `NOT_A_FUNCTION:${fnMatch ? fnMatch[1] : 'unknown'}`;
+  }
   // Generic signature from first line of message
   return `GENERIC:${msg.substring(0, 80).replace(/[^a-zA-Z]/g, '_')}`;
 }
@@ -145,6 +149,19 @@ async function applyFix(signature, group) {
   else if (signature === 'STACK_OVERFLOW') {
     result.action = 'Maximum call stack exceeded. Potential infinite recursion detected.';
     result.detail = group.entries[0].stack.substring(0, 500);
+    result.success = true;
+  }
+
+  else if (signature.startsWith('NOT_A_FUNCTION:')) {
+    const fnPath = signature.split(':')[1];
+    result.action = `Missing function detected: '${fnPath}'. Identified as missing export/method. Stack trace logged for manual fix.`;
+    result.detail = group.entries.map(e => e.stack).join('\n---\n').substring(0, 500);
+    // Attempt to identify the source file from stack traces
+    const stackSample = (group.entries[0].stack || '') + (group.entries[0].message || '');
+    const fileMatch = stackSample.match(/at\s+\S+\s+\(([^)]+\.js):\d+:\d+\)/);
+    if (fileMatch) {
+      result.action += ` Source file: ${fileMatch[1]}`;
+    }
     result.success = true;
   }
 
@@ -232,6 +249,9 @@ function categorizeCrash(err) {
   }
   if (entry.signature === 'STACK_OVERFLOW') {
     return { category: 'STACK_OVERFLOW', severity: 'critical', recoverable: false, suggestion: 'Check for infinite recursion' };
+  }
+  if (entry.signature.startsWith('NOT_A_FUNCTION:')) {
+    return { category: 'NOT_A_FUNCTION', severity: 'error', recoverable: true, suggestion: `Missing function: '${entry.signature.split(':')[1]}'. Check module exports.` };
   }
   if (entry.signature.startsWith('MODULE_MISSING:')) {
     return { category: 'MODULE_MISSING', severity: 'error', recoverable: false, suggestion: `Run: npm install ${entry.signature.split(':')[1]}` };

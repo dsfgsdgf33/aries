@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ARIES v7.0 - Dashboard Application
  * Cyberpunk Command Center - Final Polish
  */
@@ -157,7 +157,7 @@
     if (event === 'system' || event === 'stats') updateStats(data);
     else if (event === 'chat' || (data.type === 'chat')) {
       var chatData = event === 'chat' ? data : msg;
-      if (chatData.role === 'assistant') { hideChatTyping(); appendChatMessage('assistant', chatData.content); updateContextViz(); }
+      if (chatData.role === 'assistant' && !_agentRunning) { hideChatTyping(); appendChatMessage('assistant', chatData.content); try { updateContextViz(); } catch(e) {} }
     } else if (event === 'mood' || data.type === 'mood') {
       showMoodBadge(data.mood || msg.mood, data.emoji || msg.emoji);
     } else if (event === 'swarm' || (data.type === 'swarm')) handleSwarmEvent(event === 'swarm' ? data : msg);
@@ -414,6 +414,54 @@
       case 'knowledge-wiki': if (window.loadKnowledgeWiki) window.loadKnowledgeWiki(); break;
       case 'marketplace': if (window.loadMarketplace) window.loadMarketplace(); break;
       case 'self-arch': if (window.loadSelfArch) window.loadSelfArch(); break;
+      case 'memetic': loadMemeticPanel(); break;
+      case 'theater': loadTheaterPanel(); break;
+      case 'causal': loadCausalPanel(); break;
+      case 'desktop': desktopRefresh(); break;
+      case 'tor-service': loadTorServicePanel(); break;
+      case 'commitments': loadCommitmentsPanel(); break;
+      case 'world': loadWorldPanel(); break;
+      case 'social': loadSocialPanel(); break;
+      case 'agi-objectives': if (window.loadAgiObjectives) { var c = document.getElementById('agiObjectivesContent'); if (c) window.loadAgiObjectives(c); } break;
+      case 'agi-experiments': if (window.loadAgiExperiments) { var c = document.getElementById('agiExperimentsContent'); if (c) window.loadAgiExperiments(c); } break;
+      case 'agi-compiler': if (window.loadAgiCompiler) { var c = document.getElementById('agiCompilerContent'); if (c) window.loadAgiCompiler(c); } break;
+      case 'agi-metabolism': if (window.loadAgiMetabolism) { var c = document.getElementById('agiMetabolismContent'); if (c) window.loadAgiMetabolism(c); } break;
+      case 'agi-forgetting': if (window.loadAgiForgetting) { var c = document.getElementById('agiForgettingContent'); if (c) window.loadAgiForgetting(c); } break;
+      case 'agi-debt': if (window.loadAgiDebt) { var c = document.getElementById('agiDebtContent'); if (c) window.loadAgiDebt(c); } break;
+      case 'agi-consolidation': if (window.loadAgiConsolidation) { var c = document.getElementById('agiConsolidationContent'); if (c) window.loadAgiConsolidation(c); } break;
+      case 'agi-synthesis': if (window.loadAgiSynthesis) { var c = document.getElementById('agiSynthesisContent'); if (c) window.loadAgiSynthesis(c); } break;
+      case 'agi-temporal': if (window.loadAgiTemporal) { var c = document.getElementById('agiTemporalContent'); if (c) window.loadAgiTemporal(c); } break;
+      case 'agi-archaeology': if (window.loadAgiArchaeology) { var c = document.getElementById('agiArchaeologyContent'); if (c) window.loadAgiArchaeology(c); } break;
+      case 'agi-fossils': if (window.loadAgiFossils) { var c = document.getElementById('agiFossilsContent'); if (c) window.loadAgiFossils(c); } break;
+      case 'agi-immune': if (window.loadAgiImmune) { var c = document.getElementById('agiImmuneContent'); if (c) window.loadAgiImmune(c); } break;
+      case 'agi-shadow': if (window.loadAgiShadow) { var c = document.getElementById('agiShadowContent'); if (c) window.loadAgiShadow(c); } break;
+      case 'agi-moral': if (window.loadAgiMoral) { var c = document.getElementById('agiMoralContent'); if (c) window.loadAgiMoral(c); } break;
+      case 'agi-consensus': if (window.loadAgiConsensus) { var c = document.getElementById('agiConsensusContent'); if (c) window.loadAgiConsensus(c); } break;
+      case 'agi-abyss': if (window.loadAgiAbyss) { var c = document.getElementById('agiAbyssContent'); if (c) window.loadAgiAbyss(c); } break;
+      case 'agi-predictive': if (window.loadAgiPredictive) { var c = document.getElementById('agiPredictiveContent'); if (c) window.loadAgiPredictive(c); } break;
+      case 'agi-stranger': if (window.loadAgiStranger) { var c = document.getElementById('agiStrangerContent'); if (c) window.loadAgiStranger(c); } break;
+      case 'agi-god': if (window.loadAgiGod) { var c = document.getElementById('agiGodContent'); if (c) window.loadAgiGod(c); } break;
+      case 'agi-spectro': if (window.loadAgiSpectro) { var c = document.getElementById('agiSpectroContent'); if (c) window.loadAgiSpectro(c); } break;
+      case 'agi-mirror': if (window.loadAgiMirror) { var c = document.getElementById('agiMirrorContent'); if (c) window.loadAgiMirror(c); } break;
+      case 'agi-economy': if (window.loadAgiEconomy) { var c = document.getElementById('agiEconomyContent'); if (c) window.loadAgiEconomy(c); } break;
+      case 'agi-language': if (window.loadAgiLanguage) { var c = document.getElementById('agiLanguageContent'); if (c) window.loadAgiLanguage(c); } break;
+      case 'agi-identity': if (window.loadAgiIdentity) { var c = document.getElementById('agiIdentityContent'); if (c) window.loadAgiIdentity(c); } break;
+      case 'agi-mycelium': if (window.loadAgiMycelium) { var c = document.getElementById('agiMyceliumContent'); if (c) window.loadAgiMycelium(c); } break;
+      case 'agi-fragment': if (window.loadAgiFragment) { var c = document.getElementById('agiFragmentContent'); if (c) window.loadAgiFragment(c); } break;
+      case 'agi-virus': if (window.loadAgiVirus) { var c = document.getElementById('agiVirusContent'); if (c) window.loadAgiVirus(c); } break;
+      case 'agi-tectonics': if (window.loadAgiTectonics) { var c = document.getElementById('agiTectonicsContent'); if (c) window.loadAgiTectonics(c); } break;
+      case 'agi-digestion': if (window.loadAgiDigestion) { var c = document.getElementById('agiDigestionContent'); if (c) window.loadAgiDigestion(c); } break;
+      case 'agi-pain': if (window.loadAgiPain) { var c = document.getElementById('agiPainContent'); if (c) window.loadAgiPain(c); } break;
+      case 'agi-scartopo': if (window.loadAgiScarTopo) { var c = document.getElementById('agiScarTopoContent'); if (c) window.loadAgiScarTopo(c); } break;
+      case 'agi-dread': if (window.loadAgiDread) { var c = document.getElementById('agiDreadContent'); if (c) window.loadAgiDread(c); } break;
+      case 'agi-tides': if (window.loadAgiTides) { var c = document.getElementById('agiTidesContent'); if (c) window.loadAgiTides(c); } break;
+      case 'agi-qualia': if (window.loadAgiQualia) { var c = document.getElementById('agiQualiaContent'); if (c) window.loadAgiQualia(c); } break;
+      case 'agi-dissolution': if (window.loadAgiDissolution) { var c = document.getElementById('agiDissolutionContent'); if (c) window.loadAgiDissolution(c); } break;
+      case 'agi-dna-cross': if (window.loadAgiDnaCross) { var c = document.getElementById('agiDnaCrossContent'); if (c) window.loadAgiDnaCross(c); } break;
+      case 'agi-symbiosis': if (window.loadAgiSymbiosis) { var c = document.getElementById('agiSymbiosisContent'); if (c) window.loadAgiSymbiosis(c); } break;
+      case 'agi-phantom': if (window.loadAgiPhantom) { var c = document.getElementById('agiPhantomContent'); if (c) window.loadAgiPhantom(c); } break;
+      case 'agi-paradox': if (window.loadAgiParadox) { var c = document.getElementById('agiParadoxContent'); if (c) window.loadAgiParadox(c); } break;
+      case 'agi-entangle': if (window.loadAgiEntangle) { var c = document.getElementById('agiEntangleContent'); if (c) window.loadAgiEntangle(c); } break;
     }
   }
 
@@ -693,6 +741,7 @@
     if (msg === '/clear') { clearChat(); input.value = ''; input.style.height = 'auto'; return; }
     if (msg === '/export') { exportChat(); input.value = ''; input.style.height = 'auto'; return; }
     if (msg === '/party') { triggerParty(); input.value = ''; input.style.height = 'auto'; return; }
+    if (msg === '/reset') { _agentRunning = false; showAgentWorking(false); hideChatTyping(); input.value = ''; input.style.height = 'auto'; toast('Chat state reset', 'info'); return; }
     if (msg.startsWith('/persona ')) { switchPersona(msg.split(' ')[1]); input.value = ''; input.style.height = 'auto'; return; }
 
     var fullMsg = msg;
@@ -702,7 +751,7 @@
       _chatAttachments = []; renderAttachments();
     }
     appendChatMessage('user', msg);
-    updateContextViz();
+    try { updateContextViz(); } catch(e) {}
     input.value = ''; input.style.height = 'auto';
     input.classList.add('thinking');
     _agentRunning = true;
@@ -8603,6 +8652,256 @@
   }
 
   // ═══════════════════════════════
+  //  FEATURE: Memetic Evolution
+  // ═══════════════════════════════
+  var _memeticTab = 'population';
+  function switchMemeticTab(tab, btn) {
+    _memeticTab = tab;
+    document.querySelectorAll('.mem-subtab').forEach(function(b) { b.classList.remove('active'); b.style.borderBottom = '2px solid transparent'; b.style.color = 'var(--text-dim)'; });
+    if (btn) { btn.classList.add('active'); btn.style.borderBottom = '2px solid #22c55e'; btn.style.color = '#22c55e'; }
+    loadMemeticPanel();
+  }
+  function loadMemeticPanel() {
+    var endpoint = _memeticTab === 'fittest' ? 'memetic/fittest' : _memeticTab === 'graveyard' ? 'memetic/graveyard' : _memeticTab === 'generations' ? 'memetic/generations' : 'memetic';
+    var container = document.getElementById('memeticContent');
+    if (!container) { var p = document.getElementById('panel-memetic'); if (p) { var cc = p.querySelector('.mem-content'); if (cc) container = cc; } }
+    if (!container) return;
+    container.innerHTML = '<div class="spinner"></div> Loading...';
+    api('GET', endpoint).then(function(d) {
+      var items = d.memes || d.fittest || d.graveyard || d.generations || [];
+      if (!items.length) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No data yet. Spawn some memes to get started.</div>'; return; }
+      var html = '';
+      for (var i = 0; i < items.length; i++) {
+        var m = items[i];
+        html += '<div style="background:#0a0a12;border:1px solid #222;border-radius:8px;padding:12px;margin-bottom:8px">';
+        html += '<div style="display:flex;justify-content:space-between"><span style="color:#22c55e;font-weight:600">' + escapeHtml(m.name || m.id || 'Meme ' + i) + '</span>';
+        html += '<span style="color:var(--text-dim);font-size:11px">fitness: ' + (m.fitness || 0).toFixed(2) + '</span></div>';
+        if (m.traits) html += '<div style="color:var(--text-dim);font-size:12px;margin-top:4px">' + escapeHtml(JSON.stringify(m.traits)) + '</div>';
+        html += '</div>';
+      }
+      container.innerHTML = html;
+    }).catch(function(e) { container.innerHTML = '<div style="color:#f55;padding:20px">Error: ' + escapeHtml(e.message) + '</div>'; });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Context Theater
+  // ═══════════════════════════════
+  function loadTheaterPanel() {
+    var scene = document.getElementById('theaterCurrentScene');
+    var hist = document.getElementById('theaterHistory');
+    api('GET', 'theater/current').then(function(d) {
+      if (scene) {
+        var s = d.scene || d;
+        scene.innerHTML = '<div style="background:#0a0a12;border:1px solid #a78bfa;border-radius:8px;padding:16px">' +
+          '<div style="color:#a78bfa;font-weight:600;margin-bottom:8px">🎭 Current Scene</div>' +
+          '<div style="color:var(--text)">' + escapeHtml(s.summary || s.description || JSON.stringify(s)) + '</div>' +
+          '<div style="color:var(--text-dim);font-size:11px;margin-top:8px">Actors: ' + (s.actors || []).join(', ') + ' | Style: ' + (s.style || 'default') + '</div></div>';
+      }
+    }).catch(function() { if (scene) scene.innerHTML = '<div style="color:var(--text-dim);padding:12px">No active scene</div>'; });
+    api('GET', 'theater/history').then(function(d) {
+      var items = d.history || d.scenes || [];
+      if (!hist) return;
+      if (!items.length) { hist.innerHTML = '<div style="color:var(--text-dim);padding:12px">No history</div>'; return; }
+      var html = '';
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        html += '<div style="padding:8px;border-bottom:1px solid #222"><span style="color:#a78bfa">' + escapeHtml(it.title || it.id || 'Scene ' + i) + '</span>';
+        html += ' <span style="color:var(--text-dim);font-size:11px">' + (it.timestamp || '') + '</span></div>';
+      }
+      hist.innerHTML = html;
+    }).catch(function() { if (hist) hist.innerHTML = '<div style="color:#f55">Failed to load history</div>'; });
+  }
+  function theaterReconstruct() {
+    toast('Reconstructing scene...', 'info');
+    api('POST', 'theater/reconstruct').then(function(d) {
+      toast('Scene reconstructed!', 'success');
+      loadTheaterPanel();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Causal Reasoning
+  // ═══════════════════════════════
+  function loadCausalPanel() {
+    var el = document.getElementById('causalMap') || document.getElementById('panel-causal');
+    if (!el) return;
+    api('GET', 'causal').then(function(d) {
+      var analyses = d.analyses || d.events || [];
+      var patterns = d.patterns || [];
+      var target = document.getElementById('causalAnalyses');
+      if (target) {
+        if (!analyses.length) { target.innerHTML = '<div style="color:var(--text-dim);padding:12px">No analyses yet. Record events to build causal maps.</div>'; }
+        else {
+          var html = '';
+          for (var i = 0; i < analyses.length; i++) {
+            var a = analyses[i];
+            html += '<div style="background:#0a0a12;border:1px solid #222;border-radius:8px;padding:10px;margin-bottom:6px">';
+            html += '<span style="color:#f59e0b;font-weight:600">' + escapeHtml(a.event || a.name || 'Event') + '</span>';
+            if (a.causes) html += ' <span style="color:var(--text-dim);font-size:11px">← ' + a.causes.join(', ') + '</span>';
+            if (a.confidence) html += ' <span style="color:#22c55e;font-size:11px">' + (a.confidence * 100).toFixed(0) + '%</span>';
+            html += '</div>';
+          }
+          target.innerHTML = html;
+        }
+      }
+      var pTarget = document.getElementById('causalPatterns');
+      if (pTarget && patterns.length) {
+        var ph = '';
+        for (var j = 0; j < patterns.length; j++) {
+          ph += '<div style="padding:6px;border-bottom:1px solid #222;color:var(--text-dim);font-size:12px">' + escapeHtml(patterns[j].description || JSON.stringify(patterns[j])) + '</div>';
+        }
+        pTarget.innerHTML = ph;
+      }
+    }).catch(function(e) {
+      if (el) el.innerHTML = '<div style="color:#f55;padding:20px">Error loading causal data: ' + escapeHtml(e.message) + '</div>';
+    });
+  }
+  function causalRecordEvent() {
+    var inp = document.getElementById('causalEventInput');
+    var causeInp = document.getElementById('causalCauseInput');
+    if (!inp || !inp.value.trim()) return;
+    var payload = { event: inp.value.trim() };
+    if (causeInp && causeInp.value.trim()) payload.causes = causeInp.value.trim().split(',').map(function(s) { return s.trim(); });
+    api('POST', 'causal/event', payload).then(function() {
+      toast('Event recorded', 'success'); inp.value = ''; if (causeInp) causeInp.value = '';
+      loadCausalPanel();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Tor Hidden Service
+  // ═══════════════════════════════
+  function loadTorServicePanel() {
+    var running = document.getElementById('tor-running');
+    var addr = document.getElementById('tor-address');
+    if (running) running.textContent = 'Checking...';
+    api('GET', 'tor/status').then(function(d) {
+      if (running) running.textContent = d.running ? '🟢 Running' : '🔴 Stopped';
+      if (running) running.style.color = d.running ? '#22c55e' : '#f55';
+      if (addr) addr.textContent = d.address || 'Not configured';
+    }).catch(function() {
+      if (running) { running.textContent = '⚫ Unavailable'; running.style.color = '#666'; }
+    });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Commitments
+  // ═══════════════════════════════
+  function loadCommitmentsPanel() {
+    api('GET', 'commitments').then(function(d) {
+      var commits = d.commitments || d.active || [];
+      var overdue = d.overdue || [];
+      var reliability = d.reliability || {};
+      // Stats
+      var el;
+      el = document.getElementById('commitActive'); if (el) el.textContent = commits.length;
+      el = document.getElementById('commitOverdue'); if (el) el.textContent = overdue.length;
+      el = document.getElementById('commitReliability'); if (el) el.textContent = (reliability.score || 0).toFixed(0) + '%';
+      el = document.getElementById('commitTotal'); if (el) el.textContent = d.total || commits.length;
+      // List
+      var list = document.getElementById('commitmentsList');
+      if (list) {
+        if (!commits.length && !overdue.length) { list.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">No active commitments</div>'; }
+        else {
+          var html = '';
+          var all = overdue.concat(commits);
+          for (var i = 0; i < all.length; i++) {
+            var c = all[i]; var isOverdue = i < overdue.length;
+            html += '<div style="background:#0a0a12;border:1px solid ' + (isOverdue ? '#f55' : '#222') + ';border-radius:8px;padding:10px;margin-bottom:6px">';
+            html += '<div style="display:flex;justify-content:space-between"><span style="color:' + (isOverdue ? '#f55' : '#eee') + ';font-weight:600">' + escapeHtml(c.description || c.text || c.commitment || 'Commitment') + '</span>';
+            if (c.deadline) html += '<span style="color:var(--text-dim);font-size:11px">' + c.deadline + '</span>';
+            html += '</div></div>';
+          }
+          list.innerHTML = html;
+        }
+      }
+    }).catch(function(e) {
+      var list = document.getElementById('commitmentsList');
+      if (list) list.innerHTML = '<div style="color:#f55;padding:12px">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: World Model
+  // ═══════════════════════════════
+  function loadWorldPanel() {
+    api('GET', 'world').then(function(d) {
+      var entities = d.entities || d.nodes || [];
+      var relations = d.relations || [];
+      var stats = d.stats || {};
+      // Stats
+      var el;
+      el = document.getElementById('worldEntities'); if (el) el.textContent = entities.length || stats.entities || 0;
+      el = document.getElementById('worldRelations'); if (el) el.textContent = relations.length || stats.relations || 0;
+      el = document.getElementById('worldChanges'); if (el) el.textContent = stats.changes || 0;
+      el = document.getElementById('worldHotspots'); if (el) el.textContent = stats.hotspots || 0;
+      el = document.getElementById('worldStale'); if (el) el.textContent = stats.stale || 0;
+      // Entity list
+      var list = document.getElementById('worldEntitiesList');
+      if (list) {
+        if (!entities.length) { list.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">No entities yet. Run a scan to populate.</div>'; }
+        else {
+          var html = '';
+          for (var i = 0; i < entities.length; i++) {
+            var e = entities[i];
+            html += '<div style="background:#0a0a12;border:1px solid #222;border-radius:8px;padding:10px;margin-bottom:6px">';
+            html += '<span style="color:#38bdf8;font-weight:600">' + escapeHtml(e.name || e.id || 'Entity') + '</span>';
+            html += ' <span style="color:var(--text-dim);font-size:11px">' + escapeHtml(e.type || '') + '</span>';
+            if (e.description) html += '<div style="color:var(--text-dim);font-size:12px;margin-top:4px">' + escapeHtml(e.description) + '</div>';
+            html += '</div>';
+          }
+          list.innerHTML = html;
+        }
+      }
+    }).catch(function(e) {
+      var list = document.getElementById('worldEntitiesList');
+      if (list) list.innerHTML = '<div style="color:#f55;padding:12px">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+  }
+  function worldScan() {
+    toast('Scanning world...', 'info');
+    api('POST', 'world/scan').then(function(d) {
+      toast('World scan complete!', 'success');
+      loadWorldPanel();
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }
+
+  // ═══════════════════════════════
+  //  FEATURE: Social Intelligence
+  // ═══════════════════════════════
+  function loadSocialPanel() {
+    api('GET', 'social/dynamics').then(function(d) {
+      var el;
+      el = document.getElementById('socialProfiles'); if (el) el.textContent = d.profiles || d.totalProfiles || 0;
+      el = document.getElementById('socialInteractions'); if (el) el.textContent = d.interactions || d.totalInteractions || 0;
+      el = document.getElementById('socialTensions'); if (el) el.textContent = d.tensions || 0;
+      el = document.getElementById('socialScore'); if (el) el.textContent = (d.overallScore || d.score || 0).toFixed(0) + '%';
+    }).catch(function() {});
+    api('GET', 'social/profiles').then(function(d) {
+      var profiles = d.profiles || [];
+      var list = document.getElementById('socialProfilesList');
+      if (list) {
+        if (!profiles.length) { list.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">No social profiles tracked yet</div>'; }
+        else {
+          var html = '';
+          for (var i = 0; i < profiles.length; i++) {
+            var p = profiles[i];
+            html += '<div style="background:#0a0a12;border:1px solid #222;border-radius:8px;padding:10px;margin-bottom:6px">';
+            html += '<span style="color:#ec4899;font-weight:600">' + escapeHtml(p.name || p.id || 'Profile') + '</span>';
+            html += ' <span style="color:var(--text-dim);font-size:11px">' + escapeHtml(p.relationship || p.role || '') + '</span>';
+            if (p.lastInteraction) html += '<div style="color:var(--text-dim);font-size:11px;margin-top:2px">Last: ' + p.lastInteraction + '</div>';
+            html += '</div>';
+          }
+          list.innerHTML = html;
+        }
+      }
+    }).catch(function(e) {
+      var list = document.getElementById('socialProfilesList');
+      if (list) list.innerHTML = '<div style="color:#f55;padding:12px">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+  }
+
+  // ═══════════════════════════════
   //  FEATURE: Desktop Control
   // ═══════════════════════════════
   function desktopRefresh() {
@@ -10234,7 +10533,20 @@
     api('POST', 'dreams/proposals/' + proposalId + '/' + action).then(function(data) {
       if (data.error) { toast(data.error, 'error'); return; }
       toast('Proposal ' + action + 'd!', 'success');
-      loadDreamUpgrades();
+      // Reload both the upgrades panel (filter to 'proposed' so approved/rejected items disappear) and approvals panel
+      loadDreamUpgrades('proposed');
+      loadDreamApprovals();
+      // Also remove the card from the DOM immediately for instant feedback
+      var cards = document.querySelectorAll('#dreamsUpgrades > div, #dreamsApprovals > div');
+      for (var i = 0; i < cards.length; i++) {
+        var btn = cards[i].querySelector('button[onclick*="' + proposalId + '"]');
+        if (btn) {
+          cards[i].style.transition = 'opacity 0.3s, transform 0.3s';
+          cards[i].style.opacity = '0';
+          cards[i].style.transform = 'translateX(20px)';
+          (function(card) { setTimeout(function() { card.remove(); }, 300); })(cards[i]);
+        }
+      }
     }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
   }
 
@@ -10774,6 +11086,13 @@
       testWebhook: testWebhook, deleteWebhook: deleteWebhook,
       refreshTraining: refreshTraining, submitTrainingFeedback: submitTrainingFeedback,
       desktopRefresh: desktopRefresh, desktopInfo: desktopInfo, desktopType: desktopType,
+      loadMemeticPanel: loadMemeticPanel, switchMemeticTab: switchMemeticTab,
+      loadTheaterPanel: loadTheaterPanel, theaterReconstruct: theaterReconstruct,
+      loadCausalPanel: loadCausalPanel, causalRecordEvent: causalRecordEvent,
+      loadTorServicePanel: loadTorServicePanel,
+      loadCommitmentsPanel: loadCommitmentsPanel,
+      loadWorldPanel: loadWorldPanel, worldScan: worldScan,
+      loadSocialPanel: loadSocialPanel,
       exportAll: exportAll, importAll: importAll, importAllFile: importAllFile,
       sendCollabChat: sendCollabChat, toggleCollabChat: toggleCollabChat,
       loadConsciousness: loadConsciousness, switchConscTab: switchConscTab,

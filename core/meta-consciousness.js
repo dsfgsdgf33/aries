@@ -19,11 +19,11 @@ function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, nu
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 const MODULE_CHECKS = [
-  { name: 'emotional-engine', dataDir: 'emotional-engine', label: 'Emotions' },
+  { name: 'emotional-engine', dataDir: 'emotions', label: 'Emotions' },
   { name: 'creativity-engine', dataDir: 'creativity', label: 'Creativity' },
   { name: 'self-model', dataDir: 'self-model', label: 'Self Model' },
   { name: 'agent-dreams', dataDir: 'dreams', label: 'Dreams' },
-  { name: 'inner-monologue', dataDir: 'inner-monologue', label: 'Thoughts' },
+  { name: 'inner-monologue', dataDir: 'thoughts', label: 'Thoughts' },
   { name: 'genuine-uncertainty', dataDir: 'calibration', label: 'Calibration' },
   { name: 'cognitive-debt', dataDir: 'cognitive-debt', label: 'Cognitive Debt' },
   { name: 'cognitive-weather', dataDir: 'weather', label: 'Weather' },

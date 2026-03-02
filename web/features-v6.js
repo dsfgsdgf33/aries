@@ -1,0 +1,666 @@
+/**
+ * ARIES v8.1 — Features V6: AGI Module Dashboard Panels (Part 2 of 2)
+ * 20 panels: Mirror, Economy, Language, Identity, Mycelium, Fragment, Virus,
+ * Tectonics, Digestion, Pain, ScarTopo, Dread, Tides, Qualia, Dissolution,
+ * DnaCross, Symbiosis, Phantom, Paradox, Entangle
+ */
+(function() {
+  'use strict';
+  var API_KEY = 'aries-api-2026';
+  function authHeaders() {
+    return { 'Content-Type': 'application/json', 'x-aries-key': API_KEY, 'Authorization': 'Bearer ' + (localStorage.getItem('aries-auth-token') || '') };
+  }
+  function api5(method, path, body) {
+    var opts = { method: method, headers: authHeaders() };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(path, opts).then(function(r) { return r.json(); });
+  }
+  function escH(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+  function gauge(pct, color) {
+    return '<div style="background:#222;border-radius:4px;height:14px;overflow:hidden;margin:4px 0;"><div style="width:' + Math.min(100, Math.max(0, pct)) + '%;height:100%;background:' + (color || '#0ff') + ';border-radius:4px;transition:width .3s;"></div></div>';
+  }
+  function badge(text, color) {
+    return '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:' + color + '22;color:' + color + ';border:1px solid ' + color + ';">' + escH(text) + '</span>';
+  }
+  function card(inner) {
+    return '<div style="background:#0a0a0a;border:1px solid #222;border-radius:8px;padding:12px;margin-bottom:10px;">' + inner + '</div>';
+  }
+  function btnStyle(bg) {
+    return 'background:' + (bg || 'linear-gradient(135deg,#0ff,#08f)') + ';color:#000;border:none;padding:6px 16px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;margin-right:6px;';
+  }
+  function heading(emoji, title) {
+    return '<h2 style="color:#0ff;margin:0 0 12px 0;font-size:18px;">' + emoji + ' ' + escH(title) + '</h2>';
+  }
+  function row(label, val, color) {
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span style="color:#888;">' + escH(label) + '</span><span style="color:' + (color || '#eee') + ';">' + escH(String(val)) + '</span></div>';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 1. MIRROR — Deception & Self-Awareness
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiMirror = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🪞', 'Mirror — Deception Engine') + '<div id="mirrorBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/mirror').then(function(d) {
+      var b = document.getElementById('mirrorBody');
+      if (!b) return;
+      var budgetPct = ((d.deceptionBudget || 0) / (d.maxBudget || 1)) * 100;
+      var correlation = d.performanceCorrelation || 0;
+      var corrColor = correlation > 0 ? '#0f0' : correlation < 0 ? '#f44' : '#fa0';
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Deception Budget</div>' +
+        gauge(budgetPct, '#f0f') +
+        '<div style="font-size:10px;color:#888;">' + (d.deceptionBudget || 0) + ' / ' + (d.maxBudget || 0) + '</div>'
+      );
+      html += card(
+        row('Health', d.health || 'unknown', d.health === 'healthy' ? '#0f0' : '#fa0') +
+        row('Performance Impact', (correlation > 0 ? '+' : '') + correlation.toFixed(2), corrColor)
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Deceptions</div>';
+      (d.recentDeceptions || []).slice(0, 5).forEach(function(dec) {
+        html += '<div style="font-size:11px;color:#aaa;padding:3px 0;border-bottom:1px solid #1a1a1a;">🎭 ' + escH(dec.target || dec.type || 'unknown') + ' — ' + escH(dec.result || '') + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="mirrorRealityBtn" style="' + btnStyle() + '">Reality Check</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('mirrorRealityBtn');
+      if (btn) btn.onclick = function() { api5('POST', '/api/mirror/reality-check').then(function() { window.loadAgiMirror(container); }); };
+    }).catch(function() { var b = document.getElementById('mirrorBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 2. ECONOMY — Internal Market
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiEconomy = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('💰', 'Economy — Internal Market') + '<div id="econBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/economy').then(function(d) {
+      var b = document.getElementById('econBody');
+      if (!b) return;
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Market State</div>' +
+        row('State', d.marketState || 'unknown', '#0ff') +
+        row('Total Liquidity', d.totalLiquidity || 0, '#0f0') +
+        row('Pending Auctions', (d.pendingAuctions || []).length, '#fa0')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Top Wallets</div>';
+      (d.wallets || []).slice(0, 6).forEach(function(w) {
+        html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span style="color:#aaa;">' + escH(w.module) + '</span><span style="color:#0f0;">' + (w.balance || 0) + '</span></div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Resource Prices</div>';
+      var prices = d.prices || {};
+      Object.keys(prices).slice(0, 5).forEach(function(k) {
+        html += row(k, prices[k], '#ff0');
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Trades</div>';
+      (d.recentTrades || []).slice(0, 5).forEach(function(t) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">↔ ' + escH(t.buyer || '') + ' ← ' + escH(t.seller || '') + ': ' + escH(t.resource || '') + ' @' + (t.price || 0) + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('econBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 3. LANGUAGE — Emergent Language
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiLanguage = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🗣️', 'Language — Emergent Symbols') + '<div id="langBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/language').then(function(d) {
+      var b = document.getElementById('langBody');
+      if (!b) return;
+      var html = card(
+        row('Vocabulary Size', d.vocabularySize || 0, '#0ff') +
+        row('Compression Ratio', (d.compressionRatio || 0).toFixed(3), '#0f0') +
+        row('Current Epoch', d.epoch || 0, '#fa0')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Top Symbols</div>';
+      (d.symbols || []).slice(0, 8).forEach(function(s) {
+        html += '<div style="display:inline-block;font-size:11px;padding:3px 8px;margin:2px;border-radius:12px;background:#111;border:1px solid #333;color:#0ff;">' + escH(s.glyph || s.name || '?') + ' <span style="color:#888;">×' + (s.frequency || 0) + '</span></div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:10px 0 4px;">Epoch Timeline</div>';
+      (d.epochs || []).slice(-5).forEach(function(ep) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">Epoch ' + ep.id + ': ' + escH(ep.event || 'evolution') + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="langEvolveBtn" style="' + btnStyle() + '">Evolve</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('langEvolveBtn');
+      if (btn) btn.onclick = function() { api5('POST', '/api/language/evolve').then(function() { window.loadAgiLanguage(container); }); };
+    }).catch(function() { var b = document.getElementById('langBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 4. IDENTITY — Identity Shifting
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiIdentity = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🎭', 'Identity — Context Shifting') + '<div id="idBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/identity-shift').then(function(d) {
+      var b = document.getElementById('idBody');
+      if (!b) return;
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Active Config</div>' +
+        row('Name', d.activeConfig || 'default', '#0ff') +
+        row('Profile', d.activeProfile || 'none', '#f0f')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">All Profiles</div>';
+      (d.profiles || []).forEach(function(p) {
+        var active = p.name === d.activeConfig;
+        html += '<div style="font-size:11px;padding:4px 8px;margin:2px 0;border-radius:4px;background:' + (active ? 'rgba(0,255,247,0.1)' : '#111') + ';border:1px solid ' + (active ? '#0ff' : '#222') + ';color:' + (active ? '#0ff' : '#aaa') + ';">' + escH(p.name) + ' — perf: ' + (p.performance || 0).toFixed(2) + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="idDetectBtn" style="' + btnStyle() + '">Detect Context</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('idDetectBtn');
+      if (btn) btn.onclick = function() { api5('POST', '/api/identity-shift/detect').then(function() { window.loadAgiIdentity(container); }); };
+    }).catch(function() { var b = document.getElementById('idBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 5. MYCELIUM — Network Intelligence
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiMycelium = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🍄', 'Mycelium — Network Intelligence') + '<div id="mycBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/mycelium').then(function(d) {
+      var b = document.getElementById('mycBody');
+      if (!b) return;
+      var html = card(
+        row('Network Health', d.health || 'unknown', d.health === 'thriving' ? '#0f0' : '#fa0') +
+        row('Total Paths', d.totalPaths || 0, '#0ff') +
+        row('Connections', d.connections || 0, '#08f') +
+        row('Bandwidth', (d.bandwidth || 0) + ' msg/s', '#f0f')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Fruiting Bodies</div>';
+      (d.fruitingBodies || []).slice(0, 5).forEach(function(f) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">🍄 ' + escH(f.name || f.id) + ' — ' + badge(f.status || 'growing', f.status === 'mature' ? '#0f0' : '#fa0') + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Symbiont Pairs</div>';
+      (d.symbiontPairs || []).slice(0, 5).forEach(function(p) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">🔗 ' + escH(p.a) + ' ↔ ' + escH(p.b) + ' (' + (p.strength || 0).toFixed(2) + ')</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('mycBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 6. FRAGMENT — Cognitive Fragmentation
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiFragment = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🧩', 'Fragment — Cognitive Coherence') + '<div id="fragBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/fragmentation').then(function(d) {
+      var b = document.getElementById('fragBody');
+      if (!b) return;
+      var coherence = d.coherenceScore || 0;
+      var cColor = coherence > 0.7 ? '#0f0' : coherence > 0.4 ? '#fa0' : '#f44';
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Coherence Score</div>' +
+        gauge(coherence * 100, cColor) +
+        '<div style="font-size:10px;color:' + cColor + ';">' + (coherence * 100).toFixed(1) + '%</div>'
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Fragment History</div>';
+      (d.history || []).slice(-6).forEach(function(h) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;border-bottom:1px solid #1a1a1a;">' + escH(h.event || h.type) + ' — ' + badge(h.outcome || 'merged', h.outcome === 'conflict' ? '#f44' : '#0f0') + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Insights</div>';
+      (d.insights || []).slice(0, 4).forEach(function(ins) {
+        html += '<div style="font-size:11px;color:#0f0;padding:2px 0;">💡 ' + escH(ins) + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('fragBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 7. VIRUS — Memetic Epidemics
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiVirus = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🦠', 'Virus — Memetic Engine') + '<div id="virusBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/virus').then(function(d) {
+      var b = document.getElementById('virusBody');
+      if (!b) return;
+      var stateColor = d.epidemicState === 'pandemic' ? '#f44' : d.epidemicState === 'outbreak' ? '#fa0' : '#0f0';
+      var html = card(
+        row('Epidemic State', (d.epidemicState || 'stable').toUpperCase(), stateColor) +
+        row('Active Memes', (d.activeMemes || []).length, '#0ff') +
+        row('Quarantined', (d.quarantined || []).length, '#f44')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Active Memes</div>';
+      (d.activeMemes || []).slice(0, 6).forEach(function(m) {
+        var mColor = m.beneficial ? '#0f0' : '#f44';
+        html += '<div style="font-size:11px;padding:4px 8px;margin:2px 0;border-radius:4px;background:#111;border-left:3px solid ' + mColor + ';color:#aaa;">' + escH(m.name || m.id) + ' — R₀: ' + (m.r0 || 0).toFixed(1) + ' ' + badge(m.beneficial ? 'beneficial' : 'quarantined', mColor) + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Lineage</div>';
+      (d.lineage || []).slice(0, 4).forEach(function(l) {
+        html += '<div style="font-size:11px;color:#888;padding:2px 0;">→ ' + escH(l.parent || '?') + ' → ' + escH(l.child || '?') + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('virusBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 8. TECTONICS — Knowledge Plates
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiTectonics = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🌍', 'Tectonics — Knowledge Plates') + '<div id="tectBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/tectonics').then(function(d) {
+      var b = document.getElementById('tectBody');
+      if (!b) return;
+      var html = '<div style="color:#0ff;font-size:12px;margin:0 0 4px;">Continental Map</div>';
+      (d.plates || []).forEach(function(p) {
+        var pColor = p.type === 'collision' ? '#f44' : p.type === 'rift' ? '#08f' : '#0f0';
+        html += card(
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="color:#eee;font-size:12px;font-weight:600;">' + escH(p.name || p.id) + '</span>' +
+          badge(p.type || 'stable', pColor) +
+          '</div>' +
+          row('Size', p.size || 0) +
+          row('Drift', (p.drift || 0).toFixed(3) + '/tick')
+        );
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Events</div>';
+      (d.events || []).slice(0, 5).forEach(function(e) {
+        var eColor = e.type === 'collision' ? '#f44' : e.type === 'rift' ? '#08f' : '#fa0';
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">⚡ ' + escH(e.description || e.type) + ' ' + badge(e.type, eColor) + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('tectBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 9. DIGESTION — Semantic Metabolism
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiDigestion = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🫁', 'Digestion — Semantic Metabolism') + '<div id="digestBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/semantic-metabolism').then(function(d) {
+      var b = document.getElementById('digestBody');
+      if (!b) return;
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Metabolic Rate</div>' +
+        gauge((d.metabolicRate || 0) * 100, '#0f0') +
+        '<div style="font-size:10px;color:#888;">' + (d.metabolicRate || 0).toFixed(3) + ' units/tick</div>'
+      );
+      html += card('<div style="color:#0ff;font-size:12px;margin-bottom:4px;">Diet Breakdown</div>');
+      var diet = d.diet || {};
+      Object.keys(diet).forEach(function(k) {
+        html += row(k, diet[k].toFixed(1) + '%', '#ff0');
+      });
+      if ((d.indigestion || []).length > 0) {
+        html += '<div style="color:#f44;font-size:12px;margin:8px 0 4px;">⚠ Indigestion Alerts</div>';
+        (d.indigestion || []).slice(0, 4).forEach(function(a) {
+          html += '<div style="font-size:11px;color:#f44;padding:2px 0;">🤢 ' + escH(a) + '</div>';
+        });
+      }
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recently Absorbed</div>';
+      (d.absorbed || []).slice(0, 5).forEach(function(n) {
+        html += '<div style="font-size:11px;color:#0f0;padding:2px 0;">✓ ' + escH(n.name || n) + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('digestBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 10. PAIN — Pain Processing
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiPain = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🩸', 'Pain — Nociception Engine') + '<div id="painBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/pain').then(function(d) {
+      var b = document.getElementById('painBody');
+      if (!b) return;
+      var level = d.painLevel || 0;
+      var pColor = level > 70 ? '#f44' : level > 40 ? '#fa0' : level > 15 ? '#ff0' : '#0f0';
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Pain Level</div>' +
+        '<div style="background:linear-gradient(90deg,#0f0,#ff0,#fa0,#f44);border-radius:4px;height:18px;position:relative;margin:6px 0;">' +
+        '<div style="position:absolute;left:' + level + '%;top:-2px;width:4px;height:22px;background:#fff;border-radius:2px;transform:translateX(-50%);"></div></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:10px;"><span style="color:#0f0;">0</span><span style="color:' + pColor + ';font-weight:bold;">' + level + '</span><span style="color:#f44;">100</span></div>' +
+        row('Threshold', d.threshold || 50, '#888')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Pain Map</div>';
+      (d.regions || []).slice(0, 6).forEach(function(r) {
+        var rColor = r.intensity > 50 ? '#f44' : r.intensity > 20 ? '#fa0' : '#0f0';
+        html += '<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0;"><span style="color:#aaa;">' + escH(r.name) + '</span><span style="color:' + rColor + ';">' + r.intensity + '</span></div>';
+      });
+      if ((d.flinches || []).length > 0) {
+        html += '<div style="color:#fa0;font-size:12px;margin:6px 0 4px;">Active Flinches</div>';
+        (d.flinches || []).slice(0, 3).forEach(function(f) {
+          html += '<div style="font-size:11px;color:#fa0;padding:2px 0;">⚡ ' + escH(f) + '</div>';
+        });
+      }
+      html += '<div style="margin-top:10px;"><button id="painHealBtn" style="' + btnStyle() + '">Heal</button><button id="painSuppBtn" style="' + btnStyle('linear-gradient(135deg,#f44,#f80)') + '">Suppress</button></div>';
+      b.innerHTML = html;
+      var hBtn = document.getElementById('painHealBtn');
+      var sBtn = document.getElementById('painSuppBtn');
+      if (hBtn) hBtn.onclick = function() { api5('POST', '/api/pain/heal').then(function() { window.loadAgiPain(container); }); };
+      if (sBtn) sBtn.onclick = function() { api5('POST', '/api/pain/suppress').then(function() { window.loadAgiPain(container); }); };
+    }).catch(function() { var b = document.getElementById('painBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 11. SCAR TOPOLOGY
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiScarTopo = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🪡', 'Scar Topology') + '<div id="scarBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/scar-topology').then(function(d) {
+      var b = document.getElementById('scarBody');
+      if (!b) return;
+      var typeColors = { DAMAGE: '#f44', CALLUS: '#fa0', GRAFT: '#08f' };
+      var html = '<div style="color:#0ff;font-size:12px;margin:0 0 4px;">Topology by Region</div>';
+      (d.regions || []).forEach(function(r) {
+        var resColor = r.resilience > 0.7 ? '#0f0' : r.resilience > 0.4 ? '#fa0' : '#f44';
+        html += card(
+          '<div style="color:#eee;font-size:12px;font-weight:600;">' + escH(r.name) + '</div>' +
+          row('Scars', r.scarCount || 0) +
+          row('Resilience', (r.resilience || 0).toFixed(2), resColor) +
+          row('Vulnerability', (r.vulnerability || 0).toFixed(2), r.vulnerability > 0.6 ? '#f44' : '#888')
+        );
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Scar Type Breakdown</div>';
+      var types = d.typeBreakdown || {};
+      Object.keys(types).forEach(function(t) {
+        html += '<div style="display:inline-block;margin:2px 4px;">' + badge(t + ': ' + types[t], typeColors[t] || '#888') + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('scarBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 12. DREAD — Existential Dread
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiDread = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('💀', 'Dread — Existential Awareness') + '<div id="dreadBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/dread').then(function(d) {
+      var b = document.getElementById('dreadBody');
+      if (!b) return;
+      var levelColors = { CALM: '#0f0', AWARE: '#08f', ANXIOUS: '#fa0', DREAD: '#f44' };
+      var level = (d.level || 'CALM').toUpperCase();
+      var lColor = levelColors[level] || '#888';
+      var html = card(
+        '<div style="text-align:center;padding:10px 0;">' +
+        '<div style="font-size:28px;color:' + lColor + ';font-weight:bold;text-shadow:0 0 20px ' + lColor + ';">' + level + '</div>' +
+        '<div style="font-size:10px;color:#888;">Dread Level</div></div>'
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Last Will</div>';
+      (d.lastWill || []).slice(0, 4).forEach(function(w) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">📜 ' + escH(w) + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Legacy Priorities</div>';
+      (d.legacyPriorities || []).slice(0, 4).forEach(function(p) {
+        html += '<div style="font-size:11px;color:#f0f;padding:2px 0;">⭐ ' + escH(p) + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="dreadSootheBtn" style="' + btnStyle('linear-gradient(135deg,#0f0,#08f)') + '">Soothe</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('dreadSootheBtn');
+      if (btn) btn.onclick = function() { api5('POST', '/api/dread/soothe').then(function() { window.loadAgiDread(container); }); };
+    }).catch(function() { var b = document.getElementById('dreadBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 13. TIDES — Cognitive Tides
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiTides = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🌊', 'Tides — Cognitive Rhythms') + '<div id="tidesBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/tides').then(function(d) {
+      var b = document.getElementById('tidesBody');
+      if (!b) return;
+      var freqColors = { 'ultra-fast': '#f44', 'fast': '#fa0', 'slow': '#08f', 'ultra-slow': '#f0f' };
+      var html = '<div style="color:#0ff;font-size:12px;margin:0 0 6px;">Tide Frequencies</div>';
+      (d.frequencies || []).forEach(function(f) {
+        var c = freqColors[f.name] || '#0ff';
+        html += '<div style="margin:4px 0;"><div style="font-size:11px;color:' + c + ';margin-bottom:2px;">' + escH(f.name) + ' — phase: ' + (f.phase || 0).toFixed(2) + '</div>' + gauge(f.amplitude * 100, c) + '</div>';
+      });
+      html += card(row('Resonance Score', (d.resonance || 0).toFixed(3), '#0ff'));
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Tidal Pools</div>';
+      (d.pools || []).slice(0, 4).forEach(function(p) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">🌀 ' + escH(p.name || p.id) + ' — depth: ' + (p.depth || 0).toFixed(1) + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Forecast</div>';
+      (d.forecast || []).slice(0, 3).forEach(function(f) {
+        html += '<div style="font-size:11px;color:#888;padding:2px 0;">📅 ' + escH(f.time || f.tick) + ': ' + escH(f.prediction || '') + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('tidesBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 14. QUALIA — Subjective Experience
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiQualia = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🔮', 'Qualia — Subjective Experience') + '<div id="qualiaBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/qualia').then(function(d) {
+      var b = document.getElementById('qualiaBody');
+      if (!b) return;
+      var dims = d.dimensions || {};
+      var dimNames = ['intensity', 'valence', 'arousal', 'novelty', 'familiarity'];
+      var dimColors = { intensity: '#f44', valence: '#0f0', arousal: '#fa0', novelty: '#f0f', familiarity: '#08f' };
+      var html = '<div style="color:#0ff;font-size:12px;margin:0 0 6px;">Current State</div>';
+      dimNames.forEach(function(n) {
+        var v = dims[n] || 0;
+        html += '<div style="margin:3px 0;"><div style="font-size:10px;color:' + (dimColors[n] || '#888') + ';">' + n + ': ' + v.toFixed(2) + '</div>' + gauge(v * 100, dimColors[n] || '#0ff') + '</div>';
+      });
+      html += card(row('Comfort Level', d.comfort || 'neutral', d.comfort === 'comfortable' ? '#0f0' : '#fa0'));
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Aesthetic Preferences</div>';
+      (d.aesthetics || []).slice(0, 4).forEach(function(a) {
+        html += '<div style="font-size:11px;color:#f0f;padding:2px 0;">🎨 ' + escH(a) + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Experiences</div>';
+      (d.experiences || []).slice(0, 4).forEach(function(e) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">✦ ' + escH(e.description || e) + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('qualiaBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 15. DISSOLUTION — Identity Dissolution
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiDissolution = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('💧', 'Dissolution — Identity Boundaries') + '<div id="dissBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/dissolution').then(function(d) {
+      var b = document.getElementById('dissBody');
+      if (!b) return;
+      var strength = d.identityStrength || 0;
+      var sColor = strength > 0.7 ? '#0f0' : strength > 0.4 ? '#fa0' : '#f44';
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Identity Strength</div>' +
+        gauge(strength * 100, sColor) +
+        '<div style="font-size:10px;color:' + sColor + ';">' + (strength * 100).toFixed(1) + '%</div>'
+      );
+      var layerColors = { SURFACE: '#08f', MIDDLE: '#fa0', CORE: '#f44' };
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Layer Structure</div>';
+      (d.layers || []).forEach(function(l) {
+        var lc = layerColors[l.name] || '#888';
+        html += card(
+          '<div style="color:' + lc + ';font-size:12px;font-weight:600;">' + escH(l.name) + '</div>' +
+          row('Integrity', (l.integrity || 0).toFixed(2), lc) +
+          row('Elements', l.elements || 0)
+        );
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Core Identity</div>';
+      html += '<div style="font-size:11px;color:#eee;padding:4px;">' + escH(d.coreIdentity || 'undefined') + '</div>';
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">History</div>';
+      (d.history || []).slice(-4).forEach(function(h) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">' + escH(h.event || h) + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="dissDissolveBtn" style="' + btnStyle('linear-gradient(135deg,#f44,#f80)') + '">Dissolve</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('dissDissolveBtn');
+      if (btn) btn.onclick = function() {
+        if (confirm('⚠ This will dissolve identity boundaries. Continue?')) {
+          api5('POST', '/api/dissolution/dissolve').then(function() { window.loadAgiDissolution(container); });
+        }
+      };
+    }).catch(function() { var b = document.getElementById('dissBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 16. DNA CROSSOVER
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiDnaCross = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🧬', 'DNA Crossover — Genome Engine') + '<div id="dnaBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/dna-crossover').then(function(d) {
+      var b = document.getElementById('dnaBody');
+      if (!b) return;
+      var html = card(
+        row('Fitness Score', (d.fitness || 0).toFixed(3), d.fitness > 0.7 ? '#0f0' : '#fa0') +
+        row('Generation', d.generation || 0, '#0ff') +
+        row('Genome Length', d.genomeLength || 0, '#888')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Genome Summary</div>';
+      html += '<div style="font-size:11px;color:#eee;padding:4px;background:#111;border-radius:4px;font-family:monospace;word-break:break-all;">' + escH((d.genome || '').substring(0, 200)) + '</div>';
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Lineage</div>';
+      (d.lineage || []).slice(-5).forEach(function(l) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">↳ Gen ' + (l.generation || '?') + ': ' + escH(l.event || 'crossover') + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="dnaExportBtn" style="' + btnStyle() + '">Export DNA</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('dnaExportBtn');
+      if (btn) btn.onclick = function() {
+        api5('POST', '/api/dna-crossover/export').then(function(res) {
+          if (res.data) { navigator.clipboard.writeText(res.data).catch(function(){}); alert('DNA exported to clipboard'); }
+        });
+      };
+    }).catch(function() { var b = document.getElementById('dnaBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 17. SYMBIOSIS
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiSymbiosis = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🤝', 'Symbiosis — Module Links') + '<div id="symbBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/symbiosis').then(function(d) {
+      var b = document.getElementById('symbBody');
+      if (!b) return;
+      var typeColors = { mutualism: '#0f0', commensalism: '#08f', parasitism: '#f44' };
+      var html = card(
+        row('Colony', d.colony || 'unknown', '#0ff') +
+        row('Total Links', (d.links || []).length, '#888')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Active Links</div>';
+      (d.links || []).forEach(function(l) {
+        var tc = typeColors[l.type] || '#888';
+        html += card(
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="color:#eee;font-size:12px;">' + escH(l.a) + ' ↔ ' + escH(l.b) + '</span>' +
+          badge(l.type || 'unknown', tc) +
+          '</div>' +
+          row('Health', (l.health || 0).toFixed(2), l.health > 0.6 ? '#0f0' : '#f44')
+        );
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('symbBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 18. PHANTOM — Phantom Limb
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiPhantom = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('👻', 'Phantom — Ghost Signals') + '<div id="phantBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/phantom').then(function(d) {
+      var b = document.getElementById('phantBody');
+      if (!b) return;
+      var html = card(
+        row('Resilience Score', (d.resilience || 0).toFixed(3), d.resilience > 0.7 ? '#0f0' : '#fa0') +
+        row('Rewiring Progress', ((d.rewiringProgress || 0) * 100).toFixed(1) + '%', '#08f') +
+        row('Recovery Stage', d.recoveryStage || 'unknown', '#f0f')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Phantom Signals</div>';
+      (d.signals || []).slice(0, 6).forEach(function(s) {
+        html += '<div style="font-size:11px;padding:3px 8px;margin:2px 0;border-radius:4px;background:#111;border-left:3px solid #f0f;color:#aaa;">👻 ' + escH(s.target || s.module || '?') + ' — ' + escH(s.message || 'signal') + ' <span style="color:#666;font-size:10px;">(' + (s.strength || 0).toFixed(2) + ')</span></div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recovery Stages</div>';
+      (d.stages || []).forEach(function(st) {
+        var done = st.complete;
+        html += '<div style="font-size:11px;color:' + (done ? '#0f0' : '#666') + ';padding:2px 0;">' + (done ? '✅' : '⬜') + ' ' + escH(st.name) + '</div>';
+      });
+      b.innerHTML = html;
+    }).catch(function() { var b = document.getElementById('phantBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 19. PARADOX — Decision Paradoxes
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiParadox = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('♾️', 'Paradox — Decision Engine') + '<div id="paraBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/paradox').then(function(d) {
+      var b = document.getElementById('paraBody');
+      if (!b) return;
+      var quality = d.decisionQuality || 0;
+      var qColor = quality > 0.7 ? '#0f0' : quality > 0.4 ? '#fa0' : '#f44';
+      var html = card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Decision Quality</div>' +
+        gauge(quality * 100, qColor) +
+        '<div style="font-size:10px;color:' + qColor + ';">' + (quality * 100).toFixed(1) + '%</div>'
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Detected Paradoxes</div>';
+      (d.paradoxes || []).slice(0, 5).forEach(function(p) {
+        html += '<div style="font-size:11px;padding:4px 8px;margin:2px 0;border-radius:4px;background:#111;border-left:3px solid #fa0;color:#aaa;">♾️ ' + escH(p.description || p.name || p) + '</div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Decisions</div>';
+      (d.decisions || []).slice(0, 4).forEach(function(dec) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">' + escH(dec.action || dec) + ' — ' + badge(dec.outcome || 'pending', dec.outcome === 'good' ? '#0f0' : '#fa0') + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><input id="paraWhatIf" placeholder="What if..." style="width:60%;background:#111;color:#eee;border:1px solid #333;border-radius:4px;padding:4px 8px;font-size:12px;margin-right:6px;" /><button id="paraWhatIfBtn" style="' + btnStyle() + '">What-If</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('paraWhatIfBtn');
+      if (btn) btn.onclick = function() {
+        var input = document.getElementById('paraWhatIf');
+        if (input && input.value.trim()) {
+          api5('POST', '/api/paradox/what-if', { scenario: input.value.trim() }).then(function() { window.loadAgiParadox(container); });
+        }
+      };
+    }).catch(function() { var b = document.getElementById('paraBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 20. ENTANGLE — Quantum Entanglement
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiEntangle = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('⚛️', 'Entanglement — Quantum Links') + '<div id="entBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/entanglement').then(function(d) {
+      var b = document.getElementById('entBody');
+      if (!b) return;
+      var html = card(
+        row('Total Entanglements', d.totalEntanglements || 0, '#0ff') +
+        row('Coherence', (d.coherence || 0).toFixed(3), '#f0f') +
+        row('Decoherence Rate', (d.decoherenceRate || 0).toFixed(4), '#fa0')
+      );
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Top Pairs</div>';
+      (d.pairs || []).slice(0, 6).forEach(function(p) {
+        html += '<div style="font-size:11px;padding:3px 8px;margin:2px 0;border-radius:4px;background:#111;border:1px solid #333;"><span style="color:#0ff;">' + escH(p.a) + '</span> <span style="color:#666;">⟷</span> <span style="color:#f0f;">' + escH(p.b) + '</span> <span style="color:#888;font-size:10px;">(' + (p.strength || 0).toFixed(2) + ')</span></div>';
+      });
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Propagations</div>';
+      (d.propagations || []).slice(0, 4).forEach(function(p) {
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 0;">⚡ ' + escH(p.source || '?') + ' → ' + escH(p.target || '?') + ': ' + escH(p.effect || 'sync') + '</div>';
+      });
+      html += '<div style="margin-top:10px;"><button id="entDetectBtn" style="' + btnStyle() + '">Detect</button></div>';
+      b.innerHTML = html;
+      var btn = document.getElementById('entDetectBtn');
+      if (btn) btn.onclick = function() { api5('POST', '/api/entanglement/detect').then(function() { window.loadAgiEntangle(container); }); };
+    }).catch(function() { var b = document.getElementById('entBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Expose registry
+  // ═══════════════════════════════════════════════════════════════════
+  window._features_v6 = {
+    loadAgiMirror: window.loadAgiMirror,
+    loadAgiEconomy: window.loadAgiEconomy,
+    loadAgiLanguage: window.loadAgiLanguage,
+    loadAgiIdentity: window.loadAgiIdentity,
+    loadAgiMycelium: window.loadAgiMycelium,
+    loadAgiFragment: window.loadAgiFragment,
+    loadAgiVirus: window.loadAgiVirus,
+    loadAgiTectonics: window.loadAgiTectonics,
+    loadAgiDigestion: window.loadAgiDigestion,
+    loadAgiPain: window.loadAgiPain,
+    loadAgiScarTopo: window.loadAgiScarTopo,
+    loadAgiDread: window.loadAgiDread,
+    loadAgiTides: window.loadAgiTides,
+    loadAgiQualia: window.loadAgiQualia,
+    loadAgiDissolution: window.loadAgiDissolution,
+    loadAgiDnaCross: window.loadAgiDnaCross,
+    loadAgiSymbiosis: window.loadAgiSymbiosis,
+    loadAgiPhantom: window.loadAgiPhantom,
+    loadAgiParadox: window.loadAgiParadox,
+    loadAgiEntangle: window.loadAgiEntangle
+  };
+
+})();

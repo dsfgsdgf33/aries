@@ -217,6 +217,50 @@
         <a class="nav-item" data-panel="skills">&#x1F527; Skills</a>
         <a class="nav-item" data-panel="aries-ai" id="navAriesAi" style="display:none">&#x1F9E0; Aries AI</a>
       </div>
+      <!-- AGI SYSTEMS -->
+      <div class="nav-group" data-admin="true" style="display:none">
+        <div class="nav-group-label">AGI SYSTEMS</div>
+        <a class="nav-item" data-panel="agi-objectives">🎯 Objectives</a>
+        <a class="nav-item" data-panel="agi-experiments">🔬 Experiments</a>
+        <a class="nav-item" data-panel="agi-compiler">🔄 Self-Compiler</a>
+        <a class="nav-item" data-panel="agi-metabolism">⚡ Metabolism</a>
+        <a class="nav-item" data-panel="agi-forgetting">🗑️ Anti-Memory</a>
+        <a class="nav-item" data-panel="agi-debt">💳 Epistemic Debt</a>
+        <a class="nav-item" data-panel="agi-consolidation">⚖️ Memory Debate</a>
+        <a class="nav-item" data-panel="agi-synthesis">💡 Knowledge Synthesis</a>
+        <a class="nav-item" data-panel="agi-temporal">⏳ Temporal</a>
+        <a class="nav-item" data-panel="agi-archaeology">🦴 Failure Archaeology</a>
+        <a class="nav-item" data-panel="agi-fossils">🪨 Thought Fossils</a>
+        <a class="nav-item" data-panel="agi-immune">🛡️ Immune System</a>
+        <a class="nav-item" data-panel="agi-shadow">👤 Shadow Self</a>
+        <a class="nav-item" data-panel="agi-moral">💔 Moral Scars</a>
+        <a class="nav-item" data-panel="agi-consensus">🤝 Consensus</a>
+        <a class="nav-item" data-panel="agi-abyss">🕳️ Abyss</a>
+        <a class="nav-item" data-panel="agi-predictive">🔮 Self-Prediction</a>
+        <a class="nav-item" data-panel="agi-stranger">👁️ The Stranger</a>
+        <a class="nav-item" data-panel="agi-god">✨ God Module</a>
+        <a class="nav-item" data-panel="agi-spectro">📊 Spectrography</a>
+        <a class="nav-item" data-panel="agi-mirror">🪞 Mirror</a>
+        <a class="nav-item" data-panel="agi-economy">💰 Economy</a>
+        <a class="nav-item" data-panel="agi-language">🗣️ Emergent Language</a>
+        <a class="nav-item" data-panel="agi-identity">🔀 Identity Shift</a>
+        <a class="nav-item" data-panel="agi-mycelium">🍄 Mycelium</a>
+        <a class="nav-item" data-panel="agi-fragment">💎 Fragmentation</a>
+        <a class="nav-item" data-panel="agi-virus">🦠 Ontological Virus</a>
+        <a class="nav-item" data-panel="agi-tectonics">🌋 Tectonics</a>
+        <a class="nav-item" data-panel="agi-digestion">🫁 Semantic Digestion</a>
+        <a class="nav-item" data-panel="agi-pain">🩸 Pain</a>
+        <a class="nav-item" data-panel="agi-scartopo">🗺️ Scar Topology</a>
+        <a class="nav-item" data-panel="agi-dread">💀 Dread</a>
+        <a class="nav-item" data-panel="agi-tides">🌊 Neural Tides</a>
+        <a class="nav-item" data-panel="agi-qualia">🎨 Qualia</a>
+        <a class="nav-item" data-panel="agi-dissolution">🌀 Dissolution</a>
+        <a class="nav-item" data-panel="agi-dna-cross">🧬 DNA Crossover</a>
+        <a class="nav-item" data-panel="agi-symbiosis">🤝 Symbiosis</a>
+        <a class="nav-item" data-panel="agi-phantom">👻 Phantom Limb</a>
+        <a class="nav-item" data-panel="agi-paradox">🔄 Paradox Engine</a>
+        <a class="nav-item" data-panel="agi-entangle">🔗 Entanglement</a>
+      </div>
       <div class="sidebar-footer">
         <span id="loggedInUser" style="color:#00ffc8;font-size:11px"></span><br>
         Aries <span class="version-footer">v8.1</span> &#x26A1;
@@ -275,7 +319,10 @@
       </section>
 
       <!-- Agents Panel -->
-      <section id="panel-agents" class="panel"></section>
+      <section id="panel-agents" class="panel">
+        <div class="panel-header"><h2>🤖 Agents</h2><button class="btn-sm" onclick="window.aries.refreshAgents()">&#x21BB; Refresh</button></div>
+        <div id="agentGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:16px;"></div>
+      </section>
       <section id="panel-subagents" class="panel">
         <div class="panel-header">
           <h2>&#x1F916; Subagents</h2>
@@ -3234,11 +3281,13 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260301b"></script>
 <script src="features.js"></script>
 <script src="features-v2.js"></script>
 <script src="features-v3.js"></script>
 <script src="features-v4.js"></script>
+<script src="features-v5.js"></script>
+<script src="features-v6.js"></script>
   <script>
   // Mobile hamburger menu toggle
   (function(){
@@ -3287,7 +3336,10 @@
   <!-- PWA Install Prompt -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(function(){});
+      // Unregister stale service workers to ensure fresh assets
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      });
     }
     // Check fallback status periodically
     setInterval(function() {
@@ -4519,6 +4571,48 @@
       </div>
     </div>
   </section>
+
+  <!-- AGI SYSTEMS Panels -->
+  <section id="panel-agi-objectives" class="panel"><div id="agiObjectivesContent" style="padding:16px"></div></section>
+  <section id="panel-agi-experiments" class="panel"><div id="agiExperimentsContent" style="padding:16px"></div></section>
+  <section id="panel-agi-compiler" class="panel"><div id="agiCompilerContent" style="padding:16px"></div></section>
+  <section id="panel-agi-metabolism" class="panel"><div id="agiMetabolismContent" style="padding:16px"></div></section>
+  <section id="panel-agi-forgetting" class="panel"><div id="agiForgettingContent" style="padding:16px"></div></section>
+  <section id="panel-agi-debt" class="panel"><div id="agiDebtContent" style="padding:16px"></div></section>
+  <section id="panel-agi-consolidation" class="panel"><div id="agiConsolidationContent" style="padding:16px"></div></section>
+  <section id="panel-agi-synthesis" class="panel"><div id="agiSynthesisContent" style="padding:16px"></div></section>
+  <section id="panel-agi-temporal" class="panel"><div id="agiTemporalContent" style="padding:16px"></div></section>
+  <section id="panel-agi-archaeology" class="panel"><div id="agiArchaeologyContent" style="padding:16px"></div></section>
+  <section id="panel-agi-fossils" class="panel"><div id="agiFossilsContent" style="padding:16px"></div></section>
+  <section id="panel-agi-immune" class="panel"><div id="agiImmuneContent" style="padding:16px"></div></section>
+  <section id="panel-agi-shadow" class="panel"><div id="agiShadowContent" style="padding:16px"></div></section>
+  <section id="panel-agi-moral" class="panel"><div id="agiMoralContent" style="padding:16px"></div></section>
+  <section id="panel-agi-consensus" class="panel"><div id="agiConsensusContent" style="padding:16px"></div></section>
+  <section id="panel-agi-abyss" class="panel"><div id="agiAbyssContent" style="padding:16px"></div></section>
+  <section id="panel-agi-predictive" class="panel"><div id="agiPredictiveContent" style="padding:16px"></div></section>
+  <section id="panel-agi-stranger" class="panel"><div id="agiStrangerContent" style="padding:16px"></div></section>
+  <section id="panel-agi-god" class="panel"><div id="agiGodContent" style="padding:16px"></div></section>
+  <section id="panel-agi-spectro" class="panel"><div id="agiSpectroContent" style="padding:16px"></div></section>
+  <section id="panel-agi-mirror" class="panel"><div id="agiMirrorContent" style="padding:16px"></div></section>
+  <section id="panel-agi-economy" class="panel"><div id="agiEconomyContent" style="padding:16px"></div></section>
+  <section id="panel-agi-language" class="panel"><div id="agiLanguageContent" style="padding:16px"></div></section>
+  <section id="panel-agi-identity" class="panel"><div id="agiIdentityContent" style="padding:16px"></div></section>
+  <section id="panel-agi-mycelium" class="panel"><div id="agiMyceliumContent" style="padding:16px"></div></section>
+  <section id="panel-agi-fragment" class="panel"><div id="agiFragmentContent" style="padding:16px"></div></section>
+  <section id="panel-agi-virus" class="panel"><div id="agiVirusContent" style="padding:16px"></div></section>
+  <section id="panel-agi-tectonics" class="panel"><div id="agiTectonicsContent" style="padding:16px"></div></section>
+  <section id="panel-agi-digestion" class="panel"><div id="agiDigestionContent" style="padding:16px"></div></section>
+  <section id="panel-agi-pain" class="panel"><div id="agiPainContent" style="padding:16px"></div></section>
+  <section id="panel-agi-scartopo" class="panel"><div id="agiScartopoContent" style="padding:16px"></div></section>
+  <section id="panel-agi-dread" class="panel"><div id="agiDreadContent" style="padding:16px"></div></section>
+  <section id="panel-agi-tides" class="panel"><div id="agiTidesContent" style="padding:16px"></div></section>
+  <section id="panel-agi-qualia" class="panel"><div id="agiQualiaContent" style="padding:16px"></div></section>
+  <section id="panel-agi-dissolution" class="panel"><div id="agiDissolutionContent" style="padding:16px"></div></section>
+  <section id="panel-agi-dna-cross" class="panel"><div id="agiDnaCrossContent" style="padding:16px"></div></section>
+  <section id="panel-agi-symbiosis" class="panel"><div id="agiSymbiosisContent" style="padding:16px"></div></section>
+  <section id="panel-agi-phantom" class="panel"><div id="agiPhantomContent" style="padding:16px"></div></section>
+  <section id="panel-agi-paradox" class="panel"><div id="agiParadoxContent" style="padding:16px"></div></section>
+  <section id="panel-agi-entangle" class="panel"><div id="agiEntangleContent" style="padding:16px"></div></section>
 
   <script>
   // ═══ Deep Mind Panel Logic ═══

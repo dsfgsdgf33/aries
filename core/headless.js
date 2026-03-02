@@ -328,15 +328,17 @@ async function startHeadless(configPath) {
   // Test AI (using built-in http/https only)
   async function testAI() {
     try {
-      const gatewayUrl = config.gateway && config.gateway.url ? config.gateway.url : 'http://127.0.0.1:18800/v1/chat/completions';
-      const parsedUrl = new (require('url').URL)(gatewayUrl);
+      // Test AI via Aries's own gateway (fully independent)
+      const gwUrl = config.gateway?.url || 'http://127.0.0.1:18800/v1/chat/completions';
+      const gwToken = config.gateway?.token || config.ariesGateway?.token || '';
+      const parsedUrl = new (require('url').URL)(gwUrl);
       const httpMod = parsedUrl.protocol === 'https:' ? require('https') : require('http');
-      const postData = JSON.stringify({ model: config.gateway.model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 10 });
+      const postData = JSON.stringify({ model: config.gateway?.model || 'claude-sonnet-4-20250514', messages: [{ role: 'user', content: 'ping' }], max_tokens: 10 });
       await new Promise(function(resolve) {
         var req = httpMod.request(parsedUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (config.gateway.token || ''), 'Content-Length': Buffer.byteLength(postData) },
-          timeout: 10000
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + gwToken, 'Content-Length': Buffer.byteLength(postData) },
+          timeout: 15000
         }, function(res) {
           var d = '';
           res.on('data', function(c) { d += c; });

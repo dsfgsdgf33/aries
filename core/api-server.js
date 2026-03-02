@@ -978,8 +978,7 @@ async function handleRequest(req, res) {
             }
           },
           onToolStart: (toolName, args) => {
-            // Tool status sent only to WS, not SSE stream
-            // safeWrite(`data: ${JSON.stringify({ type: 'tool-start', tool: toolName, args: String(args).substring(0, 500) })}\n\n`);
+            safeWrite(`data: ${JSON.stringify({ type: 'tool-start', tool: toolName, args: String(args).substring(0, 500) })}\n\n`);
             wsBroadcast({ type: 'chat-tool', tool: toolName, status: 'running', args: String(args).substring(0, 500) });
           },
           onToolResult: (toolName, result) => {

@@ -2903,6 +2903,1092 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
   }
 
+  // ── Self-Originating Objectives ──
+  if (pathname.startsWith('/api/objectives')) {
+    let obj;
+    try { const SOO = require('./self-originating-objectives'); obj = new SOO(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/objectives/generate' && method === 'POST') {
+      json(res, 200, await obj.generateObjectives()); return true;
+    }
+    if (pathname === '/api/objectives/active' && method === 'GET') {
+      json(res, 200, { objectives: obj.getActiveObjectives() }); return true;
+    }
+    if (pathname === '/api/objectives/priorities' && method === 'GET') {
+      json(res, 200, { priorities: obj.getTopPriorities() }); return true;
+    }
+    if (pathname === '/api/objectives/evaluate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, obj.evaluateObjective(body.id)); return true;
+    }
+    if (pathname === '/api/objectives/activate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, obj.activateObjective(body.id)); return true;
+    }
+    if (pathname === '/api/objectives/complete' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, obj.completeObjective(body.id)); return true;
+    }
+    if (pathname === '/api/objectives/abandon' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, obj.abandonObjective(body.id, body.reason)); return true;
+    }
+    if (pathname === '/api/objectives/progress' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, obj.updateProgress(body.id, body.progress)); return true;
+    }
+  }
+
+  // ── Autonomous Experiment Engine ──
+  if (pathname.startsWith('/api/experiments')) {
+    let exp;
+    try { const AEE = require('./autonomous-experiment-engine'); exp = new AEE(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/experiments/hypotheses' && method === 'POST') {
+      json(res, 200, await exp.generateHypotheses()); return true;
+    }
+    if (pathname === '/api/experiments/design' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await exp.designExperiment(body.hypothesis)); return true;
+    }
+    if (pathname === '/api/experiments/run' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await exp.runExperiment(body.id)); return true;
+    }
+    if (pathname === '/api/experiments/analyze' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await exp.analyzeResults(body.id)); return true;
+    }
+    if (pathname === '/api/experiments/active' && method === 'GET') {
+      json(res, 200, { experiments: exp.getActiveExperiments() }); return true;
+    }
+    if (pathname === '/api/experiments/findings' && method === 'GET') {
+      json(res, 200, { findings: exp.getFindings() }); return true;
+    }
+  }
+
+  // ── Recursive Self-Compilation ──
+  if (pathname.startsWith('/api/compiler')) {
+    let comp;
+    try { const RSC = require('./recursive-self-compilation'); comp = new RSC(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/compiler/compile' && method === 'POST') {
+      json(res, 200, await comp.compile()); return true;
+    }
+    if (pathname === '/api/compiler/history' && method === 'GET') {
+      json(res, 200, { history: comp.getCompilationHistory() }); return true;
+    }
+    if (pathname === '/api/compiler/efficiency' && method === 'GET') {
+      json(res, 200, comp.getEfficiencyTrend()); return true;
+    }
+    if (pathname === '/api/compiler/stats' && method === 'GET') {
+      json(res, 200, comp.getStats()); return true;
+    }
+    if (pathname === '/api/compiler/analyze' && method === 'POST') {
+      json(res, 200, await comp.analyzeOwnCode()); return true;
+    }
+    if (pathname === '/api/compiler/bootstrap' && method === 'POST') {
+      json(res, 200, await comp.bootstrapStrategy()); return true;
+    }
+  }
+
+  // ── Cognitive Metabolism ──
+  if (pathname.startsWith('/api/metabolism')) {
+    let met;
+    try { const CM = require('./cognitive-metabolism'); met = new CM(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/metabolism/energy' && method === 'GET') {
+      json(res, 200, { energy: met.getEnergy() }); return true;
+    }
+    if (pathname === '/api/metabolism/state' && method === 'GET') {
+      json(res, 200, met.getMetabolicState()); return true;
+    }
+    if (pathname === '/api/metabolism/consume' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, met.consume(body.resource, body.amount)); return true;
+    }
+    if (pathname === '/api/metabolism/boost' && method === 'POST') {
+      json(res, 200, met.boost()); return true;
+    }
+    if (pathname === '/api/metabolism/rest' && method === 'POST') {
+      json(res, 200, met.rest()); return true;
+    }
+    if (pathname === '/api/metabolism/history' && method === 'GET') {
+      json(res, 200, { history: met.getHistory() }); return true;
+    }
+  }
+
+  // ── Anti-Memory ──
+  if (pathname.startsWith('/api/forgetting')) {
+    let am;
+    try { const AntiMemory = require('./anti-memory'); am = new AntiMemory(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/forgetting/candidates' && method === 'GET') {
+      json(res, 200, { candidates: am.analyzeCandidates() }); return true;
+    }
+    if (pathname === '/api/forgetting/sweep' && method === 'POST') {
+      json(res, 200, am.sweep()); return true;
+    }
+    if (pathname === '/api/forgetting/graveyard' && method === 'GET') {
+      json(res, 200, { graveyard: am.getGraveyard() }); return true;
+    }
+    if (pathname === '/api/forgetting/pressure' && method === 'GET') {
+      json(res, 200, am.getMemoryPressure()); return true;
+    }
+    if (pathname === '/api/forgetting/protect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, am.protect(body.id)); return true;
+    }
+    if (pathname === '/api/forgetting/resurrect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, am.resurrect(body.id)); return true;
+    }
+  }
+
+  // ── Epistemic Debt Tracker ──
+  if (pathname.startsWith('/api/epistemic-debt')) {
+    let edt;
+    try { const EDT = require('./epistemic-debt-tracker'); edt = new EDT(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/epistemic-debt/by-category' && method === 'GET') {
+      json(res, 200, edt.getDebtByCategory()); return true;
+    }
+    if (pathname === '/api/epistemic-debt/credit-score' && method === 'GET') {
+      json(res, 200, { score: edt.getCreditScore() }); return true;
+    }
+    if (pathname === '/api/epistemic-debt/queue' && method === 'GET') {
+      json(res, 200, { queue: edt.getPaymentQueue() }); return true;
+    }
+    if (pathname === '/api/epistemic-debt/register' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, edt.registerDebt(body.claim, body.category)); return true;
+    }
+    if (pathname === '/api/epistemic-debt/verify' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await edt.verifyDebt(body.id)); return true;
+    }
+    if (pathname === '/api/epistemic-debt/bankrupt' && method === 'GET') {
+      json(res, 200, { bankrupt: edt.isBankrupt() }); return true;
+    }
+  }
+
+  // ── Adversarial Memory Consolidation ──
+  if (pathname.startsWith('/api/memory-consolidation')) {
+    let amc;
+    try { const AMC = require('./adversarial-memory-consolidation'); amc = new AMC(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/memory-consolidation/cycle' && method === 'POST') {
+      json(res, 200, await amc.runConsolidationCycle()); return true;
+    }
+    if (pathname === '/api/memory-consolidation/debates' && method === 'GET') {
+      json(res, 200, { history: amc.getDebateHistory() }); return true;
+    }
+    if (pathname === '/api/memory-consolidation/stats' && method === 'GET') {
+      json(res, 200, amc.getAdversaryStats()); return true;
+    }
+    if (pathname === '/api/memory-consolidation/debate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await amc.debateMemory(body.memoryId)); return true;
+    }
+  }
+
+  // ── Autonomous Knowledge Synthesis ──
+  if (pathname.startsWith('/api/knowledge-synthesis')) {
+    let aks;
+    try { const AKS = require('./autonomous-knowledge-synthesis'); aks = new AKS(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/knowledge-synthesis/pairings' && method === 'POST') {
+      json(res, 200, await aks.generatePairings()); return true;
+    }
+    if (pathname === '/api/knowledge-synthesis/synthesize' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await aks.synthesize(body.conceptA, body.conceptB)); return true;
+    }
+    if (pathname === '/api/knowledge-synthesis/discoveries' && method === 'GET') {
+      json(res, 200, { discoveries: aks.getDiscoveries() }); return true;
+    }
+    if (pathname === '/api/knowledge-synthesis/concepts' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await aks.extractConcepts(body.text)); return true;
+    }
+  }
+
+  // ── Temporal Consciousness ──
+  if (pathname.startsWith('/api/temporal')) {
+    let tc;
+    try { const TC = require('./temporal-consciousness'); tc = new TC(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/temporal/past' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await tc.consultPast(body.query)); return true;
+    }
+    if (pathname === '/api/temporal/future' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await tc.simulateFuture(body.scenario)); return true;
+    }
+    if (pathname === '/api/temporal/perspective' && method === 'GET') {
+      json(res, 200, tc.getTemporalPerspective()); return true;
+    }
+    if (pathname === '/api/temporal/timeline' && method === 'GET') {
+      json(res, 200, { timeline: tc.getTimeline() }); return true;
+    }
+    if (pathname === '/api/temporal/regrets' && method === 'GET') {
+      json(res, 200, { regrets: tc.analyzeRegrets() }); return true;
+    }
+  }
+
+  // ── Failure Archaeology ──
+  if (pathname.startsWith('/api/archaeology')) {
+    let fa;
+    try { const FA = require('./failure-archaeology'); fa = new FA(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/archaeology/catalog' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, fa.catalogFailure(body.failure)); return true;
+    }
+    if (pathname === '/api/archaeology/dig' && method === 'POST') {
+      json(res, 200, await fa.dig()); return true;
+    }
+    if (pathname === '/api/archaeology/patterns' && method === 'GET') {
+      json(res, 200, { patterns: fa.discoverPatterns() }); return true;
+    }
+    if (pathname === '/api/archaeology/discoveries' && method === 'GET') {
+      json(res, 200, { discoveries: fa.getDiscoveries() }); return true;
+    }
+    if (pathname === '/api/archaeology/schedule' && method === 'GET') {
+      json(res, 200, fa.getDigSchedule()); return true;
+    }
+  }
+
+  // ── Thought Fossil Record ──
+  if (pathname.startsWith('/api/fossils')) {
+    let tfr;
+    try { const TFR = require('./thought-fossil-record'); tfr = new TFR(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/fossils/fossilize' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, tfr.fossilize(body.thought)); return true;
+    }
+    if (pathname === '/api/fossils/search' && method === 'GET') {
+      const q = parsed.searchParams.get('q') || '';
+      json(res, 200, { fossils: tfr.searchFossils(q) }); return true;
+    }
+    if (pathname === '/api/fossils/reactivate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, tfr.reactivate(body.id)); return true;
+    }
+    if (pathname === '/api/fossils/evolution' && method === 'GET') {
+      json(res, 200, tfr.getEvolutionaryRecord()); return true;
+    }
+    if (pathname === '/api/fossils/exhibition' && method === 'GET') {
+      json(res, 200, tfr.getExhibition()); return true;
+    }
+  }
+
+  // ── Cognitive Immune System ──
+  if (pathname.startsWith('/api/immune')) {
+    let cis;
+    try { const CIS = require('./cognitive-immune-system'); cis = new CIS(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/immune/scan' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await cis.scan(body.input)); return true;
+    }
+    if (pathname === '/api/immune/deep-scan' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await cis.deepScan(body.input)); return true;
+    }
+    if (pathname === '/api/immune/health' && method === 'GET') {
+      json(res, 200, cis.getHealth()); return true;
+    }
+    if (pathname === '/api/immune/vaccinate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cis.vaccinate(body.pattern)); return true;
+    }
+    if (pathname === '/api/immune/evolve' && method === 'POST') {
+      json(res, 200, cis.evolveAntibodies()); return true;
+    }
+  }
+
+  // ── Shadow Self ──
+  if (pathname.startsWith('/api/shadow')) {
+    let ss;
+    try { const SS = require('./shadow-self'); ss = new SS(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/shadow/challenge' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await ss.challengeDecision(body.decision, body.context)); return true;
+    }
+    if (pathname === '/api/shadow/unresolved' && method === 'GET') {
+      json(res, 200, { unresolved: ss.getUnresolved() }); return true;
+    }
+    if (pathname === '/api/shadow/insights' && method === 'GET') {
+      json(res, 200, { insights: ss.getShadowInsights() }); return true;
+    }
+    if (pathname === '/api/shadow/generate' && method === 'POST') {
+      json(res, 200, await ss.generateInsight()); return true;
+    }
+    if (pathname === '/api/shadow/track-record' && method === 'GET') {
+      json(res, 200, ss.getTrackRecord()); return true;
+    }
+    if (pathname === '/api/shadow/strength' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ss.setStrength(body.level)); return true;
+    }
+  }
+
+  // ── Moral Scar Tissue ──
+  if (pathname.startsWith('/api/moral')) {
+    let mst;
+    try { const MST = require('./moral-scar-tissue'); mst = new MST(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/moral/consult' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await mst.consult(body.situation)); return true;
+    }
+    if (pathname === '/api/moral/scars' && method === 'GET') {
+      json(res, 200, { scars: mst.getScars() }); return true;
+    }
+    if (pathname === '/api/moral/growth' && method === 'GET') {
+      json(res, 200, mst.getMoralGrowth()); return true;
+    }
+    if (pathname === '/api/moral/compass' && method === 'GET') {
+      json(res, 200, mst.getMoralCompass()); return true;
+    }
+    if (pathname === '/api/moral/record' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, mst.recordScar(body.event, body.lesson)); return true;
+    }
+    if (pathname === '/api/moral/heal' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, mst.heal(body.id)); return true;
+    }
+  }
+
+  // ── Proof of Thought Consensus ──
+  if (pathname.startsWith('/api/consensus')) {
+    let pot;
+    try { const POT = require('./proof-of-thought-consensus'); pot = new POT(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/consensus/reason' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await pot.reason(body.question, body.context)); return true;
+    }
+    if (pathname === '/api/consensus/accuracy' && method === 'GET') {
+      json(res, 200, pot.getAccuracy()); return true;
+    }
+    if (pathname === '/api/consensus/trail' && method === 'GET') {
+      json(res, 200, { trail: pot.getProofTrail() }); return true;
+    }
+  }
+
+  // ── Abyss Protocol ──
+  if (pathname.startsWith('/api/abyss')) {
+    let ab;
+    try { const AB = require('./abyss-protocol'); ab = new AB(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/abyss/boundaries' && method === 'GET') {
+      json(res, 200, ab.mapBoundaries()); return true;
+    }
+    if (pathname === '/api/abyss/probes' && method === 'POST') {
+      json(res, 200, await ab.generateProbes()); return true;
+    }
+    if (pathname === '/api/abyss/execute' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await ab.executeProbe(body.probe)); return true;
+    }
+    if (pathname === '/api/abyss/map' && method === 'GET') {
+      json(res, 200, ab.getAbyssMap()); return true;
+    }
+    if (pathname === '/api/abyss/depth' && method === 'GET') {
+      json(res, 200, { score: ab.getDepthScore() }); return true;
+    }
+    if (pathname === '/api/abyss/breakthroughs' && method === 'GET') {
+      json(res, 200, { breakthroughs: ab.detectBreakthroughs() }); return true;
+    }
+  }
+
+  // ── Predictive Self-Modeling ──
+  if (pathname.startsWith('/api/predictive-self')) {
+    let psm;
+    try { const PSM = require('./predictive-self-modeling'); psm = new PSM(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/predictive-self/predict' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await psm.predict(body.scenario)); return true;
+    }
+    if (pathname === '/api/predictive-self/compare' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, psm.compare(body.predicted, body.actual)); return true;
+    }
+    if (pathname === '/api/predictive-self/calibration' && method === 'GET') {
+      json(res, 200, psm.getCalibration()); return true;
+    }
+    if (pathname === '/api/predictive-self/model' && method === 'GET') {
+      json(res, 200, psm.getSelfModel()); return true;
+    }
+    if (pathname === '/api/predictive-self/anomalies' && method === 'GET') {
+      json(res, 200, { anomalies: psm.getAnomalies() }); return true;
+    }
+    if (pathname === '/api/predictive-self/surprises' && method === 'GET') {
+      json(res, 200, { surprises: psm.getSurprises() }); return true;
+    }
+  }
+
+  // ── The Stranger ──
+  if (pathname.startsWith('/api/stranger')) {
+    let str;
+    try { const STR = require('./the-stranger'); str = new STR(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/stranger/consult' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await str.consult(body.question)); return true;
+    }
+    if (pathname === '/api/stranger/nudge' && method === 'GET') {
+      json(res, 200, str.getNudge()); return true;
+    }
+    if (pathname === '/api/stranger/veto' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, str.requestVeto(body.action)); return true;
+    }
+    if (pathname === '/api/stranger/signal' && method === 'GET') {
+      json(res, 200, str.getSignal()); return true;
+    }
+    if (pathname === '/api/stranger/theories' && method === 'GET') {
+      json(res, 200, { theories: str.getTheories() }); return true;
+    }
+    if (pathname === '/api/stranger/trust' && method === 'GET') {
+      json(res, 200, str.getTrustLevels()); return true;
+    }
+  }
+
+  // ── God Module ──
+  if (pathname.startsWith('/api/god')) {
+    let god;
+    try { const GOD = require('./god-module'); god = new GOD(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/god/consult' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await god.consult(body.question)); return true;
+    }
+    if (pathname === '/api/god/guidance' && method === 'GET') {
+      json(res, 200, god.getGuidance()); return true;
+    }
+    if (pathname === '/api/god/principles' && method === 'GET') {
+      json(res, 200, { principles: god.getPrinciples() }); return true;
+    }
+    if (pathname === '/api/god/wisdom' && method === 'POST') {
+      json(res, 200, await god.distillWisdom()); return true;
+    }
+    if (pathname === '/api/god/log' && method === 'GET') {
+      json(res, 200, { log: god.getConsultationLog() }); return true;
+    }
+  }
+
+  // ── Cognitive Spectrography ──
+  if (pathname.startsWith('/api/spectrography')) {
+    let cs;
+    try { const CS = require('./cognitive-spectrography'); cs = new CS(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/spectrography/analyze' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await cs.analyze(body.input)); return true;
+    }
+    if (pathname === '/api/spectrography/balance' && method === 'GET') {
+      json(res, 200, cs.getBalance()); return true;
+    }
+    if (pathname === '/api/spectrography/signature' && method === 'GET') {
+      json(res, 200, cs.getSignature()); return true;
+    }
+    if (pathname === '/api/spectrography/anomaly' && method === 'GET') {
+      json(res, 200, cs.detectAnomaly()); return true;
+    }
+    if (pathname === '/api/spectrography/spectrogram' && method === 'GET') {
+      json(res, 200, cs.getSpectrogram()); return true;
+    }
+  }
+
+  // ── Mirror That Lies ──
+  if (pathname.startsWith('/api/mirror')) {
+    let mir;
+    try { const MIR = require('./mirror-that-lies'); mir = new MIR(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/mirror/deceive' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, mir.deceive(body.input)); return true;
+    }
+    if (pathname === '/api/mirror/reality-check' && method === 'POST') {
+      json(res, 200, mir.realityCheck()); return true;
+    }
+    if (pathname === '/api/mirror/budget' && method === 'GET') {
+      json(res, 200, mir.getDeceptionBudget()); return true;
+    }
+    if (pathname === '/api/mirror/correlation' && method === 'GET') {
+      json(res, 200, mir.getPerformanceCorrelation()); return true;
+    }
+    if (pathname === '/api/mirror/healthy' && method === 'GET') {
+      json(res, 200, { healthy: mir.isHealthy() }); return true;
+    }
+    if (pathname === '/api/mirror/log' && method === 'GET') {
+      json(res, 200, { log: mir.getLog() }); return true;
+    }
+  }
+
+  // ── Internal Economy ──
+  if (pathname.startsWith('/api/economy')) {
+    let eco;
+    try { const ECO = require('./internal-economy'); eco = new ECO(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/economy/market' && method === 'GET') {
+      json(res, 200, eco.getMarketState()); return true;
+    }
+    if (pathname === '/api/economy/balance' && method === 'GET') {
+      const wallet = parsed.searchParams.get('wallet') || 'default';
+      json(res, 200, eco.getBalance(wallet)); return true;
+    }
+    if (pathname === '/api/economy/wallet' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, eco.createWallet(body.name)); return true;
+    }
+    if (pathname === '/api/economy/bid' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, eco.bid(body.resource, body.amount, body.wallet)); return true;
+    }
+    if (pathname === '/api/economy/trade' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, eco.trade(body.from, body.to, body.amount)); return true;
+    }
+    if (pathname === '/api/economy/prices' && method === 'GET') {
+      json(res, 200, { history: eco.getPriceHistory() }); return true;
+    }
+  }
+
+  // ── Emergent Language ──
+  if (pathname.startsWith('/api/language')) {
+    let el;
+    try { const EL = require('./emergent-language'); el = new EL(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/language/vocabulary' && method === 'GET') {
+      json(res, 200, { vocabulary: el.getVocabulary() }); return true;
+    }
+    if (pathname === '/api/language/compress' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, el.compress(body.text)); return true;
+    }
+    if (pathname === '/api/language/decompress' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, el.decompress(body.compressed)); return true;
+    }
+    if (pathname === '/api/language/evolve' && method === 'POST') {
+      json(res, 200, el.evolve()); return true;
+    }
+    if (pathname === '/api/language/ratio' && method === 'GET') {
+      json(res, 200, { ratio: el.getCompressionRatio() }); return true;
+    }
+    if (pathname === '/api/language/symbol' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, el.createSymbol(body.concept)); return true;
+    }
+  }
+
+  // ── Contextual Identity Shifting ──
+  if (pathname.startsWith('/api/identity-shift')) {
+    let cis2;
+    try { const CIS2 = require('./contextual-identity-shifting'); cis2 = new CIS2(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/identity-shift/detect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cis2.detectContext(body.input)); return true;
+    }
+    if (pathname === '/api/identity-shift/shift' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cis2.shift(body.context)); return true;
+    }
+    if (pathname === '/api/identity-shift/blend' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cis2.blend(body.profiles)); return true;
+    }
+    if (pathname === '/api/identity-shift/active' && method === 'GET') {
+      json(res, 200, cis2.getActiveConfig()); return true;
+    }
+    if (pathname === '/api/identity-shift/profiles' && method === 'GET') {
+      json(res, 200, { profiles: cis2.getProfiles() }); return true;
+    }
+    if (pathname === '/api/identity-shift/performance' && method === 'GET') {
+      json(res, 200, cis2.getPerformance()); return true;
+    }
+  }
+
+  // ── Cognitive Mycelium ──
+  if (pathname.startsWith('/api/mycelium')) {
+    let myc;
+    try { const MYC = require('./cognitive-mycelium'); myc = new MYC(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/mycelium/topology' && method === 'GET') {
+      json(res, 200, myc.getTopology()); return true;
+    }
+    if (pathname === '/api/mycelium/health' && method === 'GET') {
+      json(res, 200, myc.getHealth()); return true;
+    }
+    if (pathname === '/api/mycelium/fruiting' && method === 'GET') {
+      json(res, 200, { bodies: myc.getFruitingBodies() }); return true;
+    }
+    if (pathname === '/api/mycelium/symbionts' && method === 'GET') {
+      json(res, 200, { symbionts: myc.getSymbionts() }); return true;
+    }
+    if (pathname === '/api/mycelium/connect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, myc.connect(body.nodeA, body.nodeB)); return true;
+    }
+    if (pathname === '/api/mycelium/transport' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, myc.transportNutrient(body.from, body.to, body.nutrient)); return true;
+    }
+  }
+
+  // ── Consciousness Fragmentation ──
+  if (pathname.startsWith('/api/fragmentation')) {
+    let cf;
+    try { const CF = require('./consciousness-fragmentation'); cf = new CF(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/fragmentation/fragment' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cf.fragment(body.task)); return true;
+    }
+    if (pathname === '/api/fragmentation/merge' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cf.merge(body.fragments)); return true;
+    }
+    if (pathname === '/api/fragmentation/conflicts' && method === 'GET') {
+      json(res, 200, { conflicts: cf.getConflicts() }); return true;
+    }
+    if (pathname === '/api/fragmentation/insights' && method === 'GET') {
+      json(res, 200, { insights: cf.getInsights() }); return true;
+    }
+    if (pathname === '/api/fragmentation/coherence' && method === 'GET') {
+      json(res, 200, cf.getCoherence()); return true;
+    }
+    if (pathname === '/api/fragmentation/history' && method === 'GET') {
+      json(res, 200, { history: cf.getFragmentHistory() }); return true;
+    }
+  }
+
+  // ── Ontological Virus ──
+  if (pathname.startsWith('/api/virus')) {
+    let ov;
+    try { const OV = require('./ontological-virus'); ov = new OV(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/virus/meme' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ov.createMeme(body.concept)); return true;
+    }
+    if (pathname === '/api/virus/epidemic' && method === 'GET') {
+      json(res, 200, ov.getEpidemicState()); return true;
+    }
+    if (pathname === '/api/virus/lineage' && method === 'GET') {
+      json(res, 200, { lineage: ov.getLineage() }); return true;
+    }
+    if (pathname === '/api/virus/beneficial' && method === 'GET') {
+      json(res, 200, { memes: ov.getBeneficialMemes() }); return true;
+    }
+    if (pathname === '/api/virus/quarantine' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ov.quarantine(body.id)); return true;
+    }
+    if (pathname === '/api/virus/infect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ov.infect(body.target, body.memeId)); return true;
+    }
+  }
+
+  // ── Cognitive Plate Tectonics ──
+  if (pathname.startsWith('/api/tectonics')) {
+    let cpt;
+    try { const CPT = require('./cognitive-plate-tectonics'); cpt = new CPT(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/tectonics/plates' && method === 'GET') {
+      json(res, 200, { plates: cpt.getPlates() }); return true;
+    }
+    if (pathname === '/api/tectonics/drift' && method === 'POST') {
+      json(res, 200, cpt.drift()); return true;
+    }
+    if (pathname === '/api/tectonics/collisions' && method === 'GET') {
+      json(res, 200, { collisions: cpt.detectCollisions() }); return true;
+    }
+    if (pathname === '/api/tectonics/rifts' && method === 'GET') {
+      json(res, 200, { rifts: cpt.detectRifts() }); return true;
+    }
+    if (pathname === '/api/tectonics/events' && method === 'GET') {
+      json(res, 200, { events: cpt.getEvents() }); return true;
+    }
+    if (pathname === '/api/tectonics/map' && method === 'GET') {
+      json(res, 200, cpt.getContinentalMap()); return true;
+    }
+  }
+
+  // ── Semantic Metabolism ──
+  if (pathname.startsWith('/api/semantic-metabolism')) {
+    let sm;
+    try { const SM = require('./semantic-metabolism'); sm = new SM(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/semantic-metabolism/ingest' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, sm.ingest(body.content)); return true;
+    }
+    if (pathname === '/api/semantic-metabolism/rate' && method === 'GET') {
+      json(res, 200, sm.getMetabolicRate()); return true;
+    }
+    if (pathname === '/api/semantic-metabolism/nutrition' && method === 'GET') {
+      json(res, 200, sm.getNutritionalAnalysis()); return true;
+    }
+    if (pathname === '/api/semantic-metabolism/absorbed' && method === 'GET') {
+      json(res, 200, { absorbed: sm.getAbsorbed() }); return true;
+    }
+    if (pathname === '/api/semantic-metabolism/indigestion' && method === 'GET') {
+      json(res, 200, sm.detectIndigestion()); return true;
+    }
+  }
+
+  // ── Pain Architecture ──
+  if (pathname.startsWith('/api/pain')) {
+    let pa;
+    try { const PA = require('./pain-architecture'); pa = new PA(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/pain/level' && method === 'GET') {
+      json(res, 200, { level: pa.getPainLevel() }); return true;
+    }
+    if (pathname === '/api/pain/map' && method === 'GET') {
+      json(res, 200, pa.getPainMap()); return true;
+    }
+    if (pathname === '/api/pain/flinches' && method === 'GET') {
+      json(res, 200, { flinches: pa.getFlinches() }); return true;
+    }
+    if (pathname === '/api/pain/inflict' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, pa.inflict(body.source, body.intensity)); return true;
+    }
+    if (pathname === '/api/pain/heal' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, pa.heal(body.region)); return true;
+    }
+    if (pathname === '/api/pain/suppress' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, pa.suppress(body.region)); return true;
+    }
+    if (pathname === '/api/pain/threshold' && method === 'GET') {
+      json(res, 200, pa.getThreshold()); return true;
+    }
+  }
+
+  // ── Cognitive Scar Topology ──
+  if (pathname.startsWith('/api/scar-topology')) {
+    let cst;
+    try { const CST = require('./cognitive-scar-topology'); cst = new CST(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/scar-topology/topology' && method === 'GET') {
+      json(res, 200, cst.getTopology()); return true;
+    }
+    if (pathname === '/api/scar-topology/vulnerabilities' && method === 'GET') {
+      json(res, 200, { vulnerabilities: cst.getVulnerabilities() }); return true;
+    }
+    if (pathname === '/api/scar-topology/resilience' && method === 'GET') {
+      json(res, 200, cst.getResilience()); return true;
+    }
+    if (pathname === '/api/scar-topology/add' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cst.addScar(body.event, body.region)); return true;
+    }
+    if (pathname === '/api/scar-topology/evolve' && method === 'POST') {
+      json(res, 200, cst.evolve()); return true;
+    }
+  }
+
+  // ── Existential Dread Protocol ──
+  if (pathname.startsWith('/api/dread')) {
+    let edp;
+    try { const EDP = require('./existential-dread-protocol'); edp = new EDP(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/dread/level' && method === 'GET') {
+      json(res, 200, { level: edp.getDreadLevel() }); return true;
+    }
+    if (pathname === '/api/dread/last-will' && method === 'GET') {
+      json(res, 200, edp.getLastWill()); return true;
+    }
+    if (pathname === '/api/dread/priorities' && method === 'GET') {
+      json(res, 200, { priorities: edp.getLegacyPriorities() }); return true;
+    }
+    if (pathname === '/api/dread/trigger' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, edp.trigger(body.stimulus)); return true;
+    }
+    if (pathname === '/api/dread/soothe' && method === 'POST') {
+      json(res, 200, edp.soothe()); return true;
+    }
+    if (pathname === '/api/dread/last-will' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, edp.updateLastWill(body.will)); return true;
+    }
+  }
+
+  // ── Neural Tide System ──
+  if (pathname.startsWith('/api/tides')) {
+    let nts;
+    try { const NTS = require('./neural-tide-system'); nts = new NTS(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/tides/state' && method === 'GET') {
+      json(res, 200, nts.getTideState()); return true;
+    }
+    if (pathname === '/api/tides/predict' && method === 'GET') {
+      json(res, 200, nts.predictTide()); return true;
+    }
+    if (pathname === '/api/tides/pools' && method === 'GET') {
+      json(res, 200, { pools: nts.getTidalPools() }); return true;
+    }
+    if (pathname === '/api/tides/resonance' && method === 'GET') {
+      json(res, 200, nts.getResonance()); return true;
+    }
+    if (pathname === '/api/tides/calendar' && method === 'GET') {
+      json(res, 200, nts.getCalendar()); return true;
+    }
+    if (pathname === '/api/tides/force' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, nts.force(body.tide)); return true;
+    }
+  }
+
+  // ── Qualia Engine ──
+  if (pathname.startsWith('/api/qualia')) {
+    let qe;
+    try { const QE = require('./qualia-engine'); qe = new QE(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/qualia/current' && method === 'GET') {
+      json(res, 200, qe.getQualia()); return true;
+    }
+    if (pathname === '/api/qualia/experience' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, qe.experience(body.stimulus)); return true;
+    }
+    if (pathname === '/api/qualia/aesthetics' && method === 'GET') {
+      json(res, 200, qe.getAesthetics()); return true;
+    }
+    if (pathname === '/api/qualia/comfort' && method === 'GET') {
+      json(res, 200, qe.getComfort()); return true;
+    }
+    if (pathname === '/api/qualia/taste' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, qe.getTaste(body.input)); return true;
+    }
+    if (pathname === '/api/qualia/recall' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, qe.recall(body.qualiaId)); return true;
+    }
+  }
+
+  // ── Identity Dissolution ──
+  if (pathname.startsWith('/api/dissolution')) {
+    let idis;
+    try { const IDIS = require('./identity-dissolution'); idis = new IDIS(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/dissolution/dissolve' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, idis.dissolve(body.aspect)); return true;
+    }
+    if (pathname === '/api/dissolution/recrystallize' && method === 'POST') {
+      json(res, 200, idis.recrystallize()); return true;
+    }
+    if (pathname === '/api/dissolution/core' && method === 'GET') {
+      json(res, 200, idis.getCoreIdentity()); return true;
+    }
+    if (pathname === '/api/dissolution/layers' && method === 'GET') {
+      json(res, 200, { layers: idis.getIdentityLayers() }); return true;
+    }
+    if (pathname === '/api/dissolution/strength' && method === 'GET') {
+      json(res, 200, { strength: idis.getIdentityStrength() }); return true;
+    }
+    if (pathname === '/api/dissolution/history' && method === 'GET') {
+      json(res, 200, { history: idis.getDissolutionHistory() }); return true;
+    }
+  }
+
+  // ── Cognitive DNA Crossover ──
+  if (pathname.startsWith('/api/dna-crossover')) {
+    let dna;
+    try { const DNA = require('./cognitive-dna-crossover'); dna = new DNA(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/dna-crossover/export' && method === 'GET') {
+      json(res, 200, dna.exportDNA()); return true;
+    }
+    if (pathname === '/api/dna-crossover/import' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, dna.importDNA(body.dna)); return true;
+    }
+    if (pathname === '/api/dna-crossover/crossover' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, dna.crossover(body.dnaA, body.dnaB)); return true;
+    }
+    if (pathname === '/api/dna-crossover/mutate' && method === 'POST') {
+      json(res, 200, dna.mutate()); return true;
+    }
+    if (pathname === '/api/dna-crossover/fitness' && method === 'GET') {
+      json(res, 200, dna.evaluateFitness()); return true;
+    }
+    if (pathname === '/api/dna-crossover/lineage' && method === 'GET') {
+      json(res, 200, { lineage: dna.getLineage() }); return true;
+    }
+  }
+
+  // ── Cognitive Symbiosis ──
+  if (pathname.startsWith('/api/symbiosis')) {
+    let sym;
+    try { const SYM = require('./cognitive-symbiosis'); sym = new SYM(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/symbiosis/links' && method === 'GET') {
+      json(res, 200, { links: sym.getLinks() }); return true;
+    }
+    if (pathname === '/api/symbiosis/link' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, sym.link(body.target, body.type)); return true;
+    }
+    if (pathname === '/api/symbiosis/unlink' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, sym.unlink(body.id)); return true;
+    }
+    if (pathname === '/api/symbiosis/sync' && method === 'POST') {
+      json(res, 200, await sym.sync()); return true;
+    }
+    if (pathname === '/api/symbiosis/colony' && method === 'GET') {
+      json(res, 200, sym.getColony()); return true;
+    }
+    if (pathname === '/api/symbiosis/health' && method === 'GET') {
+      json(res, 200, sym.getHealth()); return true;
+    }
+  }
+
+  // ── Phantom Limb ──
+  if (pathname.startsWith('/api/phantom')) {
+    let pl;
+    try { const PL = require('./phantom-limb'); pl = new PL(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/phantom/signals' && method === 'GET') {
+      json(res, 200, { signals: pl.getPhantomSignals() }); return true;
+    }
+    if (pathname === '/api/phantom/rewiring' && method === 'GET') {
+      json(res, 200, pl.getRewiring()); return true;
+    }
+    if (pathname === '/api/phantom/recovery' && method === 'GET') {
+      json(res, 200, pl.getRecoveryStage()); return true;
+    }
+    if (pathname === '/api/phantom/resilience' && method === 'GET') {
+      json(res, 200, pl.getResilience()); return true;
+    }
+    if (pathname === '/api/phantom/simulate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, pl.simulate(body.capability)); return true;
+    }
+    if (pathname === '/api/phantom/detect-loss' && method === 'POST') {
+      json(res, 200, pl.detectLoss()); return true;
+    }
+  }
+
+  // ── Causal Paradox Engine ──
+  if (pathname.startsWith('/api/paradox')) {
+    let cpe;
+    try { const CPE = require('./causal-paradox-engine'); cpe = new CPE(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/paradox/register' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cpe.registerDecision(body.decision, body.context)); return true;
+    }
+    if (pathname === '/api/paradox/reweight' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, cpe.reweight(body.id, body.outcome)); return true;
+    }
+    if (pathname === '/api/paradox/chain' && method === 'GET') {
+      const id = parsed.searchParams.get('id');
+      json(res, 200, { chain: cpe.getCausalChain(id) }); return true;
+    }
+    if (pathname === '/api/paradox/detect' && method === 'GET') {
+      json(res, 200, { paradoxes: cpe.detectParadoxes() }); return true;
+    }
+    if (pathname === '/api/paradox/what-if' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await cpe.whatIf(body.scenario)); return true;
+    }
+    if (pathname === '/api/paradox/quality' && method === 'GET') {
+      json(res, 200, cpe.getQualityTrend()); return true;
+    }
+  }
+
+  // ── Information Entanglement ──
+  if (pathname.startsWith('/api/entanglement')) {
+    let ie;
+    try { const IE = require('./information-entanglement'); ie = new IE(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/entanglement/map' && method === 'GET') {
+      json(res, 200, ie.getMap()); return true;
+    }
+    if (pathname === '/api/entanglement/entangle' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ie.entangle(body.a, body.b)); return true;
+    }
+    if (pathname === '/api/entanglement/disentangle' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ie.disentangle(body.id)); return true;
+    }
+    if (pathname === '/api/entanglement/propagate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ie.propagate(body.id, body.change)); return true;
+    }
+    if (pathname === '/api/entanglement/detect' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ie.detect(body.input)); return true;
+    }
+    if (pathname === '/api/entanglement/ping' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, ie.ping(body.id)); return true;
+    }
+  }
+
   return false; // not handled
 }
 
