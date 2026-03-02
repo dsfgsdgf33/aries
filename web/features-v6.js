@@ -698,6 +698,89 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
+  // Event Query Optimizer
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiEventOptimizer = function(container) {
+    var S = 'style="background:#0a0a0a;border:1px solid #0ff;border-radius:8px;padding:12px;margin:8px 0"';
+    container.innerHTML = '<h2 style="color:#0ff;margin:0 0 12px">⚡ Event Query Optimizer</h2>' +
+      '<div id="eqoStats" ' + S + '>Loading...</div>' +
+      '<div style="display:flex;gap:8px;margin:8px 0">' +
+        '<button id="eqoRecompile" style="background:#222;color:#0ff;border:1px solid #0ff;padding:6px 16px;border-radius:4px;cursor:pointer">🔄 Recompile</button>' +
+        '<button id="eqoCheckpoint" style="background:#222;color:#0ff;border:1px solid #0ff;padding:6px 16px;border-radius:4px;cursor:pointer">💾 Checkpoint</button>' +
+      '</div>' +
+      '<div id="eqoTree" ' + S + '><h3 style="color:#0ff;margin:0 0 8px">Compiled Filter Tree</h3><div id="eqoTreeBody">Loading...</div></div>' +
+      '<div id="eqoMetrics" ' + S + '><h3 style="color:#0ff;margin:0 0 8px">Optimization Metrics</h3><div id="eqoMetricsBody"></div></div>' +
+      '<div ' + S + '><h3 style="color:#0ff;margin:0 0 8px">Test Dispatch</h3>' +
+        '<input id="eqoEventType" placeholder="Event type" style="background:#111;color:#0ff;border:1px solid #333;padding:6px;width:200px;margin-right:8px;border-radius:4px">' +
+        '<br><textarea id="eqoEventBody" placeholder=\'{"key":"value"}\' style="background:#111;color:#0ff;border:1px solid #333;padding:6px;width:100%;height:60px;margin:8px 0;border-radius:4px;font-family:monospace"></textarea>' +
+        '<button id="eqoDispatchBtn" style="background:#222;color:#0ff;border:1px solid #0ff;padding:6px 16px;border-radius:4px;cursor:pointer">▶ Test</button>' +
+        '<pre id="eqoDispatchResult" style="color:#0f0;margin-top:8px;font-size:12px;white-space:pre-wrap"></pre>' +
+      '</div>' +
+      '<div ' + S + '><h3 style="color:#0ff;margin:0 0 8px">Antibody Scan</h3>' +
+        '<input id="eqoScanInput" placeholder="Enter thought to scan..." style="background:#111;color:#0ff;border:1px solid #333;padding:6px;width:100%;border-radius:4px">' +
+        '<button id="eqoScanBtn" style="background:#222;color:#f44;border:1px solid #f44;padding:6px 16px;border-radius:4px;cursor:pointer;margin-top:8px">🛡 Scan</button>' +
+        '<pre id="eqoScanResult" style="color:#f80;margin-top:8px;font-size:12px;white-space:pre-wrap"></pre>' +
+      '</div>';
+
+    function loadStats() {
+      api5('GET', '/api/event-optimizer').then(function(d) {
+        var s = d.stats || {};
+        var statRow = '<div style="display:flex;gap:16px;flex-wrap:wrap">';
+        statRow += '<div style="text-align:center"><div style="color:#888;font-size:11px">Total Dispatches</div><div style="color:#0ff;font-size:20px;font-weight:bold">' + (s.totalDispatches || 0) + '</div></div>';
+        statRow += '<div style="text-align:center"><div style="color:#888;font-size:11px">Avg Match (μs)</div><div style="color:#0ff;font-size:20px;font-weight:bold">' + (s.avgMatchTimeUs || 0).toFixed(1) + '</div></div>';
+        statRow += '<div style="text-align:center"><div style="color:#888;font-size:11px">Filter Count</div><div style="color:#0ff;font-size:20px;font-weight:bold">' + (s.filterCount || 0) + '</div></div>';
+        statRow += '<div style="text-align:center"><div style="color:#888;font-size:11px">Reductions</div><div style="color:#0ff;font-size:20px;font-weight:bold">' + (s.reductions || 0) + '</div></div>';
+        statRow += '<div style="text-align:center"><div style="color:#888;font-size:11px">Last Compiled</div><div style="color:#0ff;font-size:14px">' + (s.lastCompiled ? new Date(s.lastCompiled).toLocaleString() : 'Never') + '</div></div>';
+        statRow += '</div>';
+        document.getElementById('eqoStats').innerHTML = statRow;
+
+        // Metrics
+        var mb = document.getElementById('eqoMetricsBody');
+        if (mb && s.beforeConditions !== undefined) {
+          var pct = s.beforeConditions ? ((1 - s.afterConditions / s.beforeConditions) * 100).toFixed(1) : 0;
+          mb.innerHTML = '<span style="color:#888">Before:</span> <span style="color:#f80">' + (s.beforeConditions || 0) + '</span> conditions → <span style="color:#888">After:</span> <span style="color:#0f0">' + (s.afterConditions || 0) + '</span> conditions <span style="color:#0ff;margin-left:12px">(' + pct + '% reduction)</span>';
+        }
+
+        // Tree summary
+        var ts = d.filterTreeSummary || {};
+        var tb = document.getElementById('eqoTreeBody');
+        if (tb) {
+          var html = '';
+          var types = Object.keys(ts);
+          if (types.length === 0) { tb.innerHTML = '<span style="color:#888">No compiled filters yet</span>'; return; }
+          types.forEach(function(t) {
+            html += '<div style="margin:4px 0"><span style="color:#0ff">' + t + '</span> <span style="color:#888">→ ' + ts[t] + ' handler(s)</span></div>';
+          });
+          tb.innerHTML = html;
+        }
+      }).catch(function() { document.getElementById('eqoStats').innerHTML = '<span style="color:#f44">Failed to load</span>'; });
+    }
+
+    loadStats();
+
+    document.getElementById('eqoRecompile').onclick = function() {
+      api5('POST', '/api/event-optimizer/compile').then(function() { loadStats(); });
+    };
+    document.getElementById('eqoCheckpoint').onclick = function() {
+      api5('POST', '/api/event-optimizer/checkpoint').then(function() { loadStats(); });
+    };
+    document.getElementById('eqoDispatchBtn').onclick = function() {
+      var evtType = document.getElementById('eqoEventType').value;
+      var evtBody = document.getElementById('eqoEventBody').value;
+      try { evtBody = JSON.parse(evtBody || '{}'); } catch(e) { evtBody = {}; }
+      api5('POST', '/api/event-optimizer/dispatch-test', { eventType: evtType, event: evtBody }).then(function(r) {
+        document.getElementById('eqoDispatchResult').textContent = JSON.stringify(r, null, 2);
+      }).catch(function(e) { document.getElementById('eqoDispatchResult').textContent = 'Error: ' + e; });
+    };
+    document.getElementById('eqoScanBtn').onclick = function() {
+      var thought = document.getElementById('eqoScanInput').value;
+      api5('POST', '/api/event-optimizer/scan', { thought: thought }).then(function(r) {
+        document.getElementById('eqoScanResult').textContent = JSON.stringify(r, null, 2);
+      }).catch(function(e) { document.getElementById('eqoScanResult').textContent = 'Error: ' + e; });
+    };
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
   // Expose registry
   // ═══════════════════════════════════════════════════════════════════
   window._features_v6 = {
@@ -721,7 +804,8 @@
     loadAgiPhantom: window.loadAgiPhantom,
     loadAgiParadox: window.loadAgiParadox,
     loadAgiEntangle: window.loadAgiEntangle,
-    loadAgiRecursiveDreams: window.loadAgiRecursiveDreams
+    loadAgiRecursiveDreams: window.loadAgiRecursiveDreams,
+    loadAgiEventOptimizer: window.loadAgiEventOptimizer
   };
 
 })();

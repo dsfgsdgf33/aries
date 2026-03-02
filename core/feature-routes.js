@@ -4026,6 +4026,34 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
   }
 
+  // ── Event Query Optimizer ──
+  if (pathname.startsWith('/api/event-optimizer')) {
+    let eqo;
+    try { const EQO = require('./event-query-optimizer'); eqo = new EQO(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/event-optimizer' && method === 'GET') {
+      json(res, 200, { stats: eqo.getStats(), filterTreeSummary: eqo.getFilterTreeSummary() }); return true;
+    }
+    if (pathname === '/api/event-optimizer/tree' && method === 'GET') {
+      json(res, 200, eqo.getFilterTree()); return true;
+    }
+    if (pathname === '/api/event-optimizer/compile' && method === 'POST') {
+      json(res, 200, await eqo.compileAll()); return true;
+    }
+    if (pathname === '/api/event-optimizer/dispatch-test' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, eqo.dispatchTest(body.eventType, body.event)); return true;
+    }
+    if (pathname === '/api/event-optimizer/checkpoint' && method === 'POST') {
+      json(res, 200, await eqo.checkpoint()); return true;
+    }
+    if (pathname === '/api/event-optimizer/scan' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, eqo.antibodyScan(body.thought)); return true;
+    }
+  }
+
   return false; // not handled
 }
 
