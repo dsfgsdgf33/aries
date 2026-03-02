@@ -638,6 +638,66 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
+  // Recursive Dream Engine
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiRecursiveDreams = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🌀', 'Recursive Dream Engine') + '<div id="rdeBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    Promise.all([api5('GET', '/api/recursive-dreams'), api5('GET', '/api/recursive-dreams/artifacts').catch(function() { return { artifacts: [] }; })]).then(function(results) {
+      var d = results[0], arts = results[1];
+      var b = document.getElementById('rdeBody');
+      if (!b) return;
+      var s = d.stats || {};
+      var html = card(
+        row('Total Dreams', s.totalDreams || 0, '#0ff') +
+        row('Avg Depth', (s.avgDepth || 0).toFixed(1), '#f0f') +
+        row('Deepest Ever', s.deepestEver || 0, '#fa0') +
+        row('Insights Found', s.insightsFound || 0, '#0f0') +
+        row('Compression', (s.compressionRatio || 0).toFixed(3), '#ff0')
+      );
+      html += '<div style="margin:10px 0;">';
+      html += '<button id="rdeDreamBtn" style="' + btnStyle() + '">💭 Dream</button> ';
+      html += '<button id="rdeInceptBtn" style="' + btnStyle() + '">🎯 Incept Problem</button> ';
+      html += '<button id="rdeNightmareBtn" style="' + btnStyle() + '">😱 Nightmare Test</button>';
+      html += '</div>';
+      html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Dreams</div>';
+      (d.dreams || d.log || []).slice(0, 8).forEach(function(dr) {
+        var depth = dr.maxDepth || dr.depth || 0;
+        var maxD = s.deepestEver || 10;
+        var pct = Math.min(100, (depth / Math.max(maxD, 1)) * 100);
+        html += '<div style="font-size:11px;padding:4px 8px;margin:2px 0;border-radius:4px;background:#111;border:1px solid #333;">';
+        html += '<span style="color:#0ff;">' + escH(dr.topic || '?') + '</span> ';
+        html += '<span style="color:#888;">depth:' + depth + '</span> ';
+        if (dr.compressionRatio) html += '<span style="color:#ff0;font-size:10px;">⚡' + dr.compressionRatio.toFixed(2) + '</span> ';
+        html += '<div style="margin-top:2px;height:4px;background:#222;border-radius:2px;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#0ff,#f0f);border-radius:2px;"></div></div>';
+        if (dr.layers) html += '<div style="color:#666;font-size:10px;margin-top:1px;">' + (Array.isArray(dr.layers) ? dr.layers.length + ' layers' : escH(String(dr.layers))) + '</div>';
+        html += '</div>';
+      });
+      if ((arts.artifacts || []).length) {
+        html += '<div style="color:#fa0;font-size:12px;margin:10px 0 4px;">🏺 Buried Insights</div>';
+        (arts.artifacts || []).slice(0, 6).forEach(function(a) {
+          html += '<div style="font-size:11px;color:#aaa;padding:2px 8px;margin:1px 0;border-left:2px solid #fa0;">💎 ' + escH(a.insight || a.text || a.id || JSON.stringify(a)) + '</div>';
+        });
+      }
+      b.innerHTML = html;
+      var dreamBtn = document.getElementById('rdeDreamBtn');
+      if (dreamBtn) dreamBtn.onclick = function() {
+        var topic = prompt('Dream topic:');
+        if (topic) api5('POST', '/api/recursive-dreams/dream', { topic: topic }).then(function() { window.loadAgiRecursiveDreams(container); });
+      };
+      var inceptBtn = document.getElementById('rdeInceptBtn');
+      if (inceptBtn) inceptBtn.onclick = function() {
+        var problem = prompt('Problem to incept:');
+        if (problem) api5('POST', '/api/recursive-dreams/incept', { problem: problem }).then(function() { window.loadAgiRecursiveDreams(container); });
+      };
+      var nightBtn = document.getElementById('rdeNightmareBtn');
+      if (nightBtn) nightBtn.onclick = function() {
+        var scenario = prompt('Nightmare scenario:');
+        if (scenario) api5('POST', '/api/recursive-dreams/nightmare', { scenario: scenario }).then(function() { window.loadAgiRecursiveDreams(container); });
+      };
+    }).catch(function() { var b = document.getElementById('rdeBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
   // Expose registry
   // ═══════════════════════════════════════════════════════════════════
   window._features_v6 = {
@@ -660,7 +720,8 @@
     loadAgiSymbiosis: window.loadAgiSymbiosis,
     loadAgiPhantom: window.loadAgiPhantom,
     loadAgiParadox: window.loadAgiParadox,
-    loadAgiEntangle: window.loadAgiEntangle
+    loadAgiEntangle: window.loadAgiEntangle,
+    loadAgiRecursiveDreams: window.loadAgiRecursiveDreams
   };
 
 })();

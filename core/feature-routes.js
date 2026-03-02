@@ -3989,6 +3989,43 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
   }
 
+  // ── Recursive Dream Engine ──
+  if (pathname.startsWith('/api/recursive-dreams')) {
+    let rde;
+    try { const RDE = require('./recursive-dream-engine'); rde = new RDE(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/recursive-dreams' && method === 'GET') {
+      json(res, 200, rde.getLog()); return true;
+    }
+    if (pathname === '/api/recursive-dreams/artifacts' && method === 'GET') {
+      json(res, 200, rde.getArtifacts()); return true;
+    }
+    if (pathname === '/api/recursive-dreams/dream' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await rde.dream(body.topic, body.maxDepth)); return true;
+    }
+    if (pathname === '/api/recursive-dreams/incept' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await rde.inceptProblem(body.problem, body.context)); return true;
+    }
+    if (pathname === '/api/recursive-dreams/nightmare' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await rde.nightmare(body.scenario)); return true;
+    }
+    if (pathname === '/api/recursive-dreams/lucid' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await rde.lucidDream(body.depth, body.directive)); return true;
+    }
+    if (pathname === '/api/recursive-dreams/excavate' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, await rde.excavate(body.dreamId, body.targetLayer)); return true;
+    }
+    if (pathname === '/api/recursive-dreams/tick' && method === 'POST') {
+      json(res, 200, rde.tick()); return true;
+    }
+  }
+
   return false; // not handled
 }
 

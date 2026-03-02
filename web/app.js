@@ -462,6 +462,7 @@
       case 'agi-phantom': if (window.loadAgiPhantom) { var c = document.getElementById('agiPhantomContent'); if (c) window.loadAgiPhantom(c); } break;
       case 'agi-paradox': if (window.loadAgiParadox) { var c = document.getElementById('agiParadoxContent'); if (c) window.loadAgiParadox(c); } break;
       case 'agi-entangle': if (window.loadAgiEntangle) { var c = document.getElementById('agiEntangleContent'); if (c) window.loadAgiEntangle(c); } break;
+      case 'agi-recursive-dreams': if (window.loadAgiRecursiveDreams) { var c = document.getElementById('agiRecursiveDreamsContent'); if (c) window.loadAgiRecursiveDreams(c); } break;
     }
   }
 
