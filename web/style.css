@@ -226,6 +226,7 @@ body::after {
 }
 .nav-group.collapsed .nav-group-label::before { transform: rotate(-90deg); }
 .nav-group.collapsed .nav-items { display: none; }
+.nav-group.collapsed > .nav-item { display: none; }
 .nav-items { display: flex; flex-direction: column; gap: 1px; }
 .nav-group-count {
   font-size: 8px; color: var(--text-muted); opacity: 0.5; margin-left: auto;
