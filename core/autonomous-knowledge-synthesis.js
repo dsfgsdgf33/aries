@@ -2,6 +2,10 @@
  * ARIES — Autonomous Knowledge Synthesis
  * Random-pairing distant concepts for novel connections.
  * 99% garbage, 1% genuine discovery. That 1% is worth it.
+ * 
+ * Features: cross-domain random pairing, two-stage quality filter,
+ * serendipity engine, synthesis categories, novelty scoring,
+ * validation pipeline, synthesis chains, domain distance metric.
  */
 
 'use strict';
@@ -16,6 +20,8 @@ const CONCEPTS_FILE = path.join(DATA_DIR, 'concepts.json');
 const PAIRINGS_FILE = path.join(DATA_DIR, 'pairings.json');
 const DISCOVERIES_FILE = path.join(DATA_DIR, 'discoveries.json');
 const SERENDIPITY_FILE = path.join(DATA_DIR, 'serendipity.json');
+const CHAINS_FILE = path.join(DATA_DIR, 'synthesis-chains.json');
+const VALIDATION_FILE = path.join(DATA_DIR, 'validation-queue.json');
 
 function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
 function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
@@ -23,12 +29,19 @@ function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(da
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// Synthesis categories
+const SYNTHESIS_CATEGORIES = {
+  ANALOGICAL: 'analogical',     // A is like B because...
+  CAUSAL: 'causal',             // A causes/affects B
+  STRUCTURAL: 'structural',     // A and B share structure
+  FUNCTIONAL: 'functional',     // A and B serve similar purpose
+  EMERGENT: 'emergent',         // combining A+B creates something new
+};
+
+// Domain ordering for distance metric
+const DOMAIN_ORDER = ['personal', 'social', 'art', 'philosophy', 'nature', 'science', 'technology', 'other'];
+
 class AutonomousKnowledgeSynthesis extends EventEmitter {
-  /**
-   * @param {object} opts
-   * @param {object} opts.ai - AI core module
-   * @param {object} opts.config - synthesis config section
-   */
   constructor(opts = {}) {
     super();
     this.ai = opts.ai || null;
@@ -37,19 +50,33 @@ class AutonomousKnowledgeSynthesis extends EventEmitter {
     this.maxPairings = this.config.maxPairings || 1000;
     this.maxDiscoveries = this.config.maxDiscoveries || 500;
     this.synthesisPerTick = this.config.synthesisPerTick || 3;
+    this.noveltyThreshold = this.config.noveltyThreshold || 40;
+    this.confidenceThreshold = this.config.confidenceThreshold || 30;
     this._interval = null;
   }
 
-  // ── Concept Extraction ──
+  // ═══════════════════════════════════════════
+  //  Domain Distance Metric
+  // ═══════════════════════════════════════════
 
   /**
-   * Extract concepts/entities from a knowledge source (text).
-   * @param {string} source - text to extract from
-   * @returns {object[]} extracted concepts
+   * Compute distance between two domains (0-1).
+   * Further apart = higher potential but lower probability of connection.
    */
+  domainDistance(domainA, domainB) {
+    if (domainA === domainB) return 0;
+    const idxA = DOMAIN_ORDER.indexOf(domainA);
+    const idxB = DOMAIN_ORDER.indexOf(domainB);
+    if (idxA < 0 || idxB < 0) return 0.5;
+    return Math.abs(idxA - idxB) / (DOMAIN_ORDER.length - 1);
+  }
+
+  // ═══════════════════════════════════════════
+  //  Concept Extraction
+  // ═══════════════════════════════════════════
+
   async extractConcepts(source) {
     if (!source || typeof source !== 'string') return [];
-
     const concepts = readJSON(CONCEPTS_FILE, []);
 
     if (this.ai) {
@@ -70,23 +97,17 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
           const extracted = JSON.parse(match[0]);
           const added = [];
           for (const c of extracted) {
-            // Deduplicate by label
             const existing = concepts.find(ex => ex.label.toLowerCase() === (c.label || '').toLowerCase());
             if (!existing && c.label) {
               const entry = {
-                id: uuid(),
-                label: c.label,
-                domain: c.domain || 'other',
-                description: c.description || '',
-                extractedAt: Date.now(),
-                usedInPairings: 0,
-                discoveryHits: 0,
+                id: uuid(), label: c.label, domain: c.domain || 'other',
+                description: c.description || '', extractedAt: Date.now(),
+                usedInPairings: 0, discoveryHits: 0, chainParticipation: 0,
               };
               concepts.push(entry);
               added.push(entry);
             }
           }
-          // Cap size
           if (concepts.length > this.maxConcepts) concepts.splice(0, concepts.length - this.maxConcepts);
           writeJSON(CONCEPTS_FILE, concepts);
           this.emit('concepts-extracted', added);
@@ -102,7 +123,7 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
     const added = [];
     for (const w of words) {
       if (!concepts.find(c => c.label.toLowerCase() === w)) {
-        const entry = { id: uuid(), label: w, domain: 'other', description: '', extractedAt: Date.now(), usedInPairings: 0, discoveryHits: 0 };
+        const entry = { id: uuid(), label: w, domain: 'other', description: '', extractedAt: Date.now(), usedInPairings: 0, discoveryHits: 0, chainParticipation: 0 };
         concepts.push(entry);
         added.push(entry);
       }
@@ -112,9 +133,6 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
     return added;
   }
 
-  /**
-   * Get all stored concepts.
-   */
   getConcepts(filter) {
     let concepts = readJSON(CONCEPTS_FILE, []);
     if (filter && filter.domain) concepts = concepts.filter(c => c.domain === filter.domain);
@@ -125,13 +143,10 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
     return concepts;
   }
 
-  // ── Random Pairing ──
+  // ═══════════════════════════════════════════
+  //  Random Pairing with Distance Bias
+  // ═══════════════════════════════════════════
 
-  /**
-   * Generate n random concept pairs, biased toward cross-domain pairings.
-   * @param {number} n - number of pairs to generate
-   * @returns {object[]} generated pairings
-   */
   generatePairings(n = 5) {
     const concepts = readJSON(CONCEPTS_FILE, []);
     if (concepts.length < 2) return [];
@@ -143,22 +158,20 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
     for (let i = 0; i < n; i++) {
       let a, b, attempts = 0;
 
-      // Try to pick cross-domain pairs, with serendipity bias
       do {
         a = pick(concepts);
         b = pick(concepts);
         attempts++;
-      } while (attempts < 20 && (a.id === b.id || a.domain === b.domain && Math.random() < 0.7));
+      } while (attempts < 20 && (a.id === b.id || (a.domain === b.domain && Math.random() < 0.7)));
 
-      // Check for duplicate pairing
       const pairKey = [a.id, b.id].sort().join(':');
       if (pairings.find(p => p.pairKey === pairKey)) continue;
 
-      // Check serendipity bias — prefer domain pairs that have produced discoveries
       const domainKey = [a.domain, b.domain].sort().join(':');
       const domainScore = serendipity.domainPairScores[domainKey] || 0;
-      // If domain pair has negative score, skip sometimes
       if (domainScore < -3 && Math.random() < 0.5) continue;
+
+      const distance = this.domainDistance(a.domain, b.domain);
 
       const pairing = {
         id: uuid(),
@@ -166,34 +179,28 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
         conceptA: { id: a.id, label: a.label, domain: a.domain },
         conceptB: { id: b.id, label: b.label, domain: b.domain },
         domainKey,
-        status: 'pending', // pending, synthesized, filtered, discovery, rejected
+        domainDistance: Math.round(distance * 1000) / 1000,
+        status: 'pending',
         createdAt: Date.now(),
       };
 
       pairings.push(pairing);
       generated.push(pairing);
-
-      // Update usage counts
       a.usedInPairings = (a.usedInPairings || 0) + 1;
       b.usedInPairings = (b.usedInPairings || 0) + 1;
     }
 
-    // Cap pairings
     if (pairings.length > this.maxPairings) pairings.splice(0, pairings.length - this.maxPairings);
     writeJSON(PAIRINGS_FILE, pairings);
     writeJSON(CONCEPTS_FILE, concepts);
-
     if (generated.length > 0) this.emit('pairings-generated', generated);
     return generated;
   }
 
-  // ── Synthesis ──
+  // ═══════════════════════════════════════════
+  //  Synthesis with Category Classification
+  // ═══════════════════════════════════════════
 
-  /**
-   * AI attempts to find meaningful connections between a paired concept.
-   * @param {string} pairId
-   * @returns {object} synthesis result
-   */
   async synthesize(pairId) {
     if (!this.ai) return { error: 'AI module required for synthesis' };
 
@@ -206,26 +213,36 @@ Extract 3-10 concepts. Focus on substantial ideas, not trivial words.`
       const messages = [
         {
           role: 'system',
-          content: `You are a creative knowledge synthesizer. Given two seemingly unrelated concepts, find genuine, non-trivial connections between them. Be rigorous — most pairings will have no meaningful connection, and that's fine. Say so honestly.
+          content: `You are a creative knowledge synthesizer. Given two concepts, find genuine, non-trivial connections.
+
+Domain distance: ${pairing.domainDistance || 'unknown'} (higher = more distant domains)
 
 Return JSON:
 {
   "hasConnection": true/false,
-  "connection": "description of the connection (if any)",
+  "connection": "description of the connection",
+  "category": "analogical|causal|structural|functional|emergent",
   "novelty": 0-100,
   "confidence": 0-100,
   "applications": ["how this insight could be used"],
-  "reasoning": "why this connection matters or why there isn't one"
+  "reasoning": "why this matters or why there isn't a connection",
+  "testable": true/false,
+  "testMethod": "how to validate this connection (if testable)"
 }
 
-Be brutally honest. A forced, trivial, or cliché connection is WORSE than no connection. Only mark hasConnection:true for genuinely interesting, non-obvious links.`
+Categories:
+- analogical: A is like B because...
+- causal: A causes/affects B  
+- structural: A and B share deep structure
+- functional: A and B serve similar purposes in different domains
+- emergent: combining A+B creates novel insight
+
+Be brutally honest. Forced connections are WORSE than no connection.`
         },
         {
           role: 'user',
           content: `Concept A: "${pairing.conceptA.label}" (domain: ${pairing.conceptA.domain})
-Concept B: "${pairing.conceptB.label}" (domain: ${pairing.conceptB.domain})
-
-Find a meaningful, non-trivial connection — or honestly say there isn't one.`
+Concept B: "${pairing.conceptB.label}" (domain: ${pairing.conceptB.domain})`
         }
       ];
 
@@ -241,8 +258,6 @@ Find a meaningful, non-trivial connection — or honestly say there isn't one.`
 
       writeJSON(PAIRINGS_FILE, pairings);
       this.emit('synthesis-complete', { pairing, result });
-
-      console.log(`[KNOWLEDGE-SYNTHESIS] ${result.hasConnection ? '✨' : '✗'} ${pairing.conceptA.label} × ${pairing.conceptB.label}: ${result.hasConnection ? result.connection.slice(0, 80) : 'no connection'}`);
       return { pairing, result };
     } catch (e) {
       pairing.status = 'rejected';
@@ -252,13 +267,10 @@ Find a meaningful, non-trivial connection — or honestly say there isn't one.`
     }
   }
 
-  // ── Quality Filter ──
+  // ═══════════════════════════════════════════
+  //  Two-Stage Quality Filter
+  // ═══════════════════════════════════════════
 
-  /**
-   * Multi-stage quality gate for synthesized connections.
-   * @param {string} pairId - pairing that has been synthesized
-   * @returns {object} filter result
-   */
   async filterDiscovery(pairId) {
     const pairings = readJSON(PAIRINGS_FILE, []);
     const pairing = pairings.find(p => p.id === pairId);
@@ -268,30 +280,37 @@ Find a meaningful, non-trivial connection — or honestly say there isn't one.`
     const syn = pairing.synthesis;
 
     // Stage 1: Score thresholds
-    if (syn.novelty < 40 || syn.confidence < 30) {
+    if (syn.novelty < this.noveltyThreshold || syn.confidence < this.confidenceThreshold) {
       pairing.status = 'rejected';
       pairing.filterReason = 'Below score threshold';
       writeJSON(PAIRINGS_FILE, pairings);
       return { passed: false, reason: 'Scores too low', novelty: syn.novelty, confidence: syn.confidence };
     }
 
-    // Stage 2: AI second opinion (if available)
+    // Stage 2: Skeptical AI review
     if (this.ai) {
       try {
         const messages = [
           {
             role: 'system',
-            content: `You are a critical evaluator of claimed knowledge connections. Be skeptical. Many claimed connections are trivial, obvious, or forced. 
-Return JSON: { "isGenuine": true/false, "critique": "your assessment", "adjustedNovelty": 0-100, "adjustedConfidence": 0-100 }
-Only approve genuinely surprising, non-obvious, and potentially useful connections.`
+            content: `You are a SKEPTICAL evaluator of knowledge connections. Be harsh. Most claimed connections are trivial, obvious, or forced.
+
+Evaluate:
+1. Is this genuinely non-obvious?
+2. Is the ${syn.category || 'unknown'} categorization correct?
+3. Could this lead to actionable insight?
+4. Is it testable/verifiable?
+
+Return JSON: { "isGenuine": true/false, "critique": "assessment", "adjustedNovelty": 0-100, "adjustedConfidence": 0-100, "correctedCategory": "analogical|causal|structural|functional|emergent|null" }`
           },
           {
             role: 'user',
-            content: `Connection claim: "${pairing.conceptA.label}" and "${pairing.conceptB.label}" are connected because: "${syn.connection}"
+            content: `"${pairing.conceptA.label}" ↔ "${pairing.conceptB.label}"
+Category: ${syn.category}
+Connection: "${syn.connection}"
 Novelty: ${syn.novelty}, Confidence: ${syn.confidence}
 Reasoning: ${syn.reasoning}
-
-Is this genuine or garbage?`
+Testable: ${syn.testable}, Method: ${syn.testMethod || 'none'}`
           }
         ];
 
@@ -310,9 +329,11 @@ Is this genuine or garbage?`
             return { passed: false, reason: review.critique };
           }
 
-          // Passed! Create discovery
           syn.novelty = review.adjustedNovelty || syn.novelty;
           syn.confidence = review.adjustedConfidence || syn.confidence;
+          if (review.correctedCategory && Object.values(SYNTHESIS_CATEGORIES).includes(review.correctedCategory)) {
+            syn.category = review.correctedCategory;
+          }
         }
       } catch {}
     }
@@ -327,12 +348,19 @@ Is this genuine or garbage?`
       conceptA: pairing.conceptA,
       conceptB: pairing.conceptB,
       connection: syn.connection,
+      category: syn.category || 'emergent',
       reasoning: syn.reasoning,
       applications: syn.applications || [],
       novelty: syn.novelty,
       confidence: syn.confidence,
+      domainDistance: pairing.domainDistance || 0,
+      testable: syn.testable || false,
+      testMethod: syn.testMethod || null,
       discoveredAt: Date.now(),
       used: false,
+      chainedFrom: null,
+      chainedTo: [],
+      validated: false,
     };
 
     const discoveries = readJSON(DISCOVERIES_FILE, []);
@@ -340,10 +368,9 @@ Is this genuine or garbage?`
     if (discoveries.length > this.maxDiscoveries) discoveries.splice(0, discoveries.length - this.maxDiscoveries);
     writeJSON(DISCOVERIES_FILE, discoveries);
 
-    // Update serendipity engine
     this._updateSerendipity(pairing.domainKey, true);
 
-    // Update concept discovery hits
+    // Update concept stats
     const concepts = readJSON(CONCEPTS_FILE, []);
     for (const c of concepts) {
       if (c.id === pairing.conceptA.id || c.id === pairing.conceptB.id) {
@@ -352,15 +379,155 @@ Is this genuine or garbage?`
     }
     writeJSON(CONCEPTS_FILE, concepts);
 
+    // Add to validation queue if testable
+    if (discovery.testable) {
+      const queue = readJSON(VALIDATION_FILE, []);
+      queue.push({ discoveryId: discovery.id, testMethod: discovery.testMethod, addedAt: Date.now(), status: 'pending' });
+      writeJSON(VALIDATION_FILE, queue);
+    }
+
     this.emit('discovery', discovery);
-    console.log(`[KNOWLEDGE-SYNTHESIS] 🔬 DISCOVERY: ${discovery.conceptA.label} × ${discovery.conceptB.label} — ${discovery.connection.slice(0, 100)}`);
     return { passed: true, discovery };
   }
 
-  // ── Serendipity Engine ──
+  // ═══════════════════════════════════════════
+  //  Validation Pipeline
+  // ═══════════════════════════════════════════
+
+  /**
+   * Get testable discoveries awaiting validation.
+   */
+  getValidationQueue() {
+    return readJSON(VALIDATION_FILE, []).filter(v => v.status === 'pending');
+  }
+
+  /**
+   * Record validation result for a discovery.
+   */
+  validateDiscovery(discoveryId, passed, evidence) {
+    const discoveries = readJSON(DISCOVERIES_FILE, []);
+    const d = discoveries.find(x => x.id === discoveryId);
+    if (!d) return { error: 'Discovery not found' };
+
+    d.validated = true;
+    d.validationPassed = passed;
+    d.validationEvidence = (evidence || '').slice(0, 500);
+    d.validatedAt = Date.now();
+    writeJSON(DISCOVERIES_FILE, discoveries);
+
+    // Update validation queue
+    const queue = readJSON(VALIDATION_FILE, []);
+    const item = queue.find(v => v.discoveryId === discoveryId);
+    if (item) {
+      item.status = passed ? 'passed' : 'failed';
+      item.resolvedAt = Date.now();
+      writeJSON(VALIDATION_FILE, queue);
+    }
+
+    // Boost serendipity for validated discoveries
+    if (passed && d.conceptA && d.conceptB) {
+      const domainKey = [d.conceptA.domain, d.conceptB.domain].sort().join(':');
+      this._updateSerendipity(domainKey, true);
+    }
+
+    this.emit('discovery-validated', { discoveryId, passed });
+    return d;
+  }
+
+  // ═══════════════════════════════════════════
+  //  Synthesis Chains
+  // ═══════════════════════════════════════════
+
+  /**
+   * Attempt to chain a new synthesis from an existing discovery.
+   * Takes a discovery and pairs one of its concepts with a new random concept.
+   */
+  async chainSynthesis(discoveryId) {
+    const discoveries = readJSON(DISCOVERIES_FILE, []);
+    const source = discoveries.find(d => d.id === discoveryId);
+    if (!source) return { error: 'Source discovery not found' };
+
+    const concepts = readJSON(CONCEPTS_FILE, []);
+    if (concepts.length < 3) return { error: 'Not enough concepts' };
+
+    // Pick which concept to extend from
+    const baseConcept = Math.random() < 0.5 ? source.conceptA : source.conceptB;
+    const usedIds = new Set([source.conceptA.id, source.conceptB.id]);
+
+    // Find a new concept not in the original pair
+    const available = concepts.filter(c => !usedIds.has(c.id));
+    if (available.length === 0) return { error: 'No available concepts for chaining' };
+    const newConcept = pick(available);
+
+    // Create a chained pairing
+    const pairings = readJSON(PAIRINGS_FILE, []);
+    const pairKey = [baseConcept.id, newConcept.id].sort().join(':');
+    if (pairings.find(p => p.pairKey === pairKey)) return { error: 'Pairing already exists' };
+
+    const pairing = {
+      id: uuid(),
+      pairKey,
+      conceptA: { id: baseConcept.id, label: baseConcept.label, domain: baseConcept.domain },
+      conceptB: { id: newConcept.id, label: newConcept.label, domain: newConcept.domain },
+      domainKey: [baseConcept.domain, newConcept.domain].sort().join(':'),
+      domainDistance: this.domainDistance(baseConcept.domain, newConcept.domain),
+      status: 'pending',
+      createdAt: Date.now(),
+      chainedFrom: discoveryId,
+    };
+    pairings.push(pairing);
+    writeJSON(PAIRINGS_FILE, pairings);
+
+    // Synthesize immediately
+    const synResult = await this.synthesize(pairing.id);
+    if (synResult.result && synResult.result.hasConnection) {
+      const filterResult = await this.filterDiscovery(pairing.id);
+      if (filterResult.passed) {
+        // Record chain link
+        const chains = readJSON(CHAINS_FILE, []);
+        chains.push({
+          fromDiscovery: discoveryId,
+          toDiscovery: filterResult.discovery.id,
+          chainedAt: Date.now(),
+        });
+        writeJSON(CHAINS_FILE, chains);
+
+        // Update source and new discovery
+        source.chainedTo = source.chainedTo || [];
+        source.chainedTo.push(filterResult.discovery.id);
+        filterResult.discovery.chainedFrom = discoveryId;
+        writeJSON(DISCOVERIES_FILE, discoveries);
+
+        // Update concept chain participation
+        const allConcepts = readJSON(CONCEPTS_FILE, []);
+        for (const c of allConcepts) {
+          if (c.id === baseConcept.id || c.id === newConcept.id) {
+            c.chainParticipation = (c.chainParticipation || 0) + 1;
+          }
+        }
+        writeJSON(CONCEPTS_FILE, allConcepts);
+
+        this.emit('chain-extended', { source: discoveryId, newDiscovery: filterResult.discovery.id });
+        return { chained: true, discovery: filterResult.discovery };
+      }
+    }
+
+    return { chained: false, reason: 'No valid connection found in chain' };
+  }
+
+  /**
+   * Get synthesis chains (linked discoveries).
+   */
+  getSynthesisChains() {
+    return readJSON(CHAINS_FILE, []);
+  }
+
+  // ═══════════════════════════════════════════
+  //  Serendipity Engine
+  // ═══════════════════════════════════════════
 
   _updateSerendipity(domainKey, wasDiscovery) {
-    const serendipity = readJSON(SERENDIPITY_FILE, { domainPairScores: {}, totalAttempts: 0, totalDiscoveries: 0 });
+    const serendipity = readJSON(SERENDIPITY_FILE, { domainPairScores: {}, totalAttempts: 0, totalDiscoveries: 0, categoryHits: {} });
     serendipity.totalAttempts++;
     if (wasDiscovery) serendipity.totalDiscoveries++;
     const current = serendipity.domainPairScores[domainKey] || 0;
@@ -371,28 +538,36 @@ Is this genuine or garbage?`
 
   getSerendipityStats() {
     const serendipity = readJSON(SERENDIPITY_FILE, { domainPairScores: {}, totalAttempts: 0, totalDiscoveries: 0 });
-    const sorted = Object.entries(serendipity.domainPairScores)
-      .sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(serendipity.domainPairScores).sort((a, b) => b[1] - a[1]);
+
+    // Category distribution from discoveries
+    const discoveries = readJSON(DISCOVERIES_FILE, []);
+    const catDist = {};
+    for (const d of discoveries) {
+      catDist[d.category || 'unknown'] = (catDist[d.category || 'unknown'] || 0) + 1;
+    }
+
     return {
       totalAttempts: serendipity.totalAttempts,
       totalDiscoveries: serendipity.totalDiscoveries,
       discoveryRate: serendipity.totalAttempts > 0 ? (serendipity.totalDiscoveries / serendipity.totalAttempts * 100).toFixed(1) + '%' : '0%',
       bestDomainPairs: sorted.slice(0, 10).map(([k, v]) => ({ domains: k, score: v })),
       worstDomainPairs: sorted.slice(-5).reverse().map(([k, v]) => ({ domains: k, score: v })),
+      categoryDistribution: catDist,
     };
   }
 
-  // ── Discovery Registry ──
+  // ═══════════════════════════════════════════
+  //  Discovery Registry
+  // ═══════════════════════════════════════════
 
-  /**
-   * Browse validated discoveries.
-   * @param {object} filter - { minNovelty, minConfidence, search, unused }
-   */
   getDiscoveries(filter = {}) {
     let discoveries = readJSON(DISCOVERIES_FILE, []);
     if (filter.minNovelty) discoveries = discoveries.filter(d => d.novelty >= filter.minNovelty);
     if (filter.minConfidence) discoveries = discoveries.filter(d => d.confidence >= filter.minConfidence);
     if (filter.unused) discoveries = discoveries.filter(d => !d.used);
+    if (filter.category) discoveries = discoveries.filter(d => d.category === filter.category);
+    if (filter.validated !== undefined) discoveries = discoveries.filter(d => d.validated === filter.validated);
     if (filter.search) {
       const s = filter.search.toLowerCase();
       discoveries = discoveries.filter(d =>
@@ -404,9 +579,6 @@ Is this genuine or garbage?`
     return discoveries.sort((a, b) => b.discoveredAt - a.discoveredAt);
   }
 
-  /**
-   * Mark a discovery as used.
-   */
   markUsed(discoveryId) {
     const discoveries = readJSON(DISCOVERIES_FILE, []);
     const d = discoveries.find(x => x.id === discoveryId);
@@ -414,22 +586,18 @@ Is this genuine or garbage?`
     return d;
   }
 
-  // ── Tick (periodic) ──
+  // ═══════════════════════════════════════════
+  //  Tick
+  // ═══════════════════════════════════════════
 
-  /**
-   * Periodic operation: generate pairings, attempt synthesis, filter.
-   */
   async tick() {
     const concepts = readJSON(CONCEPTS_FILE, []);
     if (concepts.length < 2) {
-      console.log('[KNOWLEDGE-SYNTHESIS] Not enough concepts for synthesis (need ≥2)');
       return { skipped: true, reason: 'insufficient concepts' };
     }
 
-    // Generate new pairings
     const pairings = this.generatePairings(this.synthesisPerTick);
 
-    // Synthesize pending pairings
     const allPairings = readJSON(PAIRINGS_FILE, []);
     const pending = allPairings.filter(p => p.status === 'pending').slice(0, this.synthesisPerTick);
     const results = [];
@@ -444,6 +612,14 @@ Is this genuine or garbage?`
       }
     }
 
+    // Attempt to chain from a random recent discovery (low probability)
+    const discoveries = readJSON(DISCOVERIES_FILE, []);
+    if (discoveries.length > 0 && Math.random() < 0.2) {
+      const recent = discoveries.slice(-10);
+      const source = pick(recent);
+      await this.chainSynthesis(source.id).catch(() => {});
+    }
+
     return {
       conceptCount: concepts.length,
       newPairings: pairings.length,
@@ -452,13 +628,12 @@ Is this genuine or garbage?`
     };
   }
 
-  /**
-   * Get summary stats.
-   */
   stats() {
     const concepts = readJSON(CONCEPTS_FILE, []);
     const pairings = readJSON(PAIRINGS_FILE, []);
     const discoveries = readJSON(DISCOVERIES_FILE, []);
+    const chains = readJSON(CHAINS_FILE, []);
+    const validationQueue = readJSON(VALIDATION_FILE, []);
     const serendipity = this.getSerendipityStats();
 
     return {
@@ -467,10 +642,15 @@ Is this genuine or garbage?`
       pendingPairings: pairings.filter(p => p.status === 'pending').length,
       discoveries: discoveries.length,
       unusedDiscoveries: discoveries.filter(d => !d.used).length,
+      validatedDiscoveries: discoveries.filter(d => d.validated).length,
+      pendingValidation: validationQueue.filter(v => v.status === 'pending').length,
+      synthChains: chains.length,
       serendipity,
     };
   }
 }
+
+AutonomousKnowledgeSynthesis.CATEGORIES = SYNTHESIS_CATEGORIES;
 
 let _instance = null;
 function getInstance(opts) {
@@ -478,4 +658,4 @@ function getInstance(opts) {
   return _instance;
 }
 
-module.exports = { AutonomousKnowledgeSynthesis, getInstance };
+module.exports = AutonomousKnowledgeSynthesis;

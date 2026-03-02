@@ -1,7 +1,11 @@
 /**
- * ARIES — Contextual Identity Shifting
+ * ARIES — Contextual Identity Shifting v2.0
  * Architecture reconfiguration based on context. Not personas — actual rewiring.
  * Different contexts trigger different module weightings, reasoning styles, and priorities.
+ *
+ * Features: 7+ identity profiles, distinct cognitive weights, smooth blending, auto-detection,
+ * emergent profiles, performance tracking, identity conflict resolution, profile history
+ * and transition patterns, custom profile creation.
  */
 'use strict';
 
@@ -15,6 +19,7 @@ const PROFILES_PATH = path.join(DATA_DIR, 'identity-profiles.json');
 const STATE_PATH = path.join(DATA_DIR, 'identity-state.json');
 const PERF_PATH = path.join(DATA_DIR, 'identity-performance.json');
 const HISTORY_PATH = path.join(DATA_DIR, 'identity-history.json');
+const TRANSITIONS_PATH = path.join(DATA_DIR, 'transition-patterns.json');
 
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'); }
 function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
@@ -109,7 +114,6 @@ const DEFAULT_PROFILES = {
   },
 };
 
-// Context detection keyword sets
 const CONTEXT_SIGNALS = {
   coding: ['code', 'function', 'bug', 'error', 'api', 'class', 'module', 'debug', 'compile', 'syntax', 'refactor', 'git', 'deploy', 'test', 'npm', 'import', 'variable', 'loop', 'array', 'object', 'typescript', 'javascript', 'python'],
   conversation: ['hey', 'how are you', 'what do you think', 'tell me', 'chat', 'talk', 'feel', 'opinion', 'curious', 'wonder', 'interesting'],
@@ -131,37 +135,32 @@ const CONTEXT_TO_PROFILE = {
 };
 
 class ContextualIdentityShifting extends EventEmitter {
-  /**
-   * @param {object} [opts]
-   * @param {object} [opts.ai] - AI core for deeper context detection
-   * @param {object} [opts.config] - Settings
-   */
   constructor(opts = {}) {
     super();
     this.ai = opts.ai || null;
     this.config = Object.assign({
-      transitionSpeed: 0.3,     // how fast blending shifts (0-1, higher = faster)
-      autoDetect: true,         // auto-detect context shifts
-      emergentThreshold: 5,     // activations before a blend can become a named profile
+      transitionSpeed: 0.3,
+      autoDetect: true,
+      emergentThreshold: 5,
+      conflictResolution: 'weighted',  // weighted | highest | negotiate
     }, opts.config || {});
 
     ensureDir();
     this._ensureProfiles();
 
-    // Runtime state (also persisted)
     const saved = this._getState();
     this._activeConfig = saved.activeConfig || null;
-    this._blendWeights = saved.blendWeights || {};  // { profileName: weight }
+    this._blendWeights = saved.blendWeights || {};
     this._lastInput = null;
     this._lastContext = saved.lastContext || null;
-    this._transitionProgress = saved.transitionProgress || 1.0; // 1.0 = fully shifted
+    this._transitionProgress = saved.transitionProgress || 1.0;
+    this._shiftStartedAt = saved.shiftStartedAt || null;
   }
 
   // ── Persistence ──
 
   _ensureProfiles() {
     if (!fs.existsSync(PROFILES_PATH)) {
-      // Stamp createdAt
       const profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
       for (const p of Object.values(profiles)) p.createdAt = now();
       writeJSON(PROFILES_PATH, profiles);
@@ -177,6 +176,7 @@ class ContextualIdentityShifting extends EventEmitter {
       blendWeights: this._blendWeights,
       lastContext: this._lastContext,
       transitionProgress: this._transitionProgress,
+      shiftStartedAt: this._shiftStartedAt,
       updatedAt: now(),
     });
   }
@@ -189,14 +189,13 @@ class ContextualIdentityShifting extends EventEmitter {
     if (h.length > 500) h.splice(0, h.length - 500);
     writeJSON(HISTORY_PATH, h);
   }
+  _getTransitions() { return readJSON(TRANSITIONS_PATH, { patterns: {}, total: 0 }); }
+  _saveTransitions(t) { writeJSON(TRANSITIONS_PATH, t); }
 
   // ── Core Methods ──
 
   /**
    * Detect what context the input represents.
-   * @param {string} input - User input or situation description
-   * @param {object} [situation] - Additional context signals
-   * @returns {{ context: string, confidence: number, suggestedProfile: string, scores: object }}
    */
   detectContext(input, situation) {
     const text = ((input || '') + ' ' + (situation ? JSON.stringify(situation) : '')).toLowerCase();
@@ -206,27 +205,83 @@ class ContextualIdentityShifting extends EventEmitter {
       scores[ctx] = keywords.reduce((sum, kw) => sum + (text.includes(kw) ? 1 : 0), 0);
     }
 
-    // Normalize by keyword count
     for (const ctx of Object.keys(scores)) {
       scores[ctx] = scores[ctx] / CONTEXT_SIGNALS[ctx].length;
     }
 
-    const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const best = sorted[0];
     const context = best && best[1] > 0 ? best[0] : 'conversation';
-    const confidence = best ? Math.min(1.0, best[1] * 5) : 0; // scale up
+    const confidence = best ? Math.min(1.0, best[1] * 5) : 0;
+
+    // Detect ambiguity: if top two are close, there's identity conflict
+    const ambiguity = sorted.length >= 2 && sorted[0][1] > 0 && sorted[1][1] > 0
+      ? Math.round((1 - (sorted[0][1] - sorted[1][1]) / sorted[0][1]) * 100) / 100
+      : 0;
 
     return {
       context,
       confidence: Math.round(confidence * 100) / 100,
       suggestedProfile: CONTEXT_TO_PROFILE[context] || 'EMPATH',
       scores,
+      ambiguity,
+      conflicting: ambiguity > 0.7
+        ? [CONTEXT_TO_PROFILE[sorted[0][0]], CONTEXT_TO_PROFILE[sorted[1][0]]].filter(Boolean)
+        : [],
     };
   }
 
   /**
+   * Resolve identity conflict when context is ambiguous.
+   */
+  resolveConflict(profiles, input) {
+    if (!profiles || profiles.length < 2) return { error: 'Need at least 2 conflicting profiles' };
+
+    const allProfiles = this._getProfiles();
+    const perf = this._getPerf();
+
+    switch (this.config.conflictResolution) {
+      case 'highest': {
+        // Pick profile with highest historical success rate
+        let best = profiles[0];
+        let bestScore = -1;
+        for (const p of profiles) {
+          const key = p.toUpperCase();
+          const perfData = perf[key];
+          const score = perfData && perfData.score != null ? perfData.score : 50;
+          if (score > bestScore) { bestScore = score; best = p; }
+        }
+        return { resolved: best, method: 'highest_performance', score: bestScore };
+      }
+      case 'negotiate': {
+        // Blend the conflicting profiles with equal weights
+        const weights = profiles.map(() => 1.0 / profiles.length);
+        const blendW = {};
+        profiles.forEach((p, i) => { blendW[p.toUpperCase()] = weights[i]; });
+        const effective = this._computeEffectiveConfig(allProfiles, blendW);
+        return { resolved: 'BLEND:' + profiles.join('+'), method: 'negotiation', effective };
+      }
+      case 'weighted':
+      default: {
+        // Weight by performance score, then blend
+        const weights = {};
+        let totalW = 0;
+        for (const p of profiles) {
+          const key = p.toUpperCase();
+          const perfData = perf[key];
+          const w = perfData && perfData.score != null ? perfData.score : 50;
+          weights[key] = w;
+          totalW += w;
+        }
+        for (const k in weights) weights[k] /= (totalW || 1);
+        const effective = this._computeEffectiveConfig(allProfiles, weights);
+        return { resolved: 'BLEND:' + profiles.join('+'), method: 'weighted', weights, effective };
+      }
+    }
+  }
+
+  /**
    * Shift to a named configuration.
-   * @param {string} configName
-   * @returns {object}
    */
   shift(configName) {
     const profiles = this._getProfiles();
@@ -236,22 +291,22 @@ class ContextualIdentityShifting extends EventEmitter {
 
     const previous = this._activeConfig;
 
-    // Save context memory for the outgoing config
     if (previous && profiles[previous]) {
       profiles[previous].contextMemory = profiles[previous].contextMemory || {};
       profiles[previous].contextMemory._lastActive = now();
     }
 
-    // Activate new config
     profile.activations = (profile.activations || 0) + 1;
     this._activeConfig = name;
     this._blendWeights = { [name]: 1.0 };
-    this._transitionProgress = this.config.transitionSpeed; // starts transitioning
+    this._transitionProgress = this.config.transitionSpeed;
     this._lastContext = name;
+    this._shiftStartedAt = now();
 
     this._saveProfiles(profiles);
     this._saveState();
     this._appendHistory({ action: 'shift', from: previous, to: name });
+    this._recordTransition(previous, name);
     this.emit('shift', { from: previous, to: name, profile });
 
     return {
@@ -265,9 +320,6 @@ class ContextualIdentityShifting extends EventEmitter {
 
   /**
    * Blend multiple configurations with weights.
-   * @param {string[]} configs - Profile names
-   * @param {number[]} weights - Corresponding weights (will be normalized)
-   * @returns {object}
    */
   blend(configs, weights) {
     if (!configs || configs.length < 1) return { error: 'Need at least 1 config' };
@@ -286,15 +338,17 @@ class ContextualIdentityShifting extends EventEmitter {
     }
     if (missing.length > 0) return { error: 'Unknown profiles: ' + missing.join(', ') };
 
+    const previous = this._activeConfig;
     this._blendWeights = blendWeights;
     this._activeConfig = 'BLEND:' + Object.keys(blendWeights).join('+');
     this._transitionProgress = this.config.transitionSpeed;
+    this._shiftStartedAt = now();
 
     this._saveState();
     this._appendHistory({ action: 'blend', configs: Object.keys(blendWeights), weights: blendWeights });
+    this._recordTransition(previous, this._activeConfig);
     this.emit('blend', blendWeights);
 
-    // Compute effective config
     const effective = this._computeEffectiveConfig(profiles, blendWeights);
 
     return {
@@ -307,7 +361,6 @@ class ContextualIdentityShifting extends EventEmitter {
 
   /**
    * Get the currently active configuration (resolved).
-   * @returns {object}
    */
   getActiveConfig() {
     const profiles = this._getProfiles();
@@ -332,7 +385,6 @@ class ContextualIdentityShifting extends EventEmitter {
 
   /**
    * Get all available profiles.
-   * @returns {object[]}
    */
   getProfiles() {
     const profiles = this._getProfiles();
@@ -343,14 +395,12 @@ class ContextualIdentityShifting extends EventEmitter {
       priorities: p.priorities,
       activations: p.activations || 0,
       isCustom: !!p.custom,
+      isEmergent: !!p.emergent,
     }));
   }
 
   /**
    * Create a new configuration profile.
-   * @param {string} name
-   * @param {object} settings
-   * @returns {object}
    */
   createProfile(name, settings) {
     if (!name) return { error: 'name required' };
@@ -381,8 +431,6 @@ class ContextualIdentityShifting extends EventEmitter {
 
   /**
    * Get performance stats for a configuration.
-   * @param {string} configName
-   * @returns {object}
    */
   getPerformance(configName) {
     const perf = this._getPerf();
@@ -391,13 +439,11 @@ class ContextualIdentityShifting extends EventEmitter {
     if (key && perf[key]) return { name: key, ...perf[key] };
     if (key) return { name: key, activations: 0, totalDuration: 0, avgDuration: 0, successSignals: 0, failureSignals: 0, score: null };
 
-    // Return all
     return Object.entries(perf).map(([name, data]) => ({ name, ...data }));
   }
 
   /**
    * Record a performance signal (success/failure) for the active config.
-   * @param {'success'|'failure'} signal
    */
   recordPerformance(signal) {
     if (!this._activeConfig) return;
@@ -412,13 +458,49 @@ class ContextualIdentityShifting extends EventEmitter {
       ? Math.round(perf[key].successSignals / (perf[key].successSignals + perf[key].failureSignals) * 100)
       : null;
 
+    // Track duration
+    if (this._shiftStartedAt) {
+      const duration = now() - this._shiftStartedAt;
+      perf[key].activations++;
+      perf[key].totalDuration += duration;
+      perf[key].avgDuration = Math.round(perf[key].totalDuration / perf[key].activations);
+    }
+
     this._savePerf(perf);
   }
 
   /**
+   * Get transition patterns — which profiles tend to follow which.
+   */
+  getTransitionPatterns() {
+    const transitions = this._getTransitions();
+    const patterns = Object.entries(transitions.patterns)
+      .map(([key, data]) => {
+        const [from, to] = key.split('→');
+        return { from, to, count: data.count, lastSeen: data.lastSeen };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      totalTransitions: transitions.total,
+      patterns: patterns.slice(0, 30),
+      mostCommon: patterns[0] || null,
+    };
+  }
+
+  _recordTransition(from, to) {
+    if (!from || !to || from === to) return;
+    const transitions = this._getTransitions();
+    const key = `${from}→${to}`;
+    if (!transitions.patterns[key]) transitions.patterns[key] = { count: 0, lastSeen: null };
+    transitions.patterns[key].count++;
+    transitions.patterns[key].lastSeen = now();
+    transitions.total++;
+    this._saveTransitions(transitions);
+  }
+
+  /**
    * Periodic tick: advance transitions, auto-detect if enabled.
-   * @param {string} [latestInput] - Most recent input for auto-detection
-   * @returns {object}
    */
   tick(latestInput) {
     const result = { transitioned: false, autoShifted: false };
@@ -433,7 +515,29 @@ class ContextualIdentityShifting extends EventEmitter {
     // Auto-detect context shift
     if (this.config.autoDetect && latestInput) {
       const detection = this.detectContext(latestInput);
-      if (detection.confidence > 0.3 && detection.suggestedProfile !== this._activeConfig) {
+
+      // Handle identity conflict
+      if (detection.conflicting.length > 0) {
+        const resolution = this.resolveConflict(detection.conflicting, latestInput);
+        if (resolution.resolved && resolution.resolved.startsWith('BLEND:')) {
+          const configs = detection.conflicting;
+          const weights = resolution.weights ? Object.values(resolution.weights) : undefined;
+          const blendResult = this.blend(configs, weights);
+          if (blendResult.blended) {
+            result.autoShifted = true;
+            result.shiftedTo = resolution.resolved;
+            result.conflictResolved = true;
+            result.method = resolution.method;
+          }
+        } else if (resolution.resolved) {
+          const shiftResult = this.shift(resolution.resolved);
+          if (shiftResult.shifted) {
+            result.autoShifted = true;
+            result.shiftedTo = resolution.resolved;
+            result.conflictResolved = true;
+          }
+        }
+      } else if (detection.confidence > 0.3 && detection.suggestedProfile !== this._activeConfig) {
         const shiftResult = this.shift(detection.suggestedProfile);
         if (shiftResult.shifted) {
           result.autoShifted = true;
@@ -504,7 +608,6 @@ class ContextualIdentityShifting extends EventEmitter {
       effective.attentionBias[dim] = Math.round(effective.attentionBias[dim] * 100) / 100;
     }
 
-    // Collect priorities from all, weighted by blend weight
     const prioScores = {};
     for (const [name, w] of Object.entries(weights)) {
       const p = profiles[name];
@@ -526,7 +629,6 @@ class ContextualIdentityShifting extends EventEmitter {
     const history = this._getHistory();
     if (history.length < 20) return;
 
-    // Look for repeated blend patterns in recent history
     const recentBlends = history
       .filter(h => h.action === 'blend')
       .slice(-20);
@@ -542,7 +644,6 @@ class ContextualIdentityShifting extends EventEmitter {
       if (count >= this.config.emergentThreshold) {
         const emergentName = 'EMERGENT_' + combo.replace(/\+/g, '_');
         if (!profiles[emergentName]) {
-          // Create an emergent profile from the blend
           const configs = combo.split('+');
           const weights = configs.map(() => 1.0 / configs.length);
           const blendW = {};

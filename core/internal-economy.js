@@ -1,8 +1,12 @@
 /**
- * ARIES — Internal Economy v1.0
+ * ARIES — Internal Economy v2.0
  * Emergent prioritization through market dynamics.
  * No central planner — modules bid tokens for resources, trade with each other,
  * and earn/lose influence based on usefulness.
+ * 
+ * Features: Token wallets, Vickrey auctions, idle taxation, module-to-module trading,
+ * market metrics (GDP, inflation, Gini, velocity), boom/bust detection, price discovery,
+ * bankruptcy protection, economic history, adaptive tax policy.
  */
 
 const fs = require('fs');
@@ -16,6 +20,7 @@ const TRADES_PATH = path.join(DATA_DIR, 'trades.json');
 const PRICE_HISTORY_PATH = path.join(DATA_DIR, 'price-history.json');
 const LEDGER_PATH = path.join(DATA_DIR, 'ledger.json');
 const SUPPLY_PATH = path.join(DATA_DIR, 'supply.json');
+const METRICS_PATH = path.join(DATA_DIR, 'metrics-history.json');
 
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'); }
 function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
@@ -24,14 +29,21 @@ function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(da
 
 const DEFAULTS = {
   initialBalance: 100,
-  taxRate: 0.02,           // 2% idle tax per tick
-  idleThresholdMs: 300000, // 5 minutes of no activity = idle
-  targetSupply: 10000,     // target total token supply
-  supplyAdjustRate: 0.05,  // 5% max adjustment per tick
-  minBalance: 1,           // bankruptcy threshold
+  taxRate: 0.02,
+  idleThresholdMs: 300000,
+  targetSupply: 10000,
+  supplyAdjustRate: 0.05,
+  minBalance: 1,
   maxPriceHistory: 500,
   maxLedger: 1000,
   maxTrades: 500,
+  maxMetricsHistory: 200,
+  // Resource type base prices
+  resourceBasePrices: { cpu: 10, memory: 8, ai_calls: 25, io: 5, general: 10 },
+  // Tax policy
+  taxHealthMultiplier: true,
+  boomThreshold: 1.5,
+  bustThreshold: 0.5,
 };
 
 class InternalEconomy {
@@ -40,6 +52,8 @@ class InternalEconomy {
     this.config = Object.assign({}, DEFAULTS, opts && opts.config);
     this._timer = null;
     this._tickMs = (opts && opts.tickInterval || 60) * 1000;
+    this._tickCount = 0;
+    this._lastGDP = 0;
     ensureDir();
     this._ensureSupply();
   }
@@ -88,19 +102,19 @@ class InternalEconomy {
       bidCount: 0,
       winCount: 0,
       tradeCount: 0,
-      priority: 'normal', // normal | low | bankrupt
+      priority: 'normal',
+      productionValue: 0,
+      lastProductionTick: 0,
     };
 
     wallets[moduleId] = wallet;
     writeJSON(WALLETS_PATH, wallets);
 
-    // Update supply
     const supply = readJSON(SUPPLY_PATH, {});
     supply.totalMinted = (supply.totalMinted || 0) + this.config.initialBalance;
     writeJSON(SUPPLY_PATH, supply);
 
     this._log('wallet_created', { moduleId, balance: wallet.balance });
-    console.log(`[ECONOMY] 💰 Wallet created: ${moduleId} (${wallet.balance} tokens)`);
     return { created: true, wallet };
   }
 
@@ -126,12 +140,12 @@ class InternalEconomy {
     if (amount <= 0) return { error: 'Amount must be positive' };
     const wallets = readJSON(WALLETS_PATH, {});
     if (!wallets[moduleId]) this.createWallet(moduleId);
-    const w = readJSON(WALLETS_PATH, {}); // re-read after possible create
+    const w = readJSON(WALLETS_PATH, {});
 
     w[moduleId].balance += amount;
     w[moduleId].totalEarned += amount;
     w[moduleId].lastActivity = Date.now();
-    // Restore from bankruptcy if earning
+    w[moduleId].productionValue = (w[moduleId].productionValue || 0) + amount;
     if (w[moduleId].priority === 'bankrupt' && w[moduleId].balance >= this.config.minBalance * 5) {
       w[moduleId].priority = 'low';
     }
@@ -158,22 +172,15 @@ class InternalEconomy {
 
     const auctions = readJSON(AUCTIONS_PATH, {});
     if (!auctions[resource]) {
-      auctions[resource] = { resource, bids: [], createdAt: Date.now(), resolved: false };
+      auctions[resource] = { resource, bids: [], createdAt: Date.now(), resolved: false, resourceType: this._classifyResource(resource) };
     }
     if (auctions[resource].resolved) {
-      auctions[resource] = { resource, bids: [], createdAt: Date.now(), resolved: false };
+      auctions[resource] = { resource, bids: [], createdAt: Date.now(), resolved: false, resourceType: this._classifyResource(resource) };
     }
 
-    // Remove any existing bid from this module for this resource
     auctions[resource].bids = auctions[resource].bids.filter(b => b.moduleId !== moduleId);
+    auctions[resource].bids.push({ moduleId, amount, timestamp: Date.now() });
 
-    auctions[resource].bids.push({
-      moduleId,
-      amount,
-      timestamp: Date.now(),
-    });
-
-    // Update wallet activity
     wallets[moduleId].lastActivity = Date.now();
     wallets[moduleId].bidCount = (wallets[moduleId].bidCount || 0) + 1;
     writeJSON(WALLETS_PATH, wallets);
@@ -189,12 +196,11 @@ class InternalEconomy {
     if (auctions[resource].resolved) return { error: 'Auction already resolved' };
     if (auctions[resource].bids.length === 0) return { error: 'No bids' };
 
-    // Dutch auction: highest bidder wins, pays second-highest price (Vickrey auction)
+    // Vickrey auction: highest bidder wins, pays second-highest price
     const bids = auctions[resource].bids.sort((a, b) => b.amount - a.amount);
     const winner = bids[0];
-    const price = bids.length > 1 ? bids[1].amount : Math.floor(winner.amount * 0.5); // pay 2nd price, or half if sole bidder
+    const price = bids.length > 1 ? bids[1].amount : Math.floor(winner.amount * 0.5);
 
-    // Deduct from winner
     const wallets = readJSON(WALLETS_PATH, {});
     if (!wallets[winner.moduleId]) return { error: 'Winner wallet missing' };
 
@@ -206,15 +212,12 @@ class InternalEconomy {
     this._checkBankruptcy(wallets[winner.moduleId]);
     writeJSON(WALLETS_PATH, wallets);
 
-    // Burn the spent tokens (they leave circulation)
     const supply = readJSON(SUPPLY_PATH, {});
     supply.totalBurned = (supply.totalBurned || 0) + actualPrice;
     writeJSON(SUPPLY_PATH, supply);
 
-    // Record price history
     this._recordPrice(resource, actualPrice, bids.length);
 
-    // Mark auction resolved
     auctions[resource].resolved = true;
     auctions[resource].winner = winner.moduleId;
     auctions[resource].price = actualPrice;
@@ -222,8 +225,6 @@ class InternalEconomy {
     writeJSON(AUCTIONS_PATH, auctions);
 
     this._log('auction_resolved', { resource, winner: winner.moduleId, price: actualPrice, bidders: bids.length });
-    console.log(`[ECONOMY] 🏆 Auction: ${winner.moduleId} won "${resource}" for ${actualPrice} tokens (${bids.length} bidders)`);
-
     return {
       winner: winner.moduleId,
       resource,
@@ -242,24 +243,40 @@ class InternalEconomy {
     return pending;
   }
 
-  // --- Taxation ---
+  // --- Taxation (adaptive) ---
 
   tax() {
     const wallets = readJSON(WALLETS_PATH, {});
     const now = Date.now();
     let totalTaxed = 0;
 
+    // Adaptive tax rate based on system health
+    let effectiveRate = this.config.taxRate;
+    if (this.config.taxHealthMultiplier) {
+      const metrics = this._computeMetrics(wallets);
+      // Higher tax during boom, lower during bust
+      if (metrics.cyclePhase === 'boom') effectiveRate *= 1.5;
+      else if (metrics.cyclePhase === 'bust') effectiveRate *= 0.5;
+      // Higher inequality → higher tax on rich
+      if (metrics.giniCoefficient > 0.6) effectiveRate *= 1.3;
+    }
+
     for (const id in wallets) {
       const w = wallets[id];
       const idle = (now - (w.lastActivity || 0)) > this.config.idleThresholdMs;
 
       if (idle && w.balance > this.config.minBalance) {
-        const taxAmount = Math.max(1, Math.floor(w.balance * this.config.taxRate));
+        // Idle taxation: modules that don't produce value lose tokens
+        const idlePenalty = (w.productionValue || 0) < 1 ? 1.5 : 1.0;
+        const taxAmount = Math.max(1, Math.floor(w.balance * effectiveRate * idlePenalty));
         w.balance -= taxAmount;
         w.totalTaxed = (w.totalTaxed || 0) + taxAmount;
         totalTaxed += taxAmount;
         this._checkBankruptcy(w);
       }
+      // Reset production counter per tick
+      w.lastProductionTick = this._tickCount;
+      w.productionValue = 0;
     }
 
     writeJSON(WALLETS_PATH, wallets);
@@ -269,10 +286,10 @@ class InternalEconomy {
       supply.totalTaxed = (supply.totalTaxed || 0) + totalTaxed;
       supply.totalBurned = (supply.totalBurned || 0) + totalTaxed;
       writeJSON(SUPPLY_PATH, supply);
-      this._log('tax', { totalTaxed });
+      this._log('tax', { totalTaxed, effectiveRate: Math.round(effectiveRate * 1000) / 1000 });
     }
 
-    return { totalTaxed };
+    return { totalTaxed, effectiveRate: Math.round(effectiveRate * 1000) / 1000 };
   }
 
   // --- Trading ---
@@ -294,7 +311,6 @@ class InternalEconomy {
     wallets[toModule].totalEarned += amount;
     wallets[toModule].lastActivity = Date.now();
     wallets[toModule].tradeCount = (wallets[toModule].tradeCount || 0) + 1;
-    // Restore from bankruptcy
     if (wallets[toModule].priority === 'bankrupt' && wallets[toModule].balance >= this.config.minBalance * 5) {
       wallets[toModule].priority = 'low';
     }
@@ -316,8 +332,6 @@ class InternalEconomy {
     writeJSON(TRADES_PATH, trades);
 
     this._log('trade', { from: fromModule, to: toModule, amount, service });
-    console.log(`[ECONOMY] 🤝 Trade: ${fromModule} → ${toModule} (${amount} tokens for "${service || 'unspecified'}")`);
-
     return { trade };
   }
 
@@ -327,7 +341,6 @@ class InternalEconomy {
     const wallets = readJSON(WALLETS_PATH, {});
     const supply = readJSON(SUPPLY_PATH, {});
 
-    // Calculate current circulating supply
     let circulating = 0;
     let moduleCount = 0;
     for (const id in wallets) {
@@ -337,7 +350,6 @@ class InternalEconomy {
 
     if (moduleCount === 0) return { circulating: 0, adjustment: 0 };
 
-    // Dynamic target: scale with module count
     const dynamicTarget = moduleCount * this.config.initialBalance * 2;
     const target = Math.max(this.config.targetSupply, dynamicTarget);
 
@@ -352,7 +364,6 @@ class InternalEconomy {
     }
 
     if (adjustment > 0) {
-      // Inflation: distribute evenly to all modules
       const perModule = Math.max(1, Math.floor(adjustment / moduleCount));
       let distributed = 0;
       for (const id in wallets) {
@@ -363,7 +374,6 @@ class InternalEconomy {
       supply.totalMinted = (supply.totalMinted || 0) + distributed;
       adjustment = distributed;
     } else {
-      // Deflation: tax proportionally from richest
       const sorted = Object.values(wallets).sort((a, b) => b.balance - a.balance);
       let toRemove = Math.abs(adjustment);
       for (const w of sorted) {
@@ -387,10 +397,170 @@ class InternalEconomy {
 
     if (adjustment !== 0) {
       this._log('supply_adjust', { circulating, target, adjustment });
-      console.log(`[ECONOMY] 📊 Supply adjustment: ${adjustment > 0 ? '+' : ''}${adjustment} tokens (circulating: ${circulating + adjustment})`);
     }
 
     return { circulating: circulating + adjustment, target, adjustment };
+  }
+
+  // --- Market Metrics ---
+
+  getMarketMetrics() {
+    const wallets = readJSON(WALLETS_PATH, {});
+    const trades = readJSON(TRADES_PATH, []);
+    return this._computeMetrics(wallets, trades);
+  }
+
+  _computeMetrics(wallets, trades) {
+    wallets = wallets || readJSON(WALLETS_PATH, {});
+    trades = trades || readJSON(TRADES_PATH, []);
+    const modules = Object.values(wallets);
+
+    if (modules.length === 0) return { gdp: 0, inflationRate: 0, giniCoefficient: 0, velocityOfMoney: 0, cyclePhase: 'dormant' };
+
+    // GDP: total production value (earned - initial) in recent window
+    const gdp = modules.reduce((s, w) => s + (w.totalEarned - this.config.initialBalance), 0);
+
+    // Circulating supply
+    const circulating = modules.reduce((s, w) => s + w.balance, 0);
+
+    // Inflation rate: compare current supply to target
+    const supply = readJSON(SUPPLY_PATH, {});
+    const inflationRate = this.config.targetSupply > 0
+      ? Math.round((circulating - this.config.targetSupply) / this.config.targetSupply * 10000) / 100
+      : 0;
+
+    // Gini coefficient
+    const gini = this._computeGini(modules.map(m => m.balance));
+
+    // Velocity of money: trade volume / circulating supply
+    const recentTrades = trades.filter(t => Date.now() - t.timestamp < 3600000);
+    const tradeVolume = recentTrades.reduce((s, t) => s + t.amount, 0);
+    const velocity = circulating > 0 ? Math.round(tradeVolume / circulating * 100) / 100 : 0;
+
+    // Boom/bust detection
+    const gdpGrowth = this._lastGDP > 0 ? (gdp - this._lastGDP) / this._lastGDP : 0;
+    let cyclePhase = 'stable';
+    if (gdpGrowth > this.config.boomThreshold - 1) cyclePhase = 'boom';
+    else if (gdpGrowth < -(1 - this.config.bustThreshold)) cyclePhase = 'bust';
+    else if (gdpGrowth > 0.1) cyclePhase = 'growth';
+    else if (gdpGrowth < -0.1) cyclePhase = 'contraction';
+    this._lastGDP = gdp;
+
+    // Average and median balance
+    const sorted = modules.map(m => m.balance).sort((a, b) => a - b);
+    const median = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0;
+    const avg = modules.length > 0 ? Math.round(circulating / modules.length) : 0;
+
+    return {
+      gdp,
+      inflationRate,
+      giniCoefficient: gini,
+      velocityOfMoney: velocity,
+      cyclePhase,
+      gdpGrowth: Math.round(gdpGrowth * 10000) / 100,
+      circulatingSupply: circulating,
+      moduleCount: modules.length,
+      avgBalance: avg,
+      medianBalance: median,
+      tradeVolumeHourly: tradeVolume,
+      bankruptModules: modules.filter(m => m.priority === 'bankrupt').length,
+    };
+  }
+
+  _computeGini(values) {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const n = sorted.length;
+    const mean = sorted.reduce((s, v) => s + v, 0) / n;
+    if (mean === 0) return 0;
+    let sumDiffs = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        sumDiffs += Math.abs(sorted[i] - sorted[j]);
+      }
+    }
+    return Math.round(sumDiffs / (2 * n * n * mean) * 1000) / 1000;
+  }
+
+  // --- Price Discovery ---
+
+  getResourcePrices() {
+    const history = readJSON(PRICE_HISTORY_PATH, {});
+    const prices = {};
+    for (const resource in history) {
+      const entries = history[resource];
+      if (entries.length === 0) continue;
+      const recent = entries.slice(-20);
+      const avgPrice = Math.round(recent.reduce((s, e) => s + e.price, 0) / recent.length);
+      const lastPrice = recent[recent.length - 1].price;
+      const resourceType = this._classifyResource(resource);
+      const basePrice = this.config.resourceBasePrices[resourceType] || 10;
+      prices[resource] = {
+        lastPrice,
+        avgPrice,
+        basePrice,
+        resourceType,
+        priceRatio: Math.round(avgPrice / basePrice * 100) / 100,
+        samples: recent.length,
+        trend: recent.length >= 5
+          ? (recent.slice(-3).reduce((s, e) => s + e.price, 0) / 3 > recent.slice(0, 3).reduce((s, e) => s + e.price, 0) / 3 ? 'rising' : 'falling')
+          : 'insufficient_data',
+      };
+    }
+    return prices;
+  }
+
+  _classifyResource(resource) {
+    const r = resource.toLowerCase();
+    if (r.includes('cpu') || r.includes('compute') || r.includes('process')) return 'cpu';
+    if (r.includes('mem') || r.includes('cache') || r.includes('buffer')) return 'memory';
+    if (r.includes('ai') || r.includes('llm') || r.includes('model') || r.includes('inference')) return 'ai_calls';
+    if (r.includes('io') || r.includes('disk') || r.includes('file') || r.includes('network')) return 'io';
+    return 'general';
+  }
+
+  // --- Economic History & Trends ---
+
+  getEconomicHistory(limit) {
+    const metrics = readJSON(METRICS_PATH, []);
+    return metrics.slice(-(limit || 50)).reverse();
+  }
+
+  getEconomicTrends() {
+    const history = readJSON(METRICS_PATH, []);
+    if (history.length < 3) return { status: 'insufficient_data', dataPoints: history.length };
+
+    const recent = history.slice(-10);
+    const older = history.length > 10 ? history.slice(-20, -10) : history.slice(0, Math.floor(history.length / 2));
+
+    const avg = arr => arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+
+    const recentGDP = avg(recent.map(m => m.gdp));
+    const olderGDP = avg(older.map(m => m.gdp));
+    const recentGini = avg(recent.map(m => m.giniCoefficient));
+    const olderGini = avg(older.map(m => m.giniCoefficient));
+    const recentVelocity = avg(recent.map(m => m.velocityOfMoney));
+    const olderVelocity = avg(older.map(m => m.velocityOfMoney));
+
+    return {
+      gdpTrend: recentGDP > olderGDP * 1.05 ? 'growing' : recentGDP < olderGDP * 0.95 ? 'shrinking' : 'stable',
+      inequalityTrend: recentGini > olderGini + 0.05 ? 'widening' : recentGini < olderGini - 0.05 ? 'narrowing' : 'stable',
+      velocityTrend: recentVelocity > olderVelocity * 1.1 ? 'accelerating' : recentVelocity < olderVelocity * 0.9 ? 'decelerating' : 'stable',
+      dataPoints: history.length,
+      recentAvgGDP: Math.round(recentGDP),
+      recentAvgGini: Math.round(recentGini * 1000) / 1000,
+    };
+  }
+
+  _recordMetricsSnapshot() {
+    const metrics = this._computeMetrics();
+    metrics.timestamp = Date.now();
+    metrics.tick = this._tickCount;
+
+    const history = readJSON(METRICS_PATH, []);
+    history.push(metrics);
+    if (history.length > this.config.maxMetricsHistory) history.splice(0, history.length - this.config.maxMetricsHistory);
+    writeJSON(METRICS_PATH, history);
   }
 
   // --- Market State & Dashboard ---
@@ -401,13 +571,11 @@ class InternalEconomy {
     const trades = readJSON(TRADES_PATH, []);
     const supply = readJSON(SUPPLY_PATH, {});
 
-    // Wallet stats
     const modules = Object.values(wallets);
     let circulating = 0;
     for (const w of modules) circulating += w.balance;
     const sorted = modules.sort((a, b) => b.balance - a.balance);
 
-    // Active auctions
     const pendingAuctions = [];
     const recentResolved = [];
     for (const r in auctions) {
@@ -416,23 +584,9 @@ class InternalEconomy {
     }
     recentResolved.sort((a, b) => (b.resolvedAt || 0) - (a.resolvedAt || 0));
 
-    // Recent trades
     const recentTrades = trades.slice(-20).reverse();
-
-    // Most traded resources
-    const resourceCounts = {};
-    for (const r in auctions) {
-      if (auctions[r].resolved) {
-        resourceCounts[r] = (resourceCounts[r] || 0) + 1;
-      }
-    }
-    const topResources = Object.entries(resourceCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([resource, count]) => ({ resource, auctionCount: count }));
-
-    // Bankrupt modules
     const bankrupt = modules.filter(m => m.priority === 'bankrupt');
+    const metrics = this._computeMetrics(wallets, trades);
 
     return {
       timestamp: Date.now(),
@@ -443,12 +597,12 @@ class InternalEconomy {
         totalBurned: supply.totalBurned || 0,
         totalTaxed: supply.totalTaxed || 0,
       },
+      metrics,
       richest: sorted.slice(0, 10).map(w => ({ moduleId: w.moduleId, balance: w.balance, priority: w.priority })),
       poorest: sorted.slice(-5).reverse().map(w => ({ moduleId: w.moduleId, balance: w.balance, priority: w.priority })),
       bankruptCount: bankrupt.length,
       pendingAuctions: pendingAuctions.length,
       recentAuctions: recentResolved.slice(0, 10).map(a => ({ resource: a.resource, winner: a.winner, price: a.price })),
-      topResources,
       recentTrades: recentTrades.map(t => ({ from: t.from, to: t.to, amount: t.amount, service: t.service })),
     };
   }
@@ -462,10 +616,11 @@ class InternalEconomy {
   // --- Tick ---
 
   tick() {
+    this._tickCount++;
     const taxResult = this.tax();
     const supplyResult = this.adjustSupply();
 
-    // Resolve any stale auctions (older than 30 seconds)
+    // Resolve stale auctions
     const auctions = readJSON(AUCTIONS_PATH, {});
     const now = Date.now();
     const resolved = [];
@@ -476,16 +631,28 @@ class InternalEconomy {
       }
     }
 
-    return { taxed: taxResult.totalTaxed, supplyAdjustment: supplyResult.adjustment, auctionsResolved: resolved.length };
+    // Record metrics snapshot every 5 ticks
+    if (this._tickCount % 5 === 0) {
+      this._recordMetricsSnapshot();
+    }
+
+    return {
+      tick: this._tickCount,
+      taxed: taxResult.totalTaxed,
+      taxRate: taxResult.effectiveRate,
+      supplyAdjustment: supplyResult.adjustment,
+      auctionsResolved: resolved.length,
+    };
   }
 
   // --- Internal Helpers ---
 
   _checkBankruptcy(wallet) {
     if (wallet.balance <= this.config.minBalance) {
+      // Bankruptcy protection: floor at minBalance, never go to zero
+      wallet.balance = Math.max(this.config.minBalance, wallet.balance);
       if (wallet.priority !== 'bankrupt') {
         wallet.priority = 'bankrupt';
-        console.log(`[ECONOMY] 💸 Bankruptcy: ${wallet.moduleId} (balance: ${wallet.balance})`);
         this._log('bankruptcy', { moduleId: wallet.moduleId, balance: wallet.balance });
       }
     } else if (wallet.balance < this.config.initialBalance * 0.25) {
@@ -499,6 +666,7 @@ class InternalEconomy {
     history[resource].push({
       price,
       bidders: bidderCount,
+      resourceType: this._classifyResource(resource),
       timestamp: Date.now(),
     });
     if (history[resource].length > this.config.maxPriceHistory) {

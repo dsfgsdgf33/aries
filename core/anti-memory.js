@@ -4,7 +4,9 @@
  * Manages memory lifecycle: decay, compression, contradiction resolution,
  * irrelevance culling, interference competition, and deliberate forgetting.
  * 
- * Replaces and vastly extends strategic-forgetting.js.
+ * 6 forgetting policies, memory graveyard with resurrection, pressure-based GC,
+ * exponential decay curves, protected memories, contradiction detection,
+ * interference resolution, and forgetting analytics.
  */
 
 'use strict';
@@ -38,25 +40,23 @@ const POLICIES = {
 
 const DEFAULT_CONFIG = {
   maxMemories: 1000,
-  pressureThreshold: 0.7,       // Start aggressive forgetting at 70% capacity
-  criticalPressure: 0.9,        // Emergency sweep at 90%
-  decayHalfLife: 7 * 24 * 3600 * 1000, // 7 days half-life
-  decayMinStrength: 0.05,       // Below this, candidate for forgetting
-  compressionAgeMs: 14 * 24 * 3600 * 1000, // Compress memories older than 14 days
-  compressionBatchSize: 5,      // Compress up to 5 memories at once
-  irrelevanceThreshold: 0,      // Memories with 0 decision influence get culled
-  interferenceSimThreshold: 0.8,// Similarity above which memories compete
-  sweepIntervalMs: 3600 * 1000, // Sweep every hour
-  graveyardMaxSize: 500,        // Max tombstones before pruning graveyard itself
-  analyticsWindow: 30 * 24 * 3600 * 1000, // 30-day analytics window
+  pressureThreshold: 0.7,
+  criticalPressure: 0.9,
+  decayHalfLife: 7 * 24 * 3600 * 1000,
+  decayMinStrength: 0.05,
+  compressionAgeMs: 14 * 24 * 3600 * 1000,
+  compressionBatchSize: 5,
+  irrelevanceThreshold: 0,
+  irrelevanceAgeMs: 3 * 24 * 3600 * 1000,
+  interferenceSimThreshold: 0.75,
+  sweepIntervalMs: 3600 * 1000,
+  graveyardMaxSize: 500,
+  analyticsWindow: 30 * 24 * 3600 * 1000,
+  contradictionConfidenceGap: 0.3,
+  emergencySweepTarget: 0.6, // target pressure after emergency sweep
 };
 
 class AntiMemory extends EventEmitter {
-  /**
-   * @param {object} opts
-   * @param {object} opts.ai - LLM access for compression/deliberate forgetting
-   * @param {object} opts.config - Override default config
-   */
   constructor(opts = {}) {
     super();
     this.ai = opts.ai || null;
@@ -77,6 +77,8 @@ class AntiMemory extends EventEmitter {
     this._totalCompressed = state.totalCompressed || 0;
     this._totalResurrected = state.totalResurrected || 0;
     this._sweepCount = state.sweepCount || 0;
+    this._contradictionsResolved = state.contradictionsResolved || 0;
+    this._interferencesResolved = state.interferencesResolved || 0;
   }
 
   _saveState() {
@@ -86,6 +88,8 @@ class AntiMemory extends EventEmitter {
       totalCompressed: this._totalCompressed,
       totalResurrected: this._totalResurrected,
       sweepCount: this._sweepCount,
+      contradictionsResolved: this._contradictionsResolved,
+      interferencesResolved: this._interferencesResolved,
     });
   }
 
@@ -100,14 +104,10 @@ class AntiMemory extends EventEmitter {
   //  Memory Source Integration
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Gather all memories from known sources.
-   * Returns array of { id, text, created, lastAccessed, accessCount, category, priority, source, meta }
-   */
   _gatherMemories() {
     const memories = [];
 
-    // memory.json (core memory module)
+    // memory.json
     try {
       const memFile = path.join(__dirname, '..', 'data', 'memory.json');
       if (fs.existsSync(memFile)) {
@@ -194,12 +194,6 @@ class AntiMemory extends EventEmitter {
   //  Protection System (Crystallization)
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Crystallize a memory — make it immune to forgetting
-   * @param {string} memoryId
-   * @param {string} reason
-   * @returns {{protected: boolean, id: string}}
-   */
   protect(memoryId, reason) {
     const protected_ = readJSON(PROTECTED_PATH, {});
     protected_[memoryId] = {
@@ -212,11 +206,6 @@ class AntiMemory extends EventEmitter {
     return { protected: true, id: memoryId };
   }
 
-  /**
-   * Remove crystallization from a memory
-   * @param {string} memoryId
-   * @returns {{unprotected: boolean}}
-   */
   unprotect(memoryId) {
     const protected_ = readJSON(PROTECTED_PATH, {});
     if (!protected_[memoryId]) return { unprotected: false, error: 'Not protected' };
@@ -227,72 +216,132 @@ class AntiMemory extends EventEmitter {
     return { unprotected: true };
   }
 
-  /**
-   * Check if a memory is crystallized
-   * @param {string} memoryId
-   * @returns {boolean}
-   */
   isProtected(memoryId) {
-    const protected_ = readJSON(PROTECTED_PATH, {});
-    return !!protected_[memoryId];
+    return !!readJSON(PROTECTED_PATH, {})[memoryId];
   }
 
-  /**
-   * Get all protected memory IDs
-   * @returns {object}
-   */
   getProtected() {
     return readJSON(PROTECTED_PATH, {});
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  Decay Scoring
+  //  Decay & Scoring
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Compute decay strength for a memory (exponential decay based on time since last access)
-   * @param {object} memory
-   * @returns {number} 0-1 strength
-   */
   _decayStrength(memory) {
     const lastTouch = memory.lastAccessed || memory.created;
     const elapsed = now() - lastTouch;
     const halfLife = this.config.decayHalfLife;
-    // Exponential decay: strength = 2^(-elapsed/halfLife)
     let strength = Math.pow(2, -elapsed / halfLife);
-    // Boost for access count (more accessed = slower decay)
     const accessBoost = Math.min(memory.accessCount * 0.05, 0.5);
     strength = Math.min(1, strength + accessBoost);
-    // Priority boost
     const priorityBoosts = { critical: 0.4, high: 0.2, normal: 0, low: -0.1 };
     strength += priorityBoosts[memory.priority] || 0;
     return Math.max(0, Math.min(1, strength));
   }
 
-  /**
-   * Compute forget-worthiness score (higher = more forgettable)
-   * @param {object} memory
-   * @returns {number}
-   */
   _forgetScore(memory) {
-    const age = (now() - memory.created) / (24 * 3600 * 1000); // days
+    const age = (now() - memory.created) / (24 * 3600 * 1000);
     const decayStr = this._decayStrength(memory);
     const irrelevance = memory.accessCount === 0 ? 1 : 1 / (1 + memory.accessCount);
-    const redundancy = 0; // Would need comparison with other memories — computed in analyzeCandidates
-
-    // forget-worthiness = age × irrelevance × (1 - strength)
     return age * irrelevance * (1 - decayStr);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Interference Detection
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Find memories that are too similar — they compete and interfere.
+   * Uses keyword overlap as a similarity proxy (no embeddings needed).
+   */
+  _findInterferingPairs(memories) {
+    const pairs = [];
+    const tokenize = (text) => {
+      const words = (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+      return new Set(words);
+    };
+
+    const tokenSets = memories.map(m => ({ mem: m, tokens: tokenize(m.text) }));
+
+    for (let i = 0; i < tokenSets.length; i++) {
+      for (let j = i + 1; j < tokenSets.length; j++) {
+        const a = tokenSets[i], b = tokenSets[j];
+        if (a.tokens.size === 0 || b.tokens.size === 0) continue;
+        // Jaccard similarity
+        let intersection = 0;
+        for (const t of a.tokens) { if (b.tokens.has(t)) intersection++; }
+        const union = new Set([...a.tokens, ...b.tokens]).size;
+        const similarity = union > 0 ? intersection / union : 0;
+
+        if (similarity >= this.config.interferenceSimThreshold) {
+          // The weaker memory loses
+          const strA = this._decayStrength(a.mem);
+          const strB = this._decayStrength(b.mem);
+          const loser = strA >= strB ? b.mem : a.mem;
+          const winner = strA >= strB ? a.mem : b.mem;
+          pairs.push({ winner, loser, similarity: Math.round(similarity * 1000) / 1000 });
+        }
+      }
+    }
+    return pairs;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Contradiction Detection
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Use AI to detect contradicting memories. The weaker one gets forgotten.
+   * @param {object[]} memories - subset to check
+   * @returns {Promise<Array<{memA, memB, loser, reason}>>}
+   */
+  async detectContradictions(memories) {
+    if (!this.ai || memories.length < 2) return [];
+
+    // Sample up to 30 for cost efficiency
+    const sample = memories.slice(0, 30);
+    const memList = sample.map((m, i) => `[${i}] ${m.text.substring(0, 120)}`).join('\n');
+
+    try {
+      const prompt = `Identify any CONTRADICTING pairs in these memories — where one statement directly conflicts with another. Only flag genuine contradictions, not mere differences in topic.
+
+Memories:
+${memList}
+
+Return JSON array: [{"indexA": number, "indexB": number, "reason": "why they contradict"}]
+Return [] if no contradictions found.`;
+
+      const result = await this.ai.chat([{ role: 'user', content: prompt }], { maxTokens: 500 });
+      const text = result.text || result.content || result;
+      const match = text.match(/\[[\s\S]*\]/);
+      if (!match) return [];
+
+      const contradictions = JSON.parse(match[0]);
+      const pairs = [];
+      for (const c of contradictions) {
+        const a = sample[c.indexA], b = sample[c.indexB];
+        if (!a || !b) continue;
+        const strA = this._decayStrength(a);
+        const strB = this._decayStrength(b);
+        pairs.push({
+          memA: a,
+          memB: b,
+          loser: strA >= strB ? b : a,
+          winner: strA >= strB ? a : b,
+          reason: c.reason,
+        });
+      }
+      return pairs;
+    } catch {
+      return [];
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
   //  Candidate Analysis
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Scan all memories and score them for forgetting
-   * @param {object} opts - { limit, minScore, policies }
-   * @returns {Array<{memory: object, score: number, policies: string[], reason: string}>}
-   */
   analyzeCandidates(opts = {}) {
     const limit = opts.limit || 50;
     const minScore = opts.minScore || 0;
@@ -300,8 +349,12 @@ class AntiMemory extends EventEmitter {
     const protected_ = readJSON(PROTECTED_PATH, {});
     const candidates = [];
 
+    // Interference detection across all unprotected memories
+    const unprotected = memories.filter(m => !protected_[m.id]);
+    const interferencePairs = this._findInterferingPairs(unprotected);
+    const interferenceVictims = new Set(interferencePairs.map(p => p.loser.id));
+
     for (const mem of memories) {
-      // Skip protected memories
       if (protected_[mem.id]) continue;
 
       const policies = [];
@@ -316,31 +369,30 @@ class AntiMemory extends EventEmitter {
       }
 
       // IRRELEVANCE policy
-      if (mem.accessCount <= this.config.irrelevanceThreshold && (now() - mem.created) > 3 * 24 * 3600 * 1000) {
+      if (mem.accessCount <= this.config.irrelevanceThreshold && (now() - mem.created) > this.config.irrelevanceAgeMs) {
         policies.push(POLICIES.IRRELEVANCE);
         reasons.push(`never accessed in ${Math.floor((now() - mem.created) / (24 * 3600 * 1000))} days`);
       }
 
-      // COMPRESSION candidate (old but not worthless)
+      // INTERFERENCE policy
+      if (interferenceVictims.has(mem.id)) {
+        const pair = interferencePairs.find(p => p.loser.id === mem.id);
+        policies.push(POLICIES.INTERFERENCE);
+        reasons.push(`interferes with stronger memory (sim=${pair?.similarity})`);
+      }
+
+      // COMPRESSION candidate
       if ((now() - mem.created) > this.config.compressionAgeMs && strength > this.config.decayMinStrength) {
         policies.push(POLICIES.COMPRESSION);
         reasons.push('old enough for compression');
       }
 
       if (policies.length > 0 && score >= minScore) {
-        candidates.push({
-          memory: mem,
-          score,
-          strength,
-          policies,
-          reason: reasons.join('; '),
-        });
+        candidates.push({ memory: mem, score, strength, policies, reason: reasons.join('; ') });
       }
     }
 
-    // Sort by score descending (most forgettable first)
     candidates.sort((a, b) => b.score - a.score);
-
     this.emit('analyzed', { candidateCount: candidates.length, totalMemories: memories.length });
     return candidates.slice(0, limit);
   }
@@ -349,24 +401,15 @@ class AntiMemory extends EventEmitter {
   //  Forgetting
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Move a memory to the graveyard
-   * @param {string} memoryId
-   * @param {string} policy - Which policy triggered this
-   * @param {string} reason - Human-readable reason
-   * @returns {{forgotten: boolean, tombstone: object}}
-   */
   forget(memoryId, policy, reason) {
     if (this.isProtected(memoryId)) {
       return { forgotten: false, error: 'Memory is crystallized (protected)' };
     }
 
-    // Find the memory
     const memories = this._gatherMemories();
     const memory = memories.find(m => m.id === memoryId);
     if (!memory) return { forgotten: false, error: 'Memory not found' };
 
-    // Create tombstone
     const tombstone = {
       id: uuid(),
       originalId: memoryId,
@@ -379,33 +422,26 @@ class AntiMemory extends EventEmitter {
       policy: policy || POLICIES.DECAY,
       reason: reason || 'no reason given',
       resurrected: false,
+      resurrectionCount: 0,
       meta: memory.meta,
     };
 
-    // Add to graveyard
     const graveyard = readJSON(GRAVEYARD_PATH, []);
     graveyard.push(tombstone);
-    // Prune graveyard if too large
     if (graveyard.length > this.config.graveyardMaxSize) {
-      // Remove oldest non-resurrected tombstones
-      const excess = graveyard.length - this.config.graveyardMaxSize;
       let removed = 0;
+      const excess = graveyard.length - this.config.graveyardMaxSize;
       for (let i = 0; i < graveyard.length && removed < excess; i++) {
-        if (!graveyard[i].resurrected) {
-          graveyard.splice(i, 1);
-          i--;
-          removed++;
-        }
+        if (!graveyard[i].resurrected) { graveyard.splice(i, 1); i--; removed++; }
       }
     }
     writeJSON(GRAVEYARD_PATH, graveyard);
 
-    // Remove from source
     this._removeFromSource(memory);
-
-    // Update analytics
     this._recordAnalytic('forget', { policy, category: memory.category });
 
+    if (policy === POLICIES.CONTRADICTION) this._contradictionsResolved++;
+    if (policy === POLICIES.INTERFERENCE) this._interferencesResolved++;
     this._totalForgotten++;
     this._saveState();
     this._log('forget', { memoryId, policy, reason });
@@ -414,10 +450,6 @@ class AntiMemory extends EventEmitter {
     return { forgotten: true, tombstone };
   }
 
-  /**
-   * Remove a memory from its source store
-   * @param {object} memory
-   */
   _removeFromSource(memory) {
     try {
       if (memory.source === 'memory.json') {
@@ -426,26 +458,18 @@ class AntiMemory extends EventEmitter {
         const data = JSON.parse(fs.readFileSync(memFile, 'utf8'));
         if (!Array.isArray(data)) return;
         const idx = data.findIndex(e => (e.key || e.text?.substring(0, 50)) === memory.id);
-        if (idx >= 0) {
-          data.splice(idx, 1);
-          fs.writeFileSync(memFile, JSON.stringify(data, null, 2));
-        }
+        if (idx >= 0) { data.splice(idx, 1); fs.writeFileSync(memFile, JSON.stringify(data, null, 2)); }
       } else if (memory.source === 'cross-session') {
         const key = memory.id.replace('cs:', '');
         const csDir = path.join(__dirname, '..', 'data', 'cross-session');
-        // Try to find and remove the file
         const files = fs.readdirSync(csDir).filter(f => f.endsWith('.json'));
         for (const file of files) {
           try {
             const d = JSON.parse(fs.readFileSync(path.join(csDir, file), 'utf8'));
-            if (d.key === key) {
-              fs.unlinkSync(path.join(csDir, file));
-              break;
-            }
+            if (d.key === key) { fs.unlinkSync(path.join(csDir, file)); break; }
           } catch { /* skip */ }
         }
       }
-      // persistent-memory daily notes: don't delete lines from daily notes (too destructive)
     } catch { /* best effort */ }
   }
 
@@ -453,27 +477,17 @@ class AntiMemory extends EventEmitter {
   //  Compression
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Compress multiple memories into a single summary
-   * @param {string[]} memoryIds - IDs to compress
-   * @param {string} [customSummary] - Provide summary instead of AI-generating one
-   * @returns {Promise<{compressed: boolean, summary: string, original: number}>}
-   */
   async compress(memoryIds, customSummary) {
     const memories = this._gatherMemories();
     const toCompress = memories.filter(m => memoryIds.includes(m.id));
     if (toCompress.length === 0) return { compressed: false, error: 'No matching memories found' };
 
-    // Check for protected
     const protected_ = readJSON(PROTECTED_PATH, {});
     const blocked = toCompress.filter(m => protected_[m.id]);
-    if (blocked.length > 0) {
-      return { compressed: false, error: `${blocked.length} memories are crystallized` };
-    }
+    if (blocked.length > 0) return { compressed: false, error: `${blocked.length} memories are crystallized` };
 
     let summary = customSummary || null;
 
-    // Use AI for summarization if available
     if (!summary && this.ai) {
       try {
         const texts = toCompress.map(m => m.text).join('\n---\n');
@@ -481,21 +495,15 @@ class AntiMemory extends EventEmitter {
         const result = await this.ai.chat([{ role: 'user', content: prompt }], { maxTokens: 300 });
         summary = result.text || result.content || result;
       } catch {
-        // Fallback: simple concatenation
         summary = toCompress.map(m => m.text.substring(0, 100)).join(' | ');
       }
     }
+    if (!summary) summary = toCompress.map(m => m.text.substring(0, 100)).join(' | ');
 
-    if (!summary) {
-      summary = toCompress.map(m => m.text.substring(0, 100)).join(' | ');
-    }
-
-    // Forget originals, move to graveyard
     for (const mem of toCompress) {
       this.forget(mem.id, POLICIES.COMPRESSION, `compressed with ${toCompress.length - 1} other memories`);
     }
 
-    // Add compressed summary as new memory
     try {
       const memFile = path.join(__dirname, '..', 'data', 'memory.json');
       const data = fs.existsSync(memFile) ? JSON.parse(fs.readFileSync(memFile, 'utf8')) : [];
@@ -524,17 +532,11 @@ class AntiMemory extends EventEmitter {
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  Graveyard
+  //  Graveyard & Resurrection
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Browse forgotten memories
-   * @param {object} filter - { policy, category, limit, search }
-   * @returns {Array}
-   */
   getGraveyard(filter = {}) {
     let graveyard = readJSON(GRAVEYARD_PATH, []);
-
     if (filter.policy) graveyard = graveyard.filter(t => t.policy === filter.policy);
     if (filter.category) graveyard = graveyard.filter(t => t.category === filter.category);
     if (filter.resurrected !== undefined) graveyard = graveyard.filter(t => t.resurrected === filter.resurrected);
@@ -542,26 +544,15 @@ class AntiMemory extends EventEmitter {
       const q = filter.search.toLowerCase();
       graveyard = graveyard.filter(t => t.summary.toLowerCase().includes(q) || (t.fullText || '').toLowerCase().includes(q));
     }
-
-    // Sort by forgottenAt descending
     graveyard.sort((a, b) => b.forgottenAt - a.forgottenAt);
-
-    const limit = filter.limit || 50;
-    return graveyard.slice(0, limit);
+    return graveyard.slice(0, filter.limit || 50);
   }
 
-  /**
-   * Resurrect a forgotten memory
-   * @param {string} graveyardId - Tombstone ID
-   * @returns {{resurrected: boolean, memory: object}}
-   */
   resurrect(graveyardId) {
     const graveyard = readJSON(GRAVEYARD_PATH, []);
     const tombstone = graveyard.find(t => t.id === graveyardId);
     if (!tombstone) return { resurrected: false, error: 'Tombstone not found' };
-    if (tombstone.resurrected) return { resurrected: false, error: 'Already resurrected' };
 
-    // Re-add to memory.json
     try {
       const memFile = path.join(__dirname, '..', 'data', 'memory.json');
       const data = fs.existsSync(memFile) ? JSON.parse(fs.readFileSync(memFile, 'utf8')) : [];
@@ -580,28 +571,64 @@ class AntiMemory extends EventEmitter {
       fs.writeFileSync(memFile, JSON.stringify(data, null, 2));
     } catch { /* best effort */ }
 
-    // Mark tombstone as resurrected
     tombstone.resurrected = true;
     tombstone.resurrectedAt = now();
+    tombstone.resurrectionCount = (tombstone.resurrectionCount || 0) + 1;
     writeJSON(GRAVEYARD_PATH, graveyard);
 
     this._totalResurrected++;
     this._saveState();
-    this._recordAnalytic('resurrect', { policy: tombstone.policy });
+    this._recordAnalytic('resurrect', { policy: tombstone.policy, category: tombstone.category });
     this._log('resurrect', { graveyardId, originalId: tombstone.originalId });
     this.emit('resurrected', { graveyardId, originalId: tombstone.originalId });
 
     return { resurrected: true, memory: tombstone };
   }
 
+  /**
+   * AI-driven contextual resurrection: search graveyard for memories relevant to a query
+   * and resurrect them automatically if they'd be useful now.
+   * @param {string} query - current context/question
+   * @returns {Promise<Array>} resurrected memories
+   */
+  async contextualResurrect(query) {
+    if (!this.ai) return [];
+    const graveyard = readJSON(GRAVEYARD_PATH, []);
+    const candidates = graveyard.filter(t => !t.resurrected).slice(-50);
+    if (candidates.length === 0) return [];
+
+    const tombList = candidates.map((t, i) => `[${i}] ${t.summary}`).join('\n');
+    try {
+      const prompt = `Given the current context: "${query}"
+
+Which of these forgotten memories would be relevant and useful to bring back?
+
+Forgotten memories:
+${tombList}
+
+Return JSON array of indices that should be resurrected: [0, 3, 7] etc. Return [] if none are relevant.`;
+
+      const result = await this.ai.chat([{ role: 'user', content: prompt }], { maxTokens: 200 });
+      const text = result.text || result.content || result;
+      const match = text.match(/\[[\s\S]*?\]/);
+      if (!match) return [];
+
+      const indices = JSON.parse(match[0]);
+      const resurrected = [];
+      for (const idx of indices) {
+        if (idx >= 0 && idx < candidates.length) {
+          const r = this.resurrect(candidates[idx].id);
+          if (r.resurrected) resurrected.push(r.memory);
+        }
+      }
+      return resurrected;
+    } catch { return []; }
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Memory Pressure
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Get current memory load vs capacity
-   * @returns {{current: number, max: number, pressure: number, level: string}}
-   */
   getMemoryPressure() {
     const memories = this._gatherMemories();
     const current = memories.length;
@@ -620,30 +647,32 @@ class AntiMemory extends EventEmitter {
   //  Sweep (Forgetting Cycle)
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Run a complete forgetting cycle
-   * @param {object} opts - { dryRun, aggressive, maxForget }
-   * @returns {{swept: number, compressed: number, candidates: number, pressure: object}}
-   */
   async sweep(opts = {}) {
     const dryRun = opts.dryRun || false;
     const maxForget = opts.maxForget || 20;
     const pressure = this.getMemoryPressure();
 
-    // Determine aggressiveness based on pressure
     let aggressive = opts.aggressive || false;
     if (pressure.level === 'critical') aggressive = true;
 
+    // In critical pressure, calculate how many we need to forget to reach target
+    let targetForget = maxForget;
+    if (aggressive && pressure.level === 'critical') {
+      const targetCount = Math.floor(this.config.maxMemories * this.config.emergencySweepTarget);
+      targetForget = Math.max(maxForget, pressure.current - targetCount);
+    }
+
     const minScore = aggressive ? 1 : 5;
-    const candidates = this.analyzeCandidates({ limit: maxForget * 2, minScore });
+    const candidates = this.analyzeCandidates({ limit: targetForget * 2, minScore });
 
     let swept = 0;
     let compressed = 0;
+    let contradictionsResolved = 0;
     const forgetCandidates = [];
     const compressCandidates = [];
 
     for (const c of candidates) {
-      if (c.policies.includes(POLICIES.COMPRESSION) && !c.policies.includes(POLICIES.DECAY)) {
+      if (c.policies.includes(POLICIES.COMPRESSION) && !c.policies.includes(POLICIES.DECAY) && !c.policies.includes(POLICIES.INTERFERENCE)) {
         compressCandidates.push(c);
       } else {
         forgetCandidates.push(c);
@@ -652,7 +681,7 @@ class AntiMemory extends EventEmitter {
 
     if (!dryRun) {
       // Forget high-score candidates
-      for (const c of forgetCandidates.slice(0, maxForget)) {
+      for (const c of forgetCandidates.slice(0, targetForget)) {
         const result = this.forget(c.memory.id, c.policies[0], c.reason);
         if (result.forgotten) swept++;
       }
@@ -665,7 +694,7 @@ class AntiMemory extends EventEmitter {
           if (!byCategory[cat]) byCategory[cat] = [];
           byCategory[cat].push(c.memory.id);
         }
-        for (const [cat, ids] of Object.entries(byCategory)) {
+        for (const [, ids] of Object.entries(byCategory)) {
           if (ids.length >= 2) {
             const batch = ids.slice(0, this.config.compressionBatchSize);
             const result = await this.compress(batch);
@@ -674,20 +703,24 @@ class AntiMemory extends EventEmitter {
         }
       }
 
+      // Contradiction sweep (AI-powered, only if not in emergency)
+      if (this.ai && !aggressive) {
+        const memories = this._gatherMemories();
+        const protected_ = readJSON(PROTECTED_PATH, {});
+        const unprotected = memories.filter(m => !protected_[m.id]);
+        const contradictions = await this.detectContradictions(unprotected);
+        for (const c of contradictions) {
+          const result = this.forget(c.loser.id, POLICIES.CONTRADICTION, `Contradicts "${c.winner.text.substring(0, 60)}": ${c.reason}`);
+          if (result.forgotten) contradictionsResolved++;
+        }
+      }
+
       this._lastSweep = now();
       this._sweepCount++;
       this._saveState();
     }
 
-    const result = {
-      swept,
-      compressed,
-      candidates: candidates.length,
-      pressure,
-      dryRun,
-      aggressive,
-    };
-
+    const result = { swept, compressed, contradictionsResolved, candidates: candidates.length, pressure, dryRun, aggressive };
     this._log('sweep', result);
     this.emit('swept', result);
     return result;
@@ -697,17 +730,11 @@ class AntiMemory extends EventEmitter {
   //  Deliberate Forgetting (AI-driven)
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Use AI to decide what's actively harmful to remember
-   * @returns {Promise<{candidates: Array, analyzed: number}>}
-   */
   async analyzeDeliberate() {
     if (!this.ai) return { candidates: [], analyzed: 0, error: 'No AI available' };
 
     const memories = this._gatherMemories();
     const protected_ = readJSON(PROTECTED_PATH, {});
-
-    // Sample up to 30 unprotected memories for analysis
     const unprotected = memories.filter(m => !protected_[m.id]);
     const sample = unprotected.slice(0, 30);
     if (sample.length === 0) return { candidates: [], analyzed: 0 };
@@ -726,24 +753,16 @@ Respond with ONLY a JSON array.`;
 
       const result = await this.ai.chat([{ role: 'user', content: prompt }], { maxTokens: 500 });
       const text = result.text || result.content || result;
-
-      // Parse JSON from response
       const match = text.match(/\[[\s\S]*\]/);
       if (!match) return { candidates: [], analyzed: sample.length };
 
       const harmful = JSON.parse(match[0]);
       const candidates = [];
       for (const h of harmful) {
-        const idx = h.index;
-        if (idx >= 0 && idx < sample.length) {
-          candidates.push({
-            memory: sample[idx],
-            policy: POLICIES.DELIBERATE,
-            reason: h.reason,
-          });
+        if (h.index >= 0 && h.index < sample.length) {
+          candidates.push({ memory: sample[h.index], policy: POLICIES.DELIBERATE, reason: h.reason });
         }
       }
-
       return { candidates, analyzed: sample.length };
     } catch (e) {
       return { candidates: [], analyzed: sample.length, error: e.message };
@@ -757,35 +776,25 @@ Respond with ONLY a JSON array.`;
   _recordAnalytic(action, data) {
     const analytics = readJSON(ANALYTICS_PATH, { events: [] });
     analytics.events.push({ action, ...data, at: now() });
-    // Prune old events
     const cutoff = now() - this.config.analyticsWindow;
     analytics.events = analytics.events.filter(e => e.at > cutoff);
     writeJSON(ANALYTICS_PATH, analytics);
   }
 
-  /**
-   * Get forgetting statistics
-   * @returns {object}
-   */
   getAnalytics() {
     const analytics = readJSON(ANALYTICS_PATH, { events: [] });
     const graveyard = readJSON(GRAVEYARD_PATH, []);
     const pressure = this.getMemoryPressure();
 
-    // Count by policy
     const byPolicy = {};
     const byCategory = {};
-    let forgetCount = 0;
-    let compressCount = 0;
-    let resurrectCount = 0;
+    let forgetCount = 0, compressCount = 0, resurrectCount = 0;
 
     for (const event of analytics.events) {
       if (event.action === 'forget') {
         forgetCount++;
-        const p = event.policy || 'unknown';
-        byPolicy[p] = (byPolicy[p] || 0) + 1;
-        const c = event.category || 'unknown';
-        byCategory[c] = (byCategory[c] || 0) + 1;
+        byPolicy[event.policy || 'unknown'] = (byPolicy[event.policy || 'unknown'] || 0) + 1;
+        byCategory[event.category || 'unknown'] = (byCategory[event.category || 'unknown'] || 0) + 1;
       } else if (event.action === 'compress') {
         compressCount += event.count || 1;
       } else if (event.action === 'resurrect') {
@@ -793,13 +802,26 @@ Respond with ONLY a JSON array.`;
       }
     }
 
-    // Resurrection rate (indicator of over-aggressive forgetting)
     const resurrectionRate = forgetCount > 0 ? resurrectCount / forgetCount : 0;
+
+    // Most forgotten categories / policies
+    const topForgottenCategories = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topForgottenPolicies = Object.entries(byPolicy).sort((a, b) => b[1] - a[1]);
+
+    // Resurrection analysis — which policies produce the most resurrections
+    const resurrectedByPolicy = {};
+    for (const event of analytics.events) {
+      if (event.action === 'resurrect' && event.policy) {
+        resurrectedByPolicy[event.policy] = (resurrectedByPolicy[event.policy] || 0) + 1;
+      }
+    }
 
     return {
       totalForgotten: this._totalForgotten,
       totalCompressed: this._totalCompressed,
       totalResurrected: this._totalResurrected,
+      contradictionsResolved: this._contradictionsResolved,
+      interferencesResolved: this._interferencesResolved,
       sweepCount: this._sweepCount,
       recentWindow: {
         forgotten: forgetCount,
@@ -808,6 +830,9 @@ Respond with ONLY a JSON array.`;
         byPolicy,
         byCategory,
       },
+      topForgottenCategories,
+      topForgottenPolicies,
+      resurrectedByPolicy,
       resurrectionRate: Math.round(resurrectionRate * 1000) / 1000,
       graveyardSize: graveyard.length,
       pressure,
@@ -816,24 +841,18 @@ Respond with ONLY a JSON array.`;
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  Tick (Periodic)
+  //  Tick
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Periodic check — runs sweep if pressure is high or enough time has passed
-   * @returns {Promise<{action: string, result?: object}>}
-   */
   async tick() {
     const pressure = this.getMemoryPressure();
     const elapsed = now() - this._lastSweep;
 
-    // Critical pressure: sweep immediately
     if (pressure.level === 'critical') {
       const result = await this.sweep({ aggressive: true });
       return { action: 'emergency-sweep', result };
     }
 
-    // High pressure or interval elapsed: normal sweep
     if (pressure.level === 'high' || elapsed > this.config.sweepIntervalMs) {
       const result = await this.sweep();
       return { action: 'scheduled-sweep', result };
@@ -846,20 +865,10 @@ Respond with ONLY a JSON array.`;
   //  Utility
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Get log entries
-   * @param {number} limit
-   * @returns {Array}
-   */
   getLog(limit) {
-    const log = readJSON(LOG_PATH, []);
-    return log.slice(-(limit || 50)).reverse();
+    return readJSON(LOG_PATH, []).slice(-(limit || 50)).reverse();
   }
 
-  /**
-   * Get status overview
-   * @returns {object}
-   */
   getStatus() {
     const pressure = this.getMemoryPressure();
     const protected_ = readJSON(PROTECTED_PATH, {});
@@ -871,6 +880,8 @@ Respond with ONLY a JSON array.`;
       totalForgotten: this._totalForgotten,
       totalCompressed: this._totalCompressed,
       totalResurrected: this._totalResurrected,
+      contradictionsResolved: this._contradictionsResolved,
+      interferencesResolved: this._interferencesResolved,
       sweepCount: this._sweepCount,
       lastSweep: this._lastSweep ? new Date(this._lastSweep).toISOString() : null,
     };
@@ -878,5 +889,4 @@ Respond with ONLY a JSON array.`;
 }
 
 AntiMemory.POLICIES = POLICIES;
-
 module.exports = AntiMemory;

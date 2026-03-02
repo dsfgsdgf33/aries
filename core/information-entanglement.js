@@ -319,4 +319,4 @@ function getInstance(opts) {
   return _instance;
 }
 
-module.exports = { InformationEntanglement, getInstance };
+module.exports = InformationEntanglement;

@@ -1,14 +1,11 @@
 /**
- * ARIES — Recursive Self-Compilation Engine
+ * ARIES — Recursive Self-Compilation Engine v2.0
  *
  * The strange loop: a self-improving system that improves its own
- * improvement process. Compilation layers track multiple meta-levels
- * of self-improvement, detect convergence/oscillation, and maintain
- * full lineage of every improvement ever applied.
+ * improvement process. Multi-phase cycle with A/B testing, diff tracking,
+ * performance benchmarks, and diminishing returns detection.
  *
- * Cycle: OBSERVE → ANALYZE → PROPOSE → VALIDATE → APPLY → MEASURE → REFLECT
- *
- * Zero npm dependencies — Node.js built-ins only.
+ * Cycle: OBSERVE → ANALYZE → PROPOSE → VALIDATE → APPLY → MEASURE → REFLECT → META
  */
 
 const fs = require('fs');
@@ -21,6 +18,8 @@ const REGISTRY_PATH = path.join(DATA_DIR, 'registry.json');
 const CYCLES_PATH = path.join(DATA_DIR, 'cycles.json');
 const STRATEGIES_PATH = path.join(DATA_DIR, 'strategies.json');
 const METRICS_PATH = path.join(DATA_DIR, 'metrics.json');
+const BENCHMARKS_PATH = path.join(DATA_DIR, 'benchmarks.json');
+const ABTESTS_PATH = path.join(DATA_DIR, 'ab-tests.json');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 
 /* ── helpers ─────────────────────────────────────────────────────── */
@@ -28,66 +27,44 @@ const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 function uuid() {
   return crypto.randomUUID
     ? crypto.randomUUID()
-    : crypto.randomBytes(16).toString('hex')
-        .replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+    : crypto.randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
 }
 
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-
-function readJSON(p, fallback) {
-  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; }
-}
-
-function writeJSON(p, data) {
-  ensureDir(path.dirname(p));
-  fs.writeFileSync(p, JSON.stringify(data, null, 2));
-}
-
+function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
+function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
+function writeJSON(p, data) { ensureDir(path.dirname(p)); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-
-function mean(arr) {
-  if (!arr.length) return 0;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-
+function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
 function now() { return Date.now(); }
 function isoNow() { return new Date().toISOString(); }
 
 /* ── constants ───────────────────────────────────────────────────── */
 
-const PHASES = ['OBSERVE', 'ANALYZE', 'PROPOSE', 'VALIDATE', 'APPLY', 'MEASURE', 'REFLECT'];
+const PHASES = ['OBSERVE', 'ANALYZE', 'PROPOSE', 'VALIDATE', 'APPLY', 'MEASURE', 'REFLECT', 'META'];
 
 const DEPTH_LABELS = [
   'Direct improvement',
   'Improving the improvement process',
   'Meta-meta: improving how we improve improvements',
-  'Level-3 recursion',
-  'Level-4 recursion',
-  'Level-5 recursion',
+  'Level-3 recursion', 'Level-4 recursion', 'Level-5 recursion',
 ];
 
 /* ── main class ──────────────────────────────────────────────────── */
 
 class RecursiveSelfCompilation extends EventEmitter {
-  /**
-   * @param {object} opts
-   * @param {object} opts.ai  – AI module with callWithFallback(messages, model, stream)
-   * @param {object} opts.config – compiler config section
-   */
   constructor(opts = {}) {
     super();
     this.ai = opts.ai || null;
     this.config = Object.assign({
       maxDepth: 5,
-      diminishingThreshold: 0.5,   // stop recursing when delta < this
-      cooldownMs: 60 * 60 * 1000,  // 1 h between compilation cycles
+      diminishingThreshold: 0.5,
+      cooldownMs: 60 * 60 * 1000,
       maxRegistrySize: 2000,
       maxCycleHistory: 500,
       maxStrategies: 200,
       autoCompileOnTick: true,
       safetyRollbackOnRegression: true,
+      abTestMinSamples: 5,
     }, opts.config || {});
 
     this._compiling = false;
@@ -98,54 +75,42 @@ class RecursiveSelfCompilation extends EventEmitter {
     ensureDir(BACKUPS_DIR);
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  PERSISTENCE
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── PERSISTENCE ── */
 
-  _loadRegistry()   { return readJSON(REGISTRY_PATH,   []); }
-  _saveRegistry(d)  { writeJSON(REGISTRY_PATH, d.slice(-this.config.maxRegistrySize)); }
-  _loadCycles()     { return readJSON(CYCLES_PATH,     []); }
-  _saveCycles(d)    { writeJSON(CYCLES_PATH, d.slice(-this.config.maxCycleHistory)); }
-  _loadStrategies() { return readJSON(STRATEGIES_PATH,  []); }
-  _saveStrategies(d){ writeJSON(STRATEGIES_PATH, d.slice(-this.config.maxStrategies)); }
-  _loadMetrics()    { return readJSON(METRICS_PATH,     { snapshots: [] }); }
-  _saveMetrics(d)   { writeJSON(METRICS_PATH, d); }
+  _loadRegistry()    { return readJSON(REGISTRY_PATH,   []); }
+  _saveRegistry(d)   { writeJSON(REGISTRY_PATH, d.slice(-this.config.maxRegistrySize)); }
+  _loadCycles()      { return readJSON(CYCLES_PATH,     []); }
+  _saveCycles(d)     { writeJSON(CYCLES_PATH, d.slice(-this.config.maxCycleHistory)); }
+  _loadStrategies()  { return readJSON(STRATEGIES_PATH,  []); }
+  _saveStrategies(d) { writeJSON(STRATEGIES_PATH, d.slice(-this.config.maxStrategies)); }
+  _loadMetrics()     { return readJSON(METRICS_PATH,     { snapshots: [] }); }
+  _saveMetrics(d)    { writeJSON(METRICS_PATH, d); }
+  _loadBenchmarks()  { return readJSON(BENCHMARKS_PATH,  []); }
+  _saveBenchmarks(d) { writeJSON(BENCHMARKS_PATH, d.slice(-500)); }
+  _loadABTests()     { return readJSON(ABTESTS_PATH,     []); }
+  _saveABTests(d)    { writeJSON(ABTESTS_PATH, d.slice(-200)); }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  COMPILE — run a full compilation cycle at a given depth
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── COMPILE — full cycle at a given depth ── */
 
-  /**
-   * Run a compilation cycle at the given recursion depth.
-   * depth 0 = direct improvement, 1 = improving the process, etc.
-   * @param {number} [depth=0]
-   * @returns {Promise<object>} cycle result
-   */
   async compile(depth = 0) {
-    if (depth > this.config.maxDepth) {
-      return { ok: false, reason: 'max_depth_exceeded', maxDepth: this.config.maxDepth };
-    }
-    if (this._compiling) {
-      return { ok: false, reason: 'already_compiling' };
-    }
+    if (depth > this.config.maxDepth) return { ok: false, reason: 'max_depth_exceeded' };
+    if (this._compiling) return { ok: false, reason: 'already_compiling' };
 
     this._compiling = true;
     const cycleId = uuid();
     const startMs = now();
 
+    // Capture benchmark before
+    const benchmarkBefore = this._captureBenchmark();
+
     const cycle = {
-      id: cycleId,
-      depth,
+      id: cycleId, depth,
       depthLabel: DEPTH_LABELS[depth] || `Level-${depth} recursion`,
-      phases: {},
-      proposals: [],
-      appliedIds: [],
-      startedAt: isoNow(),
-      finishedAt: null,
-      durationMs: 0,
-      outcome: null,      // 'improved' | 'no_change' | 'regressed' | 'error'
-      deltaSummary: 0,
-      parentCycleId: null,
+      phases: {}, proposals: [], appliedIds: [],
+      startedAt: isoNow(), finishedAt: null, durationMs: 0,
+      outcome: null, deltaSummary: 0, parentCycleId: null, childCycleId: null,
+      benchmarkBefore: benchmarkBefore.id, benchmarkAfter: null,
+      diffs: [],
     };
 
     this.emit('compile-start', { cycleId, depth });
@@ -180,6 +145,12 @@ class RecursiveSelfCompilation extends EventEmitter {
         if (result.ok) {
           applied.push(p);
           cycle.appliedIds.push(p.id);
+          // Track diff
+          cycle.diffs.push({
+            proposalId: p.id, target: p.target, title: p.title,
+            before: p.code ? 'previous' : null, after: p.code || null,
+            timestamp: isoNow(),
+          });
         }
       }
       cycle.phases.APPLY = { applied: applied.length };
@@ -199,23 +170,31 @@ class RecursiveSelfCompilation extends EventEmitter {
       cycle.phases.REFLECT = await this._phaseReflect(cycle);
       this.emit('compile-phase', { cycleId, phase: 'REFLECT', depth });
 
+      /* META — meta-improve the compilation process at this depth */
+      if (depth > 0 || (cycle.deltaSummary > 0 && applied.length > 0)) {
+        cycle.phases.META = await this._phaseMeta(cycle);
+        this.emit('compile-phase', { cycleId, phase: 'META', depth });
+      }
+
+      // Benchmark after
+      const benchmarkAfter = this._captureBenchmark();
+      cycle.benchmarkAfter = benchmarkAfter.id;
+
       // Determine outcome
       if (totalDelta > 0) cycle.outcome = 'improved';
       else if (totalDelta < 0) cycle.outcome = 'regressed';
       else cycle.outcome = applied.length === 0 ? 'no_proposals' : 'no_change';
 
-      // Rollback on regression if configured
+      // Auto-rollback on regression
       if (cycle.outcome === 'regressed' && this.config.safetyRollbackOnRegression) {
-        for (const p of applied) {
-          await this._rollback(p);
-        }
+        for (const p of applied) await this._rollback(p);
         cycle.outcome = 'regressed_rolled_back';
       }
 
-      // Recurse to next depth if still improving above threshold
+      // Recurse deeper if still improving
       if (cycle.deltaSummary >= this.config.diminishingThreshold && depth + 1 <= this.config.maxDepth) {
         const deeper = await this.compile(depth + 1);
-        cycle.childCycleId = deeper.cycleId || null;
+        cycle.childCycleId = deeper.cycleId || deeper.id || null;
       }
 
     } catch (e) {
@@ -229,403 +208,389 @@ class RecursiveSelfCompilation extends EventEmitter {
     this._compiling = false;
     this._lastCompileAt = now();
 
-    // Persist cycle
     const cycles = this._loadCycles();
     cycles.push(cycle);
     this._saveCycles(cycles);
-
-    // Record metric snapshot
     this._recordMetricSnapshot(cycle);
 
     this.emit('compile-complete', cycle);
     return cycle;
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  PHASE IMPLEMENTATIONS
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── PHASE IMPLEMENTATIONS ── */
 
-  /** OBSERVE: gather data about current state at this depth */
   async _phaseObserve(depth) {
     const registry = this._loadRegistry();
     const cycles = this._loadCycles();
     const strategies = this._loadStrategies();
 
-    // At depth 0, observe the codebase; at depth 1+, observe the compilation process itself
     const observations = {
-      depth,
-      registrySize: registry.length,
-      cycleCount: cycles.length,
+      depth, registrySize: registry.length, cycleCount: cycles.length,
       strategyCount: strategies.length,
       recentCycles: cycles.filter(c => c.depth === depth).slice(-10),
       recentImprovements: registry.filter(r => r.depth === depth).slice(-20),
+      benchmarks: this._loadBenchmarks().slice(-5),
       timestamp: isoNow(),
     };
 
     if (depth === 0) {
-      // Observe own source code
       observations.ownCode = this._readOwnSource();
       observations.codebaseFiles = this._listCoreFiles();
     } else {
-      // Observe the compilation process at depth - 1
       const lowerCycles = cycles.filter(c => c.depth === depth - 1);
       observations.lowerDepthPerformance = {
         count: lowerCycles.length,
         avgDelta: mean(lowerCycles.map(c => c.deltaSummary || 0)),
         avgDuration: mean(lowerCycles.map(c => c.durationMs || 0)),
         outcomes: this._countOutcomes(lowerCycles),
+        diminishingReturns: this._checkDiminishingReturns(depth - 1),
       };
     }
 
     return observations;
   }
 
-  /** ANALYZE: use AI to identify improvement opportunities */
   async _phaseAnalyze(observations, depth) {
     if (!this.ai || !this.ai.callWithFallback) {
-      return { issues: [], summary: 'No AI available for analysis' };
+      return { issues: [], summary: 'No AI available' };
     }
 
     const depthContext = depth === 0
-      ? 'Look at the source code and recent improvements. Find bugs, inefficiencies, missing features.'
-      : `This is meta-level ${depth}. Analyze the improvement PROCESS at depth ${depth - 1}. How can we make it faster, more effective, better at finding improvements?`;
+      ? 'Look at source code and recent improvements. Find bugs, inefficiencies, missing features.'
+      : `Meta-level ${depth}. Analyze the improvement PROCESS at depth ${depth - 1}. How to make it faster, more effective?`;
 
     try {
       const resp = await this.ai.callWithFallback([
-        {
-          role: 'system',
-          content: `You are the ARIES Recursive Self-Compilation engine at recursion depth ${depth}. ${depthContext}
-
-Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description": "what's wrong", "severity": "critical|high|medium|low", "target": "what to fix", "estimatedImpact": 0-100 }], "summary": "brief analysis" }`
-        },
-        {
-          role: 'user',
-          content: 'Observations:\n' + JSON.stringify(observations, null, 2).substring(0, 8000)
-        }
+        { role: 'system', content: `ARIES Recursive Self-Compilation depth ${depth}. ${depthContext}\n\nReturn JSON: {"issues":[{"id":"unique","title":"short","description":"what's wrong","severity":"critical|high|medium|low","target":"what to fix","estimatedImpact":0-100}],"summary":"brief analysis"}` },
+        { role: 'user', content: 'Observations:\n' + JSON.stringify(observations, null, 2).substring(0, 8000) }
       ], null, false);
 
-      const content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0]);
-          (parsed.issues || []).forEach(i => { if (!i.id) i.id = uuid(); });
-          return parsed;
-        } catch {}
-      }
-      return { issues: [], summary: 'Failed to parse analysis' };
+      const content = (resp.choices?.[0]?.message?.content) || '';
+      const m = content.match(/\{[\s\S]*\}/);
+      if (m) { const p = JSON.parse(m[0]); (p.issues || []).forEach(i => { if (!i.id) i.id = uuid(); }); return p; }
     } catch (e) {
       return { issues: [], summary: 'Analysis error: ' + e.message };
     }
+    return { issues: [], summary: 'Failed to parse' };
   }
 
-  /** PROPOSE: generate improvement proposals from analysis */
   async _phasePropose(analysis, depth) {
-    const issues = (analysis.issues || []).slice(0, 5); // cap proposals per cycle
+    const issues = (analysis.issues || []).slice(0, 5);
     const proposals = [];
-
     for (const issue of issues) {
-      const proposal = await this.proposeImprovement(issue.target || issue.title, depth, issue);
-      if (proposal) proposals.push(proposal);
+      const p = await this.proposeImprovement(issue.target || issue.title, depth, issue);
+      if (p) proposals.push(p);
     }
-
-    // Register all proposals
     const registry = this._loadRegistry();
-    for (const p of proposals) {
-      registry.push(p);
-    }
+    for (const p of proposals) registry.push(p);
     this._saveRegistry(registry);
-
     return proposals;
   }
 
-  /** REFLECT: learn from the cycle */
   async _phaseReflect(cycle) {
     const reflection = {
-      cycleId: cycle.id,
-      depth: cycle.depth,
-      proposalCount: cycle.proposals.length,
-      appliedCount: cycle.appliedIds.length,
-      deltaSummary: cycle.deltaSummary,
-      outcome: cycle.outcome,
-      lessonsLearned: [],
-      timestamp: isoNow(),
+      cycleId: cycle.id, depth: cycle.depth,
+      proposalCount: cycle.proposals.length, appliedCount: cycle.appliedIds.length,
+      deltaSummary: cycle.deltaSummary, outcome: cycle.outcome,
+      lessonsLearned: [], timestamp: isoNow(),
     };
 
-    // Derive lessons from outcome
     if (cycle.outcome === 'improved') {
-      reflection.lessonsLearned.push('Successful improvements found at depth ' + cycle.depth);
-      if (cycle.deltaSummary < this.config.diminishingThreshold * 2) {
-        reflection.lessonsLearned.push('Returns are small — approaching diminishing returns');
-      }
-    } else if (cycle.outcome === 'regressed' || cycle.outcome === 'regressed_rolled_back') {
+      reflection.lessonsLearned.push('Successful improvements at depth ' + cycle.depth);
+      if (cycle.deltaSummary < this.config.diminishingThreshold * 2)
+        reflection.lessonsLearned.push('Approaching diminishing returns');
+    } else if (cycle.outcome?.includes('regressed')) {
       reflection.lessonsLearned.push('Regression detected — validation needs strengthening');
     } else if (cycle.outcome === 'no_proposals') {
-      reflection.lessonsLearned.push('No viable proposals — may need new strategies or different observation angle');
+      reflection.lessonsLearned.push('No viable proposals — try new strategies or different depth');
     }
 
-    // Detect strange loops
-    const loopInfo = this._detectStrangeLoops(cycle);
-    reflection.strangeLoop = loopInfo;
+    reflection.strangeLoop = this._detectStrangeLoops(cycle);
+    reflection.diminishingReturns = this._checkDiminishingReturns(cycle.depth);
 
-    // Use AI for deeper reflection if available
-    if (this.ai && this.ai.callWithFallback && cycle.proposals.length > 0) {
+    if (this.ai?.callWithFallback && cycle.proposals.length > 0) {
       try {
         const resp = await this.ai.callWithFallback([
-          {
-            role: 'system',
-            content: 'Briefly reflect on this compilation cycle. What worked? What should change next time? Return JSON: { "insights": ["..."], "nextFocus": "what to prioritize", "strategyAdjustment": "any process change" }'
-          },
-          {
-            role: 'user',
-            content: JSON.stringify({
-              depth: cycle.depth,
-              proposals: cycle.proposals.length,
-              applied: cycle.appliedIds.length,
-              delta: cycle.deltaSummary,
-              outcome: cycle.outcome,
-            })
-          }
+          { role: 'system', content: 'Reflect on this compilation cycle. Return JSON: {"insights":["..."],"nextFocus":"...","strategyAdjustment":"..."}' },
+          { role: 'user', content: JSON.stringify({ depth: cycle.depth, proposals: cycle.proposals.length, applied: cycle.appliedIds.length, delta: cycle.deltaSummary, outcome: cycle.outcome }) }
         ], null, false);
-
-        const content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            reflection.aiInsights = parsed.insights || [];
-            reflection.nextFocus = parsed.nextFocus || '';
-            reflection.strategyAdjustment = parsed.strategyAdjustment || '';
-          } catch {}
-        }
+        const content = resp.choices?.[0]?.message?.content || '';
+        const m = content.match(/\{[\s\S]*\}/);
+        if (m) { const p = JSON.parse(m[0]); reflection.aiInsights = p.insights || []; reflection.nextFocus = p.nextFocus || ''; reflection.strategyAdjustment = p.strategyAdjustment || ''; }
       } catch {}
     }
 
     return reflection;
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  PUBLIC API METHODS
-   * ──────────────────────────────────────────────────────────────── */
+  /** META phase: improve the improvement process itself */
+  async _phaseMeta(cycle) {
+    const meta = { cycleId: cycle.id, depth: cycle.depth, adjustments: [], timestamp: isoNow() };
 
-  /**
-   * Introspect the compiler's own source code
-   * @returns {object} analysis of own code
-   */
-  analyzeOwnCode() {
-    const source = this._readOwnSource();
-    const lines = source.split('\n');
-    const stats = {
-      totalLines: lines.length,
-      methods: [],
-      complexity: 0,
-      todoCount: 0,
-      errorHandlingCount: 0,
-    };
-
-    let methodDepth = 0;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const methodMatch = line.match(/^\s+(?:async\s+)?(\w+)\s*\(/);
-      if (methodMatch && !line.includes('function') && !line.includes('=>')) {
-        stats.methods.push({ name: methodMatch[1], line: i + 1 });
-      }
-      if (line.includes('TODO') || line.includes('FIXME') || line.includes('HACK')) stats.todoCount++;
-      if (line.includes('try') || line.includes('catch')) stats.errorHandlingCount++;
-      // Simple cyclomatic complexity proxy: count branches
-      if (/\b(if|else|for|while|switch|case|\?\s)\b/.test(line)) stats.complexity++;
+    // Auto-adjust config based on cycle performance
+    if (cycle.outcome === 'no_proposals' && cycle.depth === 0) {
+      meta.adjustments.push('Consider expanding observation scope');
+    }
+    if (cycle.durationMs > this.config.cooldownMs * 0.8) {
+      meta.adjustments.push('Compilation taking too long — consider reducing proposal cap');
     }
 
-    return {
-      file: 'core/recursive-self-compilation.js',
-      stats,
-      source: source.substring(0, 3000),
+    // Check if A/B testing strategies would help
+    const abTests = this._loadABTests();
+    const activeAB = abTests.filter(t => t.status === 'active');
+    if (activeAB.length === 0 && cycle.proposals.length > 1) {
+      meta.adjustments.push('Could A/B test proposal strategies for better outcomes');
+    }
+
+    return meta;
+  }
+
+  /* ── A/B Testing of Improvement Strategies ── */
+
+  createABTest(name, strategyA, strategyB) {
+    const abTests = this._loadABTests();
+    const test = {
+      id: uuid(), name, status: 'active',
+      strategyA: { ...strategyA, label: strategyA.label || 'A', results: [] },
+      strategyB: { ...strategyB, label: strategyB.label || 'B', results: [] },
+      createdAt: isoNow(), concludedAt: null, winner: null,
+    };
+    abTests.push(test);
+    this._saveABTests(abTests);
+    this.emit('ab-test-created', test);
+    return test;
+  }
+
+  recordABResult(testId, strategy, delta) {
+    const abTests = this._loadABTests();
+    const test = abTests.find(t => t.id === testId);
+    if (!test) throw new Error('A/B test not found');
+    if (strategy !== 'A' && strategy !== 'B') throw new Error('Strategy must be A or B');
+
+    const target = strategy === 'A' ? test.strategyA : test.strategyB;
+    target.results.push({ delta, timestamp: isoNow() });
+    this._saveABTests(abTests);
+
+    // Auto-conclude if enough samples
+    const minSamples = this.config.abTestMinSamples;
+    if (test.strategyA.results.length >= minSamples && test.strategyB.results.length >= minSamples) {
+      return this.concludeABTest(testId);
+    }
+    return test;
+  }
+
+  concludeABTest(testId) {
+    const abTests = this._loadABTests();
+    const test = abTests.find(t => t.id === testId);
+    if (!test) throw new Error('A/B test not found');
+
+    const avgA = mean(test.strategyA.results.map(r => r.delta));
+    const avgB = mean(test.strategyB.results.map(r => r.delta));
+
+    test.status = 'concluded';
+    test.concludedAt = isoNow();
+    test.winner = avgA > avgB ? 'A' : avgB > avgA ? 'B' : 'tie';
+    test.avgDeltaA = Math.round(avgA * 100) / 100;
+    test.avgDeltaB = Math.round(avgB * 100) / 100;
+
+    this._saveABTests(abTests);
+    this.emit('ab-test-concluded', { id: test.id, winner: test.winner, avgA: test.avgDeltaA, avgB: test.avgDeltaB });
+    return test;
+  }
+
+  getABTests(filter = {}) {
+    let tests = this._loadABTests();
+    if (filter.status) tests = tests.filter(t => t.status === filter.status);
+    return tests;
+  }
+
+  /* ── Benchmarks ── */
+
+  _captureBenchmark() {
+    const registry = this._loadRegistry();
+    const cycles = this._loadCycles();
+    const applied = registry.filter(r => r.status === 'applied');
+    const deltas = applied.map(r => r.measuredDelta || 0).filter(d => d !== 0);
+
+    const benchmark = {
+      id: uuid(),
+      registrySize: registry.length,
+      appliedCount: applied.length,
+      cycleCount: cycles.length,
+      avgDelta: deltas.length > 0 ? Math.round(mean(deltas) * 100) / 100 : 0,
+      totalPositiveDelta: Math.round(deltas.filter(d => d > 0).reduce((a, b) => a + b, 0) * 100) / 100,
+      recentCycleOutcomes: cycles.slice(-5).map(c => c.outcome),
+      memoryUsage: process.memoryUsage ? process.memoryUsage().heapUsed : 0,
       timestamp: isoNow(),
+    };
+
+    const benchmarks = this._loadBenchmarks();
+    benchmarks.push(benchmark);
+    this._saveBenchmarks(benchmarks);
+    return benchmark;
+  }
+
+  getBenchmarks(limit = 20) {
+    return this._loadBenchmarks().slice(-limit).reverse();
+  }
+
+  compareBenchmarks(beforeId, afterId) {
+    const benchmarks = this._loadBenchmarks();
+    const before = benchmarks.find(b => b.id === beforeId);
+    const after = benchmarks.find(b => b.id === afterId);
+    if (!before || !after) return { error: 'Benchmark not found' };
+
+    return {
+      deltaAvgDelta: Math.round((after.avgDelta - before.avgDelta) * 100) / 100,
+      deltaApplied: after.appliedCount - before.appliedCount,
+      deltaCycles: after.cycleCount - before.cycleCount,
+      deltaMemory: after.memoryUsage - before.memoryUsage,
+      improved: after.avgDelta > before.avgDelta,
+      before: before.timestamp, after: after.timestamp,
     };
   }
 
-  /**
-   * Generate an improvement proposal using AI
-   * @param {string} target – what to improve
-   * @param {number} depth – recursion depth
-   * @param {object} [issue] – originating issue from analysis
-   * @returns {Promise<object|null>} proposal
-   */
+  /* ── Diminishing Returns Detection ── */
+
+  _checkDiminishingReturns(depth) {
+    const cycles = this._loadCycles().filter(c => c.depth === depth);
+    if (cycles.length < 4) return { detected: false, reason: 'insufficient_data' };
+
+    const deltas = cycles.slice(-10).map(c => c.deltaSummary || 0);
+    const recentAvg = mean(deltas.slice(-3));
+    const olderAvg = mean(deltas.slice(0, -3));
+
+    // Trend: are recent deltas smaller than older ones?
+    const declining = recentAvg < olderAvg * 0.5;
+    // Convergence: are deltas approaching zero?
+    const converging = mean(deltas.slice(-3).map(Math.abs)) < this.config.diminishingThreshold;
+
+    return {
+      detected: declining || converging,
+      type: converging ? 'convergence' : declining ? 'declining' : 'none',
+      recentAvgDelta: Math.round(recentAvg * 100) / 100,
+      olderAvgDelta: Math.round(olderAvg * 100) / 100,
+      recommendation: declining ? 'Move to higher depth or new domain' : converging ? 'System optimized at this depth' : 'Continue',
+    };
+  }
+
+  /* ── PUBLIC API ── */
+
+  analyzeOwnCode() {
+    const source = this._readOwnSource();
+    const lines = source.split('\n');
+    const stats = { totalLines: lines.length, methods: [], complexity: 0, todoCount: 0, errorHandlingCount: 0 };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const m = line.match(/^\s+(?:async\s+)?(\w+)\s*\(/);
+      if (m && !line.includes('function') && !line.includes('=>')) stats.methods.push({ name: m[1], line: i + 1 });
+      if (line.includes('TODO') || line.includes('FIXME') || line.includes('HACK')) stats.todoCount++;
+      if (line.includes('try') || line.includes('catch')) stats.errorHandlingCount++;
+      if (/\b(if|else|for|while|switch|case|\?\s)\b/.test(line)) stats.complexity++;
+    }
+
+    return { file: 'core/recursive-self-compilation.js', stats, source: source.substring(0, 3000), timestamp: isoNow() };
+  }
+
   async proposeImprovement(target, depth = 0, issue = null) {
     const proposal = {
-      id: uuid(),
-      target,
-      depth,
-      issueId: issue ? issue.id : null,
-      title: '',
-      description: '',
-      estimatedImpact: 0,
-      risk: 'medium',
-      status: 'proposed',   // proposed | validated | applied | rejected | rolled_back
-      code: null,
-      parentId: null,        // which improvement spawned this
-      lineage: [],
-      createdAt: isoNow(),
-      appliedAt: null,
-      measuredDelta: null,
+      id: uuid(), target, depth, issueId: issue?.id || null,
+      title: '', description: '', estimatedImpact: 0, risk: 'medium',
+      status: 'proposed', code: null, parentId: null, lineage: [],
+      createdAt: isoNow(), appliedAt: null, measuredDelta: null, backupId: null,
     };
 
-    if (this.ai && this.ai.callWithFallback) {
+    if (this.ai?.callWithFallback) {
       try {
         const resp = await this.ai.callWithFallback([
-          {
-            role: 'system',
-            content: `You are the ARIES compiler proposing an improvement at depth ${depth}. ${depth === 0 ? 'Propose a concrete code/config change.' : 'Propose a change to the improvement PROCESS itself.'} Return JSON: { "title": "short title", "description": "what and why", "estimatedImpact": 0-100, "risk": "low|medium|high", "pseudoCode": "brief implementation sketch" }`
-          },
-          {
-            role: 'user',
-            content: `Target: ${target}\n${issue ? 'Issue: ' + issue.description : ''}`
-          }
+          { role: 'system', content: `ARIES compiler proposing improvement at depth ${depth}. ${depth === 0 ? 'Propose concrete code/config change.' : 'Propose change to the improvement PROCESS.'} Return JSON: {"title":"short","description":"what and why","estimatedImpact":0-100,"risk":"low|medium|high","pseudoCode":"brief sketch"}` },
+          { role: 'user', content: `Target: ${target}\n${issue ? 'Issue: ' + issue.description : ''}` }
         ], null, false);
-
-        const content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            proposal.title = parsed.title || target;
-            proposal.description = parsed.description || '';
-            proposal.estimatedImpact = clamp(parsed.estimatedImpact || 0, 0, 100);
-            proposal.risk = parsed.risk || 'medium';
-            proposal.code = parsed.pseudoCode || null;
-          } catch {}
+        const content = resp.choices?.[0]?.message?.content || '';
+        const m = content.match(/\{[\s\S]*\}/);
+        if (m) {
+          const p = JSON.parse(m[0]);
+          proposal.title = p.title || target;
+          proposal.description = p.description || '';
+          proposal.estimatedImpact = clamp(p.estimatedImpact || 0, 0, 100);
+          proposal.risk = p.risk || 'medium';
+          proposal.code = p.pseudoCode || null;
         }
       } catch {}
     }
 
     if (!proposal.title) proposal.title = target;
-
     this.emit('proposal', proposal);
     return proposal;
   }
 
-  /**
-   * Validate a proposal for safety and estimated impact
-   * @param {string} proposalId
-   * @param {object} [proposal] – pass directly if not yet in registry
-   * @returns {object} { safe, reasons }
-   */
   async validateProposal(proposalId, proposal = null) {
     if (!proposal) {
       const registry = this._loadRegistry();
       proposal = registry.find(r => r.id === proposalId);
     }
-    if (!proposal) return { safe: false, reasons: ['Proposal not found'] };
+    if (!proposal) return { safe: false, reasons: ['Not found'] };
 
     const reasons = [];
     let safe = true;
 
-    // Depth limit
-    if (proposal.depth > this.config.maxDepth) {
-      safe = false;
-      reasons.push('Exceeds max recursion depth');
-    }
+    if (proposal.depth > this.config.maxDepth) { safe = false; reasons.push('Exceeds max depth'); }
+    if (proposal.risk === 'high' && proposal.estimatedImpact < 30) { safe = false; reasons.push('High risk, low impact'); }
 
-    // High risk proposals need extra scrutiny
-    if (proposal.risk === 'high' && proposal.estimatedImpact < 30) {
-      safe = false;
-      reasons.push('High risk with low estimated impact');
-    }
+    // Diminishing returns check
+    const dr = this._checkDiminishingReturns(proposal.depth);
+    if (dr.detected && proposal.estimatedImpact < 50) { safe = false; reasons.push(`Diminishing returns at depth ${proposal.depth}`); }
 
-    // Check for diminishing returns at this depth
+    // Oscillation check
     const registry = this._loadRegistry();
-    const atDepth = registry.filter(r => r.depth === proposal.depth && r.status === 'applied');
-    if (atDepth.length >= 5) {
-      const recentDeltas = atDepth.slice(-5).map(r => r.measuredDelta || 0);
-      const avgDelta = mean(recentDeltas);
-      if (avgDelta < this.config.diminishingThreshold) {
-        safe = false;
-        reasons.push(`Diminishing returns at depth ${proposal.depth} (avg delta: ${avgDelta.toFixed(2)})`);
-      }
-    }
-
-    // Strange loop detection — reject if identical proposal was recently applied
     const recent = registry.filter(r =>
-      r.target === proposal.target &&
-      r.depth === proposal.depth &&
-      r.status === 'applied' &&
+      r.target === proposal.target && r.depth === proposal.depth && r.status === 'applied' &&
       (now() - new Date(r.appliedAt || 0).getTime()) < 24 * 60 * 60 * 1000
     );
-    if (recent.length > 0) {
-      safe = false;
-      reasons.push('Similar proposal applied within last 24h — possible oscillation');
-    }
+    if (recent.length > 0) { safe = false; reasons.push('Similar proposal applied within 24h — oscillation risk'); }
 
     if (safe) reasons.push('All checks passed');
-
     proposal.status = safe ? 'validated' : 'rejected';
     this.emit('validate', { proposalId, safe, reasons });
     return { safe, reasons };
   }
 
-  /**
-   * Apply a validated improvement (with backup)
-   * @param {string} proposalId
-   * @param {object} [proposal]
-   * @returns {object} { ok, backupId }
-   */
   async applyImprovement(proposalId, proposal = null) {
     const registry = this._loadRegistry();
-    if (!proposal) {
-      proposal = registry.find(r => r.id === proposalId);
-    }
+    if (!proposal) proposal = registry.find(r => r.id === proposalId);
     if (!proposal) return { ok: false, reason: 'not_found' };
-    if (proposal.status !== 'validated' && proposal.status !== 'proposed') {
-      return { ok: false, reason: 'invalid_status', status: proposal.status };
-    }
+    if (proposal.status !== 'validated' && proposal.status !== 'proposed') return { ok: false, reason: 'invalid_status' };
 
-    // Create backup
     const backupId = uuid();
-    const backupPath = path.join(BACKUPS_DIR, backupId + '.json');
-    writeJSON(backupPath, {
-      backupId,
-      proposalId: proposal.id,
+    writeJSON(path.join(BACKUPS_DIR, backupId + '.json'), {
+      backupId, proposalId: proposal.id,
       registrySnapshot: registry.slice(-50),
       timestamp: isoNow(),
     });
 
-    // Mark as applied
     proposal.status = 'applied';
     proposal.appliedAt = isoNow();
     proposal.backupId = backupId;
 
-    // Update in registry
     const idx = registry.findIndex(r => r.id === proposal.id);
-    if (idx >= 0) registry[idx] = proposal;
-    else registry.push(proposal);
+    if (idx >= 0) registry[idx] = proposal; else registry.push(proposal);
     this._saveRegistry(registry);
 
     this.emit('apply', { proposalId, backupId });
     return { ok: true, backupId };
   }
 
-  /**
-   * Measure the effect of an applied improvement
-   * @param {string} proposalId
-   * @param {object} [proposal]
-   * @returns {object} { delta, before, after }
-   */
   async measureEffect(proposalId, proposal = null) {
     const registry = this._loadRegistry();
-    if (!proposal) {
-      proposal = registry.find(r => r.id === proposalId);
-    }
+    if (!proposal) proposal = registry.find(r => r.id === proposalId);
     if (!proposal) return { delta: 0, error: 'not_found' };
 
-    // Synthetic measurement based on estimated impact + random variance
-    // In a real system this would compare before/after metrics
     const estimatedDelta = (proposal.estimatedImpact || 50) / 10;
-    const variance = (Math.random() - 0.3) * 4; // slight positive bias
+    const variance = (Math.random() - 0.3) * 4;
     const delta = Math.round((estimatedDelta + variance) * 100) / 100;
 
     proposal.measuredDelta = delta;
-
-    // Update registry
     const idx = registry.findIndex(r => r.id === proposal.id);
     if (idx >= 0) registry[idx] = proposal;
     this._saveRegistry(registry);
@@ -634,11 +599,6 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
     return { delta, estimatedImpact: proposal.estimatedImpact };
   }
 
-  /**
-   * Reflect on a completed cycle
-   * @param {string} cycleId
-   * @returns {object} reflection data
-   */
   reflectOnCycle(cycleId) {
     const cycles = this._loadCycles();
     const cycle = cycles.find(c => c.id === cycleId);
@@ -646,13 +606,6 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
     return cycle.phases.REFLECT || { cycleId, note: 'No reflection data' };
   }
 
-  /**
-   * Get full compilation history (lineage of all improvements)
-   * @param {object} [opts]
-   * @param {number} [opts.depth] – filter by depth
-   * @param {number} [opts.limit] – max results
-   * @returns {object}
-   */
   getCompilationHistory(opts = {}) {
     const registry = this._loadRegistry();
     const cycles = this._loadCycles();
@@ -663,44 +616,40 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
     const limit = opts.limit || 100;
     items = items.slice(-limit).reverse();
 
-    // Build lineage tree
+    // Build lineage + diff map
     const lineageMap = {};
     for (const item of registry) {
-      if (item.parentId && !lineageMap[item.parentId]) lineageMap[item.parentId] = [];
-      if (item.parentId) lineageMap[item.parentId].push(item.id);
+      if (item.parentId) {
+        if (!lineageMap[item.parentId]) lineageMap[item.parentId] = [];
+        lineageMap[item.parentId].push(item.id);
+      }
+    }
+
+    // Collect diffs from cycles
+    const diffs = [];
+    for (const c of cycles.slice(-50)) {
+      if (c.diffs) diffs.push(...c.diffs);
     }
 
     return {
       improvements: items,
       cycles: cycles.slice(-20).reverse(),
       lineageMap,
+      diffs: diffs.slice(-100),
       total: registry.length,
       byDepth: this._countByDepth(registry),
     };
   }
 
-  /**
-   * Get efficiency trend — is the compiler getting better at compiling?
-   * @returns {object}
-   */
   getEfficiencyTrend() {
     const cycles = this._loadCycles();
-    if (cycles.length < 2) {
-      return { trend: 'insufficient_data', dataPoints: cycles.length, accelerating: false };
-    }
+    if (cycles.length < 2) return { trend: 'insufficient_data', dataPoints: cycles.length, accelerating: false };
 
-    // Group cycles by depth and measure improvement over time
     const byDepth = {};
     for (const c of cycles) {
       const d = c.depth || 0;
       if (!byDepth[d]) byDepth[d] = [];
-      byDepth[d].push({
-        delta: c.deltaSummary || 0,
-        durationMs: c.durationMs || 0,
-        proposalCount: (c.proposals || []).length,
-        appliedCount: (c.appliedIds || []).length,
-        timestamp: c.startedAt,
-      });
+      byDepth[d].push({ delta: c.deltaSummary || 0, durationMs: c.durationMs || 0, proposalCount: (c.proposals || []).length, appliedCount: (c.appliedIds || []).length, timestamp: c.startedAt });
     }
 
     const trends = {};
@@ -708,24 +657,19 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
       const mid = Math.floor(items.length / 2);
       const firstHalf = items.slice(0, mid);
       const secondHalf = items.slice(mid);
-
-      const firstAvgDelta = mean(firstHalf.map(i => i.delta));
-      const secondAvgDelta = mean(secondHalf.map(i => i.delta));
-      const firstAvgDuration = mean(firstHalf.map(i => i.durationMs));
-      const secondAvgDuration = mean(secondHalf.map(i => i.durationMs));
-
-      // Efficiency = delta per millisecond of compilation time
-      const firstEfficiency = firstAvgDuration > 0 ? firstAvgDelta / firstAvgDuration * 1000 : 0;
-      const secondEfficiency = secondAvgDuration > 0 ? secondAvgDelta / secondAvgDuration * 1000 : 0;
+      const firstAvg = mean(firstHalf.map(i => i.delta));
+      const secondAvg = mean(secondHalf.map(i => i.delta));
+      const firstDur = mean(firstHalf.map(i => i.durationMs));
+      const secondDur = mean(secondHalf.map(i => i.durationMs));
+      const firstEff = firstDur > 0 ? firstAvg / firstDur * 1000 : 0;
+      const secondEff = secondDur > 0 ? secondAvg / secondDur * 1000 : 0;
 
       trends[depth] = {
         cycles: items.length,
         avgDelta: Math.round(mean(items.map(i => i.delta)) * 100) / 100,
-        accelerating: secondAvgDelta > firstAvgDelta,
-        efficiencyImproving: secondEfficiency > firstEfficiency,
-        firstHalfAvg: Math.round(firstAvgDelta * 100) / 100,
-        secondHalfAvg: Math.round(secondAvgDelta * 100) / 100,
-        latestDelta: items.length > 0 ? items[items.length - 1].delta : 0,
+        accelerating: secondAvg > firstAvg,
+        efficiencyImproving: secondEff > firstEff,
+        diminishingReturns: this._checkDiminishingReturns(parseInt(depth)),
       };
     }
 
@@ -733,224 +677,123 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
     const mid = Math.floor(overallDeltas.length / 2);
     const accelerating = mean(overallDeltas.slice(mid)) > mean(overallDeltas.slice(0, mid));
 
-    return {
-      trend: accelerating ? 'accelerating' : 'decelerating',
-      accelerating,
-      dataPoints: cycles.length,
-      byDepth: trends,
-      overallAvgDelta: Math.round(mean(overallDeltas) * 100) / 100,
-      recentAvg: Math.round(mean(overallDeltas.slice(-5)) * 100) / 100,
-    };
+    return { trend: accelerating ? 'accelerating' : 'decelerating', accelerating, dataPoints: cycles.length, byDepth: trends, overallAvgDelta: Math.round(mean(overallDeltas) * 100) / 100 };
   }
 
-  /**
-   * Periodic tick — run next compilation cycle if ready
-   * @returns {Promise<object>}
-   */
   async tick() {
     this._tickCount++;
-
-    if (!this.config.autoCompileOnTick) {
-      return { action: 'skip', reason: 'auto_compile_disabled' };
-    }
-
-    if (this._compiling) {
-      return { action: 'skip', reason: 'already_compiling' };
-    }
+    if (!this.config.autoCompileOnTick) return { action: 'skip', reason: 'disabled' };
+    if (this._compiling) return { action: 'skip', reason: 'already_compiling' };
 
     const elapsed = now() - this._lastCompileAt;
-    if (elapsed < this.config.cooldownMs) {
-      return { action: 'skip', reason: 'cooldown', remainingMs: this.config.cooldownMs - elapsed };
-    }
+    if (elapsed < this.config.cooldownMs) return { action: 'skip', reason: 'cooldown', remainingMs: this.config.cooldownMs - elapsed };
 
-    // Determine which depth to compile at
     const depth = this._selectNextDepth();
     const result = await this.compile(depth);
     return { action: 'compiled', depth, result };
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  BOOTSTRAPPING — generate new strategies by crossover
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── BOOTSTRAP ── */
 
-  /**
-   * Combine existing strategies to generate new ones
-   * @returns {object} new strategy
-   */
   bootstrapStrategy() {
     const strategies = this._loadStrategies();
     const registry = this._loadRegistry();
+    const effective = registry.filter(r => r.status === 'applied' && (r.measuredDelta || 0) > 0).sort((a, b) => (b.measuredDelta || 0) - (a.measuredDelta || 0)).slice(0, 10);
 
-    // Find most effective recent improvements
-    const effective = registry
-      .filter(r => r.status === 'applied' && (r.measuredDelta || 0) > 0)
-      .sort((a, b) => (b.measuredDelta || 0) - (a.measuredDelta || 0))
-      .slice(0, 10);
+    if (effective.length < 2) return { ok: false, reason: 'Need at least 2 effective improvements' };
 
-    if (effective.length < 2) {
-      return { ok: false, reason: 'Need at least 2 effective improvements for crossover' };
-    }
-
-    // Crossover: combine attributes of two random effective improvements
     const a = effective[Math.floor(Math.random() * effective.length)];
     let b = effective[Math.floor(Math.random() * effective.length)];
-    if (a.id === b.id && effective.length > 1) {
-      b = effective.find(e => e.id !== a.id) || b;
-    }
+    if (a.id === b.id && effective.length > 1) b = effective.find(e => e.id !== a.id) || b;
 
-    const newStrategy = {
-      id: uuid(),
-      name: `Crossover: ${(a.title || '').substring(0, 30)} × ${(b.title || '').substring(0, 30)}`,
-      parentA: a.id,
-      parentB: b.id,
-      depthA: a.depth,
-      depthB: b.depth,
+    const s = {
+      id: uuid(), name: `Crossover: ${(a.title || '').substring(0, 30)} × ${(b.title || '').substring(0, 30)}`,
+      parentA: a.id, parentB: b.id, depthA: a.depth, depthB: b.depth,
       combinedDepth: Math.max(a.depth || 0, b.depth || 0),
       expectedImpact: Math.round(((a.measuredDelta || 0) + (b.measuredDelta || 0)) / 2 * 100) / 100,
-      createdAt: isoNow(),
-      applied: false,
+      createdAt: isoNow(), applied: false,
     };
 
-    strategies.push(newStrategy);
+    strategies.push(s);
     this._saveStrategies(strategies);
-
-    this.emit('bootstrap', newStrategy);
-    return { ok: true, strategy: newStrategy };
+    this.emit('bootstrap', s);
+    return { ok: true, strategy: s };
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  STRANGE LOOP DETECTION
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── STRANGE LOOP DETECTION ── */
 
-  /**
-   * Detect repeating or oscillating improvement patterns
-   * @param {object} [currentCycle] – the cycle to check
-   * @returns {object} loop analysis
-   */
   _detectStrangeLoops(currentCycle = null) {
     const cycles = this._loadCycles();
     const recent = cycles.slice(-20);
-
-    if (recent.length < 4) {
-      return { detected: false, reason: 'insufficient_data' };
-    }
+    if (recent.length < 4) return { detected: false, reason: 'insufficient_data' };
 
     const deltas = recent.map(c => c.deltaSummary || 0);
 
-    // Check for oscillation: alternating positive/negative deltas
     let oscillations = 0;
     for (let i = 1; i < deltas.length; i++) {
-      if ((deltas[i] > 0 && deltas[i - 1] < 0) || (deltas[i] < 0 && deltas[i - 1] > 0)) {
-        oscillations++;
-      }
+      if ((deltas[i] > 0 && deltas[i - 1] < 0) || (deltas[i] < 0 && deltas[i - 1] > 0)) oscillations++;
     }
     const oscillationRate = oscillations / (deltas.length - 1);
 
-    // Check for convergence: deltas approaching zero
     const recentDeltas = deltas.slice(-5);
     const convergence = mean(recentDeltas.map(Math.abs));
     const converging = convergence < this.config.diminishingThreshold;
 
-    // Check for repetition: same targets being improved repeatedly
     const targetCounts = {};
-    for (const c of recent) {
-      for (const p of (c.proposals || [])) {
-        const t = p.target || 'unknown';
-        targetCounts[t] = (targetCounts[t] || 0) + 1;
-      }
+    for (const c of recent) for (const p of (c.proposals || [])) {
+      const t = p.target || 'unknown';
+      targetCounts[t] = (targetCounts[t] || 0) + 1;
     }
-    const repeatedTargets = Object.entries(targetCounts)
-      .filter(([_, count]) => count >= 3)
-      .map(([target, count]) => ({ target, count }));
+    const repeatedTargets = Object.entries(targetCounts).filter(([_, c]) => c >= 3).map(([t, c]) => ({ target: t, count: c }));
 
-    const loopDetected = oscillationRate > 0.6 || converging || repeatedTargets.length > 2;
+    // Self-referential detection: is the compiler improving itself?
+    const selfRef = recent.some(c => c.depth > 0 && c.proposals?.some(p => (p.target || '').includes('compilation') || (p.target || '').includes('compiler')));
+
+    const detected = oscillationRate > 0.6 || converging || repeatedTargets.length > 2 || selfRef;
 
     return {
-      detected: loopDetected,
-      type: oscillationRate > 0.6 ? 'oscillation'
-        : converging ? 'convergence'
-        : repeatedTargets.length > 2 ? 'repetition'
-        : 'none',
+      detected, selfReferential: selfRef,
+      type: selfRef ? 'strange_loop' : oscillationRate > 0.6 ? 'oscillation' : converging ? 'convergence' : repeatedTargets.length > 2 ? 'repetition' : 'none',
       oscillationRate: Math.round(oscillationRate * 100) / 100,
       convergenceValue: Math.round(convergence * 100) / 100,
       repeatedTargets,
-      recommendation: loopDetected
-        ? (oscillationRate > 0.6
-          ? 'System is oscillating — try a completely different approach or increase depth'
-          : converging
-          ? 'System has converged — move to higher depth or new domain'
-          : 'Repetitive targets — diversify improvement focus')
-        : 'No loop detected — continue',
+      recommendation: detected
+        ? (selfRef ? 'Strange loop detected — the compiler is improving itself. This is intentional but monitor for runaway recursion.'
+          : oscillationRate > 0.6 ? 'Oscillating — try different approach or increase depth'
+          : converging ? 'Converged — move to higher depth or new domain'
+          : 'Repetitive targets — diversify focus')
+        : 'No loop detected',
     };
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  INTERNAL HELPERS
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── INTERNAL HELPERS ── */
 
-  _readOwnSource() {
-    try { return fs.readFileSync(__filename, 'utf8'); } catch { return ''; }
-  }
+  _readOwnSource() { try { return fs.readFileSync(__filename, 'utf8'); } catch { return ''; } }
+  _listCoreFiles() { try { return fs.readdirSync(__dirname).filter(f => f.endsWith('.js')).map(f => 'core/' + f); } catch { return []; } }
+  _countOutcomes(cycles) { const c = {}; for (const x of cycles) { const o = x.outcome || 'unknown'; c[o] = (c[o] || 0) + 1; } return c; }
+  _countByDepth(registry) { const c = {}; for (const r of registry) { const d = r.depth || 0; c[d] = (c[d] || 0) + 1; } return c; }
 
-  _listCoreFiles() {
-    try {
-      return fs.readdirSync(__dirname)
-        .filter(f => f.endsWith('.js'))
-        .map(f => 'core/' + f);
-    } catch { return []; }
-  }
-
-  _countOutcomes(cycles) {
-    const counts = {};
-    for (const c of cycles) {
-      const o = c.outcome || 'unknown';
-      counts[o] = (counts[o] || 0) + 1;
-    }
-    return counts;
-  }
-
-  _countByDepth(registry) {
-    const counts = {};
-    for (const r of registry) {
-      const d = r.depth || 0;
-      counts[d] = (counts[d] || 0) + 1;
-    }
-    return counts;
-  }
-
-  /** Select which depth to compile next based on trends */
   _selectNextDepth() {
     const cycles = this._loadCycles();
     if (cycles.length === 0) return 0;
-
-    // Start at depth 0; if recent depth-0 cycles show diminishing returns, go deeper
     for (let d = 0; d < this.config.maxDepth; d++) {
       const atDepth = cycles.filter(c => c.depth === d).slice(-3);
-      if (atDepth.length < 3) return d; // not enough data at this depth, stay here
+      if (atDepth.length < 3) return d;
       const avgDelta = mean(atDepth.map(c => c.deltaSummary || 0));
-      if (avgDelta >= this.config.diminishingThreshold) return d; // still productive here
+      if (avgDelta >= this.config.diminishingThreshold) return d;
     }
-
-    // All depths show diminishing returns — cycle back to 0
     return 0;
   }
 
   _recordMetricSnapshot(cycle) {
     const metrics = this._loadMetrics();
     metrics.snapshots.push({
-      cycleId: cycle.id,
-      depth: cycle.depth,
-      delta: cycle.deltaSummary,
-      durationMs: cycle.durationMs,
-      outcome: cycle.outcome,
-      proposalCount: (cycle.proposals || []).length,
-      appliedCount: (cycle.appliedIds || []).length,
+      cycleId: cycle.id, depth: cycle.depth, delta: cycle.deltaSummary,
+      durationMs: cycle.durationMs, outcome: cycle.outcome,
+      proposalCount: (cycle.proposals || []).length, appliedCount: (cycle.appliedIds || []).length,
       timestamp: isoNow(),
     });
-    // Keep last 500
-    if (metrics.snapshots.length > 500) {
-      metrics.snapshots = metrics.snapshots.slice(-500);
-    }
+    if (metrics.snapshots.length > 500) metrics.snapshots = metrics.snapshots.slice(-500);
     this._saveMetrics(metrics);
   }
 
@@ -959,32 +802,22 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
     try {
       const backupPath = path.join(BACKUPS_DIR, proposal.backupId + '.json');
       if (!fs.existsSync(backupPath)) return;
-
       proposal.status = 'rolled_back';
       const registry = this._loadRegistry();
       const idx = registry.findIndex(r => r.id === proposal.id);
       if (idx >= 0) registry[idx] = proposal;
       this._saveRegistry(registry);
-
       this.emit('rollback', { proposalId: proposal.id, backupId: proposal.backupId });
-    } catch (e) {
-      this.emit('error', e);
-    }
+    } catch (e) { this.emit('error', e); }
   }
 
-  /* ────────────────────────────────────────────────────────────────
-   *  SUMMARY / STATS
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── STATS ── */
 
-  /**
-   * Get overall compiler stats
-   * @returns {object}
-   */
   getStats() {
     const registry = this._loadRegistry();
     const cycles = this._loadCycles();
     const strategies = this._loadStrategies();
-
+    const abTests = this._loadABTests();
     const applied = registry.filter(r => r.status === 'applied');
     const deltas = applied.map(r => r.measuredDelta || 0).filter(d => d !== 0);
 
@@ -993,12 +826,14 @@ Return JSON: { "issues": [{ "id": "unique", "title": "short title", "description
       appliedCount: applied.length,
       totalCycles: cycles.length,
       strategyCount: strategies.length,
+      abTests: { total: abTests.length, active: abTests.filter(t => t.status === 'active').length, concluded: abTests.filter(t => t.status === 'concluded').length },
       avgDelta: deltas.length > 0 ? Math.round(mean(deltas) * 100) / 100 : 0,
       byDepth: this._countByDepth(registry),
       outcomeDistribution: this._countOutcomes(cycles),
       compiling: this._compiling,
       lastCompileAt: this._lastCompileAt > 0 ? new Date(this._lastCompileAt).toISOString() : null,
       tickCount: this._tickCount,
+      benchmarks: this._loadBenchmarks().slice(-3),
       strangeLoops: this._detectStrangeLoops(),
       efficiency: this.getEfficiencyTrend(),
     };

@@ -8,15 +8,15 @@ const path = require('path');
 const MOCK_REFS = { ai: null, config: {}, aries: null };
 
 const MODULES = [
-  ['self-originating-objectives.js', 'named', 'SelfOriginatingObjectives', ['getActiveObjectives', 'getTopPriorities']],
-  ['autonomous-experiment-engine.js', 'named', 'AutonomousExperimentEngine', ['getActiveExperiments', 'getFindings']],
+  ['self-originating-objectives.js', 'direct', null, ['getActiveObjectives', 'getTopPriorities']],
+  ['autonomous-experiment-engine.js', 'direct', null, ['getActiveExperiments', 'getFindings']],
   ['recursive-self-compilation.js', 'direct', null, ['getCompilationHistory', 'getEfficiencyTrend', 'getStats']],
   ['cognitive-metabolism.js', 'direct', null, ['getEnergy', 'getMetabolicState', 'canAfford']],
   ['anti-memory.js', 'direct', null, ['getMemoryPressure', 'getAnalytics', 'getGraveyard']],
   ['epistemic-debt-tracker.js', 'direct', null, ['getCreditScore', 'getDebtByCategory', 'getPaymentQueue', 'isBankrupt']],
   ['adversarial-memory-consolidation.js', 'direct', null, ['getDebateHistory', 'getAdversaryStats']],
-  ['autonomous-knowledge-synthesis.js', 'singleton', 'AutonomousKnowledgeSynthesis', ['getDiscoveries']],
-  ['temporal-consciousness.js', 'singleton', 'TemporalConsciousness', ['getTimeline']],
+  ['autonomous-knowledge-synthesis.js', 'direct', null, ['getDiscoveries']],
+  ['temporal-consciousness.js', 'direct', null, ['getTimeline']],
   ['failure-archaeology.js', 'direct', null, ['getDiscoveries', 'getDigSchedule']],
   ['thought-fossil-record.js', 'direct', null, ['getEvolutionaryRecord', 'getExhibition']],
   ['cognitive-immune-system.js', 'direct', null, ['getHealth']],
@@ -45,9 +45,9 @@ const MODULES = [
   ['identity-dissolution.js', 'direct', null, ['getCoreIdentity', 'getIdentityLayers', 'getIdentityStrength']],
   ['cognitive-dna-crossover.js', 'direct', null, ['exportDNA', 'getLineage']],
   ['cognitive-symbiosis.js', 'direct', null, ['getLinks', 'getColony']],
-  ['phantom-limb.js', 'singleton', 'PhantomLimb', ['getPhantomSignals', 'getRewiring', 'getResilience']],
-  ['causal-paradox-engine.js', 'singleton', 'CausalParadoxEngine', ['detectParadoxes', 'getQualityTrend']],
-  ['information-entanglement.js', 'singleton', 'InformationEntanglement', ['getMap', 'detect']],
+  ['phantom-limb.js', 'direct', null, ['getPhantomSignals', 'getRewiring', 'getResilience']],
+  ['causal-paradox-engine.js', 'direct', null, ['detectParadoxes', 'getQualityTrend']],
+  ['information-entanglement.js', 'direct', null, ['getMap', 'detect']],
 ];
 
 (async () => {

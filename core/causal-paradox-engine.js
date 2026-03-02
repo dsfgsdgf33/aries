@@ -390,4 +390,4 @@ function getInstance(opts) {
   return _instance;
 }
 
-module.exports = { CausalParadoxEngine, getInstance };
+module.exports = CausalParadoxEngine;

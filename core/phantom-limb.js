@@ -340,4 +340,4 @@ function getInstance(opts) {
   return _instance;
 }
 
-module.exports = { PhantomLimb, getInstance };
+module.exports = PhantomLimb;
