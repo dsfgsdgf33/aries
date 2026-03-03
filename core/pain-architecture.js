@@ -6,10 +6,13 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const EventEmitter = require('events');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'pain-architecture';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'pain');
 const PAIN_STATE_PATH = path.join(DATA_DIR, 'state.json');
@@ -17,9 +20,9 @@ const FLINCH_PATH = path.join(DATA_DIR, 'flinches.json');
 const HISTORY_PATH = path.join(DATA_DIR, 'history.json');
 const JOURNAL_PATH = path.join(DATA_DIR, 'journal.json');
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fb; } }
-function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fb) { return store.get(NS, path.basename(p, '.json'), fb); }
+function writeJSON(p, d) { store.set(NS, path.basename(p, '.json'), d); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 const PAIN_TYPES = {
@@ -93,9 +96,20 @@ class PainArchitecture extends EventEmitter {
     this._flinches = readJSON(FLINCH_PATH, []);
     this._history = readJSON(HISTORY_PATH, { events: [] });
     this._journal = readJSON(JOURNAL_PATH, { entries: [] });
+    this._initSSE();
   }
 
-  _save() { writeJSON(PAIN_STATE_PATH, this._state); }
+  _initSSE() {
+    try {
+      const sse = require('./sse-manager');
+      this.on('pain', (d) => sse.broadcastToChannel('pain', 'pain-signal', d));
+      this.on('rest-started', () => sse.broadcastToChannel('pain', 'pain-healed', { resting: true }));
+      this.on('rest-ended', (d) => sse.broadcastToChannel('pain', 'pain-healed', d));
+      this.on('suppressed', (d) => sse.broadcastToChannel('pain', 'flinch', d));
+    } catch (_) {}
+  }
+
+  _save() { writeJSON(PAIN_STATE_PATH, this._state); store.flush(NS); }
   _saveFlinches() { writeJSON(FLINCH_PATH, this._flinches); }
   _saveHistory() { writeJSON(HISTORY_PATH, this._history); }
   _saveJournal() { writeJSON(JOURNAL_PATH, this._journal); }

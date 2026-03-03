@@ -10653,4 +10653,44 @@ try {
 
   console.log('[API] Dashboard alias routes registered');
 
+  // === Cognitive Benchmark Routes ===
+  try {
+    const CognitiveBenchmark = require('./cognitive-benchmark');
+    if (!_refs._cognitiveBenchmark) _refs._cognitiveBenchmark = new CognitiveBenchmark({ refs: _refs });
+    const _bench = _refs._cognitiveBenchmark;
+
+    addPluginRoute('GET', '/api/benchmarks', async (req, res, json) => {
+      json(res, 200, { stats: _bench.getStats(), latest: _bench.getLatestScorecard(), categories: CognitiveBenchmark.listBenchmarks() });
+    });
+
+    addPluginRoute('GET', '/api/benchmarks/scorecard', async (req, res, json) => {
+      json(res, 200, { scorecard: _bench.getLatestScorecard(), weaknesses: _bench.getWeaknesses(), strengths: _bench.getStrengths() });
+    });
+
+    addPluginRoute('POST', '/api/benchmarks/run', async (req, res, json, body) => {
+      try {
+        const category = body && body.category;
+        const benchmarkId = body && body.benchmarkId;
+        let result;
+        if (benchmarkId) result = await _bench.runSingle(benchmarkId);
+        else if (category) result = await _bench.runCategory(category);
+        else result = await _bench.runAll();
+        json(res, 200, { result });
+      } catch (e) { json(res, 500, { error: e.message }); }
+    });
+
+    addPluginRoute('GET', '/api/benchmarks/trends', async (req, res, json) => {
+      json(res, 200, { trends: _bench.getTrends(), history: _bench.getHistory(10) });
+    });
+
+    addPluginRoute('GET', '/api/benchmarks/recommendations', async (req, res, json) => {
+      try {
+        const recs = await _bench.getRecommendations();
+        json(res, 200, { recommendations: recs });
+      } catch (e) { json(res, 500, { error: e.message }); }
+    });
+
+    console.log('[API] Cognitive Benchmark routes registered');
+  } catch (e) { console.error('[API] Cognitive Benchmark init error:', e.message); }
+
 module.exports = { start, addPluginRoute, getPluginRouteAdder, wsBroadcast };

@@ -16,6 +16,10 @@ const path = require('path');
 const crypto = require('crypto');
 const EventEmitter = require('events');
 
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'anti-memory';
+
 const DATA_DIR = path.join(__dirname, '..', 'data', 'forgetting');
 const GRAVEYARD_PATH = path.join(DATA_DIR, 'graveyard.json');
 const ANALYTICS_PATH = path.join(DATA_DIR, 'analytics.json');
@@ -23,9 +27,9 @@ const PROTECTED_PATH = path.join(DATA_DIR, 'protected.json');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
 const LOG_PATH = path.join(DATA_DIR, 'log.json');
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
-function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fallback) { return store.get(NS, path.basename(p, '.json'), fallback); }
+function writeJSON(p, data) { store.set(NS, path.basename(p, '.json'), data); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 function now() { return Date.now(); }
 

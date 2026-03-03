@@ -18,9 +18,12 @@
 'use strict';
 
 const EventEmitter = require('events');
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'shadow-self';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'shadow');
 const CHALLENGES_PATH = path.join(DATA_DIR, 'challenges.json');
@@ -67,9 +70,9 @@ const DEFAULT_PERSONALITY = {
   evolutionCount: 0,
 };
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
-function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fallback) { return store.get(NS, path.basename(p, '.json'), fallback); }
+function writeJSON(p, data) { store.set(NS, path.basename(p, '.json'), data); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 class ShadowSelf extends EventEmitter {
@@ -83,6 +86,17 @@ class ShadowSelf extends EventEmitter {
     this.maxInsights = this.config.maxInsights || 200;
     this.maxDialogues = this.config.maxDialogues || 200;
     ensureDir();
+    this._initSSE();
+  }
+
+  _initSSE() {
+    try {
+      const sse = require('./sse-manager');
+      this.on('challenge', (d) => sse.broadcastToChannel('shadow', 'challenge', d));
+      this.on('insight', (d) => sse.broadcastToChannel('shadow', 'insight', d));
+      this.on('decision-reviewed', (d) => sse.broadcastToChannel('shadow', 'observation', d));
+      this.on('personality-evolved', (d) => sse.broadcastToChannel('shadow', 'dialogue', d));
+    } catch (_) {}
   }
 
   // ── State ──

@@ -9,9 +9,12 @@
  */
 
 const EventEmitter = require('events');
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'cognitive-metabolism';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'cognitive');
 const STATE_PATH = path.join(DATA_DIR, 'metabolism-state.json');
@@ -21,9 +24,9 @@ const PATTERNS_PATH = path.join(DATA_DIR, 'metabolic-patterns.json');
 const ALLOCATIONS_PATH = path.join(DATA_DIR, 'module-allocations.json');
 
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'); }
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
-function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fallback) { return store.get(NS, path.basename(p, '.json'), fallback); }
+function writeJSON(p, data) { store.set(NS, path.basename(p, '.json'), data); }
 function clamp(v, min, max) { return Math.max(min || 0, Math.min(max || 100, Math.round(v * 100) / 100)); }
 
 const DEFAULT_COSTS = {
@@ -86,6 +89,17 @@ class CognitiveMetabolism extends EventEmitter {
     this._recentOperations = []; // { timestamp, cost } for workload tracking
     ensureDir();
     this._ensureState();
+    this._initSSE();
+  }
+
+  _initSSE() {
+    try {
+      const sse = require('./sse-manager');
+      this.on('state-change', (d) => sse.broadcastToChannel('metabolism', 'state-change', d));
+      this.on('starvation', (d) => sse.broadcastToChannel('metabolism', 'energy-change', d));
+      this.on('peak-entered', (d) => sse.broadcastToChannel('metabolism', 'energy-change', d));
+      this.on('rest-complete', (d) => sse.broadcastToChannel('metabolism', 'energy-change', d));
+    } catch (_) { /* SSE not available */ }
   }
 
   _ensureState() {
@@ -111,7 +125,7 @@ class CognitiveMetabolism extends EventEmitter {
     this._save();
   }
 
-  _save() { writeJSON(STATE_PATH, this._state); }
+  _save() { writeJSON(STATE_PATH, this._state); store.flush(NS); }
 
   // ── Lifecycle ──
 

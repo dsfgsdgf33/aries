@@ -462,8 +462,14 @@
       case 'agi-phantom': if (window.loadAgiPhantom) { var c = document.getElementById('agiPhantomContent'); if (c) window.loadAgiPhantom(c); } break;
       case 'agi-paradox': if (window.loadAgiParadox) { var c = document.getElementById('agiParadoxContent'); if (c) window.loadAgiParadox(c); } break;
       case 'agi-entangle': if (window.loadAgiEntangle) { var c = document.getElementById('agiEntangleContent'); if (c) window.loadAgiEntangle(c); } break;
+      case 'agi-pruner': if (window.loadAgiPruner) { var c = document.getElementById('agiPrunerContent'); if (c) window.loadAgiPruner(c); } break;
       case 'agi-recursive-dreams': if (window.loadAgiRecursiveDreams) { var c = document.getElementById('agiRecursiveDreamsContent'); if (c) window.loadAgiRecursiveDreams(c); } break;
       case 'agi-event-optimizer': if (window.loadAgiEventOptimizer) { var c = document.getElementById('agiEventOptimizerContent'); if (c) window.loadAgiEventOptimizer(c); } break;
+      case 'agi-consciousness': if (window.loadAgiConsciousness) { var c = document.getElementById('agiConsciousnessContent'); if (c) window.loadAgiConsciousness(c); } break;
+      case 'agi-benchmarks': if (window.loadAgiBenchmarks) { var c = document.getElementById('agiBenchmarksContent'); if (c) window.loadAgiBenchmarks(c); } break;
+      case 'agi-cognitive-loop': if (window.loadAgiCognitiveLoop) { var c = document.getElementById('agiCognitiveLoopContent'); if (c) window.loadAgiCognitiveLoop(c); } break;
+      case 'agi-backbone': if (window.loadAgiBackbone) { var c = document.getElementById('agiBackboneContent'); if (c) window.loadAgiBackbone(c); } break;
+      case 'agi-hot-reload': if (window.loadAgiHotReload) { var c = document.getElementById('agiHotReloadContent'); if (c) window.loadAgiHotReload(c); } break;
     }
   }
 

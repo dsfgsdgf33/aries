@@ -13,6 +13,10 @@ const path = require('path');
 const crypto = require('crypto');
 const { EventEmitter } = require('events');
 
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'recursive-self-compilation';
+
 const DATA_DIR = path.join(__dirname, '..', 'data', 'compiler');
 const REGISTRY_PATH = path.join(DATA_DIR, 'registry.json');
 const CYCLES_PATH = path.join(DATA_DIR, 'cycles.json');
@@ -31,8 +35,8 @@ function uuid() {
 }
 
 function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
-function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
-function writeJSON(p, data) { ensureDir(path.dirname(p)); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+function readJSON(p, fallback) { return store.get(NS, path.basename(p, '.json'), fallback); }
+function writeJSON(p, data) { store.set(NS, path.basename(p, '.json'), data); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
 function now() { return Date.now(); }
@@ -563,11 +567,12 @@ class RecursiveSelfCompilation extends EventEmitter {
     if (proposal.status !== 'validated' && proposal.status !== 'proposed') return { ok: false, reason: 'invalid_status' };
 
     const backupId = uuid();
-    writeJSON(path.join(BACKUPS_DIR, backupId + '.json'), {
+    ensureDir(BACKUPS_DIR);
+    fs.writeFileSync(path.join(BACKUPS_DIR, backupId + '.json'), JSON.stringify({
       backupId, proposalId: proposal.id,
       registrySnapshot: registry.slice(-50),
       timestamp: isoNow(),
-    });
+    }, null, 2));
 
     proposal.status = 'applied';
     proposal.appliedAt = isoNow();

@@ -781,6 +781,128 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
+  // COGNITIVE LOOP — Central Orchestrator
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiCognitiveLoop = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('🧠', 'Cognitive Loop — Central Orchestrator') + '<div id="cogLoopBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    Promise.all([
+      api5('GET', '/api/cognitive-loop/summary'),
+      api5('GET', '/api/cognitive-loop/health'),
+      api5('GET', '/api/cognitive-loop/tick-history?limit=10'),
+      api5('GET', '/api/cognitive-loop/bottlenecks'),
+      api5('GET', '/api/cognitive-loop/decisions')
+    ]).then(function(results) {
+      var summary = results[0] || {};
+      var health = results[1] || {};
+      var tickHist = (results[2] || {}).history || [];
+      var bottlenecks = results[3] || {};
+      var decisions = results[4] || {};
+      var b = document.getElementById('cogLoopBody');
+      if (!b) return;
+
+      var hScore = health.score || 0;
+      var hColor = hScore > 70 ? '#0f0' : hScore > 40 ? '#fa0' : '#f44';
+      var eState = summary.energyState || 'UNKNOWN';
+      var eColors = { CRITICAL: '#f44', LOW: '#fa0', MEDIUM: '#ff0', HIGH: '#0f0', PEAK: '#0ff' };
+      var eColor = eColors[eState] || '#888';
+
+      var html = card(
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div>' +
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">System Status</div>' +
+        row('Running', summary.running ? '✅ Active' : '⏸ Stopped', summary.running ? '#0f0' : '#f44') +
+        row('Tick Count', summary.tickCount || 0) +
+        row('Interval', ((summary.interval || 30000) / 1000) + 's') +
+        row('Modules', summary.modules || 0) +
+        '</div>' +
+        '<div style="text-align:center;">' +
+        '<div style="font-size:36px;font-weight:bold;color:' + hColor + ';">' + hScore + '</div>' +
+        '<div style="font-size:10px;color:#888;">Health</div>' +
+        '</div></div>' +
+        '<div style="margin-top:8px;">' +
+        '<span style="color:#888;font-size:11px;">Energy: </span>' + badge(eState, eColor) +
+        '</div>'
+      );
+
+      // Decisions summary
+      var queue = (decisions.queue || []);
+      var hist = (decisions.history || []);
+      html += card(
+        '<div style="color:#0ff;font-size:13px;font-weight:600;">Decision Pipeline</div>' +
+        row('Pending', summary.pendingDecisions || 0, (summary.pendingDecisions || 0) > 5 ? '#fa0' : '#eee') +
+        row('Paused (Shadow)', summary.pausedDecisions || 0, (summary.pausedDecisions || 0) > 0 ? '#fa0' : '#eee') +
+        row('Approved', summary.approvedDecisions || 0, '#0f0') +
+        row('Rejected', summary.rejectedDecisions || 0, (summary.rejectedDecisions || 0) > 0 ? '#f44' : '#eee')
+      );
+
+      // Health indicators
+      if ((health.indicators || []).length > 0) {
+        html += '<div style="color:#fa0;font-size:12px;margin:8px 0 4px;">⚠ Health Alerts</div>';
+        (health.indicators || []).forEach(function(ind) {
+          var ic = ind.type === 'warning' ? '#f44' : ind.type === 'caution' ? '#fa0' : '#0ff';
+          html += '<div style="font-size:11px;color:' + ic + ';padding:2px 0;">• ' + escH(ind.message) + '</div>';
+        });
+      }
+
+      // Recent ticks
+      if (tickHist.length > 0) {
+        html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Recent Ticks</div>';
+        tickHist.slice(-5).reverse().forEach(function(t) {
+          html += '<div style="font-size:10px;display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #111;">' +
+            '<span style="color:#888;">#' + t.tick + '</span>' +
+            '<span style="color:#aaa;">' + (t.duration || 0) + 'ms</span>' +
+            '<span style="color:#0f0;">' + (t.modulesRun || 0) + ' run</span>' +
+            '<span style="color:#fa0;">' + (t.modulesSkipped || 0) + ' skip</span>' +
+            badge(t.energyState || '?', eColors[t.energyState] || '#888') +
+            '</div>';
+        });
+      }
+
+      // Bottlenecks
+      if ((bottlenecks.slowest || []).length > 0) {
+        html += '<div style="color:#0ff;font-size:12px;margin:8px 0 4px;">Bottlenecks (Slowest)</div>';
+        (bottlenecks.slowest || []).slice(0, 3).forEach(function(m) {
+          html += '<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0;">' +
+            '<span style="color:#aaa;">' + escH(m.moduleId) + '</span>' +
+            '<span style="color:#fa0;">' + m.avgMs + 'ms avg</span>' +
+            '</div>';
+        });
+      }
+
+      // Controls
+      html += '<div style="margin-top:12px;">' +
+        '<button id="cogLoopStartBtn" style="' + btnStyle() + '">Start</button>' +
+        '<button id="cogLoopStopBtn" style="' + btnStyle('linear-gradient(135deg,#f44,#f80)') + '">Stop</button>' +
+        '<button id="cogLoopTickBtn" style="' + btnStyle('linear-gradient(135deg,#a0f,#60f)') + '">Force Tick</button>' +
+        '</div>' +
+        '<div style="margin-top:8px;">' +
+        '<input id="cogLoopDecisionInput" placeholder="Queue a decision..." style="background:#111;border:1px solid #333;color:#eee;padding:6px 10px;border-radius:4px;font-size:12px;width:60%;margin-right:4px;" />' +
+        '<button id="cogLoopDecisionBtn" style="' + btnStyle('linear-gradient(135deg,#0f0,#0a0)') + '">Queue</button>' +
+        '</div>';
+
+      b.innerHTML = html;
+
+      var startBtn = document.getElementById('cogLoopStartBtn');
+      var stopBtn = document.getElementById('cogLoopStopBtn');
+      var tickBtn = document.getElementById('cogLoopTickBtn');
+      var decBtn = document.getElementById('cogLoopDecisionBtn');
+
+      if (startBtn) startBtn.onclick = function() { api5('POST', '/api/cognitive-loop/start', {}).then(function() { window.loadAgiCognitiveLoop(container); }); };
+      if (stopBtn) stopBtn.onclick = function() { api5('POST', '/api/cognitive-loop/stop').then(function() { window.loadAgiCognitiveLoop(container); }); };
+      if (tickBtn) tickBtn.onclick = function() { api5('POST', '/api/cognitive-loop/force-tick').then(function() { window.loadAgiCognitiveLoop(container); }); };
+      if (decBtn) decBtn.onclick = function() {
+        var input = document.getElementById('cogLoopDecisionInput');
+        if (input && input.value.trim()) {
+          api5('POST', '/api/cognitive-loop/decisions/queue', { decision: input.value.trim() }).then(function() { window.loadAgiCognitiveLoop(container); });
+        }
+      };
+    }).catch(function() {
+      var b = document.getElementById('cogLoopBody');
+      if (b) b.innerHTML = '<span style="color:#f44;">Failed to load cognitive loop</span>';
+    });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
   // Expose registry
   // ═══════════════════════════════════════════════════════════════════
   window._features_v6 = {
@@ -805,7 +927,629 @@
     loadAgiParadox: window.loadAgiParadox,
     loadAgiEntangle: window.loadAgiEntangle,
     loadAgiRecursiveDreams: window.loadAgiRecursiveDreams,
-    loadAgiEventOptimizer: window.loadAgiEventOptimizer
+    loadAgiEventOptimizer: window.loadAgiEventOptimizer,
+    loadAgiBenchmarks: window.loadAgiBenchmarks,
+    loadAgiCognitiveLoop: window.loadAgiCognitiveLoop
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // COGNITIVE BENCHMARKS PANEL
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiBenchmarks = function(container) {
+    var trendIcons = { improving: '📈', declining: '📉', stable: '➡️' };
+    var priColors = { critical: '#f44', warning: '#fa0', info: '#0ff' };
+
+    function scoreColor(s) { return s >= 75 ? '#0f0' : s >= 50 ? '#fa0' : '#f44'; }
+
+    function renderScorecard(sc, trends, weaknesses, strengths, recs) {
+      if (!sc) return '<div style="text-align:center;padding:40px;color:#888;">No benchmark data yet.<br><br><button id="benchRunAllBtn" style="background:linear-gradient(135deg,#0ff,#08f);color:#000;border:none;padding:10px 30px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">▶ Run Full Benchmark Suite</button></div>';
+
+      var html = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">';
+      html += '<div style="text-align:center;"><div style="font-size:48px;font-weight:800;color:' + scoreColor(sc.overall) + ';">' + sc.overall + '</div><div style="color:#888;font-size:12px;">Overall Score</div></div>';
+      html += '<div style="flex:1;">' + gauge(sc.overall, scoreColor(sc.overall)) + '</div>';
+      html += '<button id="benchRunAllBtn" style="background:linear-gradient(135deg,#0ff,#08f);color:#000;border:none;padding:8px 20px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">▶ Run All</button>';
+      html += '</div>';
+
+      // Category cards
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:16px;">';
+      var cats = sc.categories || {};
+      for (var catId in cats) {
+        var cat = cats[catId];
+        var trend = (trends && trends[catId]) || 'stable';
+        var c = scoreColor(cat.score);
+        html += '<div style="background:#0a0a0a;border:1px solid #222;border-radius:8px;padding:12px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<span style="font-weight:600;color:#ddd;">' + (cat.emoji || '') + ' ' + escH(cat.label) + '</span>';
+        html += '<span style="font-size:11px;">' + (trendIcons[trend] || '') + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:32px;font-weight:700;color:' + c + ';margin:6px 0;">' + cat.score + '</div>';
+        html += gauge(cat.score, c);
+        // Individual benchmarks
+        var benchmarks = cat.benchmarks || {};
+        for (var bId in benchmarks) {
+          var b = benchmarks[bId];
+          var bc = scoreColor(b.score);
+          html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px;">';
+          html += '<span>' + escH(b.label) + '</span>';
+          html += '<span style="color:' + bc + ';font-weight:600;">' + b.score + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+
+      // Weaknesses & Strengths
+      if ((weaknesses && weaknesses.length) || (strengths && strengths.length)) {
+        html += '<div style="display:flex;gap:10px;margin-bottom:16px;">';
+        if (weaknesses && weaknesses.length) {
+          html += '<div style="flex:1;background:#1a0000;border:1px solid #f44;border-radius:8px;padding:10px;">';
+          html += '<div style="color:#f44;font-weight:600;margin-bottom:6px;">⚠️ Weaknesses</div>';
+          for (var w = 0; w < weaknesses.length; w++) {
+            html += '<div style="font-size:12px;color:#faa;">' + escH(weaknesses[w].label) + ': <b>' + weaknesses[w].score + '</b></div>';
+          }
+          html += '</div>';
+        }
+        if (strengths && strengths.length) {
+          html += '<div style="flex:1;background:#001a00;border:1px solid #0f0;border-radius:8px;padding:10px;">';
+          html += '<div style="color:#0f0;font-weight:600;margin-bottom:6px;">✅ Strengths</div>';
+          for (var s = 0; s < strengths.length; s++) {
+            html += '<div style="font-size:12px;color:#afa;">' + escH(strengths[s].label) + ': <b>' + strengths[s].score + '</b></div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Recommendations
+      if (recs && recs.length) {
+        html += '<div style="background:#0a0a0a;border:1px solid #222;border-radius:8px;padding:12px;margin-bottom:16px;">';
+        html += '<div style="color:#0ff;font-weight:600;margin-bottom:8px;">💡 Recommendations</div>';
+        for (var r = 0; r < recs.length; r++) {
+          var pc = priColors[recs[r].priority] || '#888';
+          html += '<div style="font-size:12px;color:' + pc + ';margin-bottom:4px;">● ' + escH(recs[r].text) + '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Run time
+      if (sc.ts) {
+        html += '<div style="font-size:10px;color:#555;text-align:right;">Last run: ' + new Date(sc.ts).toLocaleString() + '</div>';
+      }
+
+      return html;
+    }
+
+    container.innerHTML = '<div style="padding:16px;"><h2 style="color:#0ff;margin:0 0 16px 0;font-size:18px;">📊 Cognitive Benchmarks</h2><div id="benchContent">Loading...</div></div>';
+
+    function refresh() {
+      Promise.all([
+        api5('GET', '/api/benchmarks/scorecard'),
+        api5('GET', '/api/benchmarks/trends'),
+        api5('GET', '/api/benchmarks/recommendations')
+      ]).then(function(results) {
+        var scData = results[0] || {};
+        var trData = results[1] || {};
+        var reData = results[2] || {};
+        var el = document.getElementById('benchContent');
+        if (!el) return;
+        el.innerHTML = renderScorecard(scData.scorecard, trData.trends, scData.weaknesses, scData.strengths, reData.recommendations);
+        var btn = document.getElementById('benchRunAllBtn');
+        if (btn) {
+          btn.onclick = function() {
+            btn.disabled = true;
+            btn.textContent = '⏳ Running...';
+            api5('POST', '/api/benchmarks/run').then(function() {
+              setTimeout(refresh, 500);
+            }).catch(function() { btn.textContent = '❌ Failed'; });
+          };
+        }
+      }).catch(function() {
+        var el = document.getElementById('benchContent');
+        if (el) el.innerHTML = '<div style="color:#f44;">Failed to load benchmarks</div>';
+      });
+    }
+    refresh();
+    setInterval(refresh, 30000);
+  };
+
+  // ── Consciousness Stream Panel ──
+  window.loadAgiConsciousness = function(container) {
+    container.innerHTML = '<div class="spinner"></div> Loading consciousness stream...';
+    Promise.all([
+      api5('GET', '/api/consciousness-stream').catch(function() { return {}; }),
+    ]).then(function(results) {
+      var d = results[0] || {};
+      var state = d.state || {};
+      var stats = d.stats || {};
+      var recent = d.recent || [];
+      var moodEmoji = state.moodEmoji || '😶';
+
+      var html = '<h3>' + moodEmoji + ' Consciousness Stream</h3>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0">';
+      html += '<div style="background:#1a1a2e;padding:12px;border-radius:8px;text-align:center"><div style="font-size:28px">' + moodEmoji + '</div><div style="color:#aaa;font-size:11px">Mood</div><div style="color:#fff;font-weight:bold">' + (state.mood || 'unknown') + '</div></div>';
+      html += '<div style="background:#1a1a2e;padding:12px;border-radius:8px;text-align:center"><div style="font-size:28px">📊</div><div style="color:#aaa;font-size:11px">Signals</div><div style="color:#fff;font-weight:bold">' + (stats.totalSignals || 0) + '</div></div>';
+      html += '<div style="background:#1a1a2e;padding:12px;border-radius:8px;text-align:center"><div style="font-size:28px">🎯</div><div style="color:#aaa;font-size:11px">Focus</div><div style="color:#fff;font-weight:bold">' + (state.attentionFocus || 'diffuse') + '</div></div>';
+      html += '</div>';
+
+      if (state.dominantThought) {
+        html += '<div style="background:#0a2a1a;border:1px solid #0f4;padding:10px;border-radius:6px;margin:8px 0"><strong>💭 Dominant:</strong> ' + (state.dominantThought.content || '').substring(0, 200) + ' <span style="color:#888">(' + (state.dominantThought.source || '') + ')</span></div>';
+      }
+
+      if (state.painLevel > 0) {
+        html += '<div style="background:#2a0a0a;border:1px solid #f44;padding:8px;border-radius:6px;margin:8px 0">🩸 Pain: ' + Math.round(state.painLevel * 100) + '%</div>';
+      }
+
+      html += '<h4>Recent Signals</h4><div style="max-height:300px;overflow-y:auto">';
+      recent.slice().reverse().forEach(function(s) {
+        var color = s.valence > 0 ? '#4f4' : s.valence < 0 ? '#f44' : '#888';
+        html += '<div style="padding:6px 8px;border-bottom:1px solid #222;font-size:12px">';
+        html += '<span style="color:' + color + '">' + (s.label || s.type) + '</span> ';
+        html += '<span style="color:#ccc">' + (s.content || '').substring(0, 120) + '</span> ';
+        html += '<span style="color:#666;font-size:10px">' + (s.source || '') + ' | i:' + s.intensity + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      html += '<div style="margin-top:12px"><button id="csNarrate" class="btn-sm">🗣️ Narrate</button> ';
+      html += '<button id="csTick" class="btn-sm">⏰ Tick</button></div>';
+      html += '<div id="csNarration" style="margin-top:8px;font-style:italic;color:#aaa"></div>';
+
+      container.innerHTML = html;
+
+      var narBtn = document.getElementById('csNarrate');
+      if (narBtn) narBtn.onclick = function() {
+        api5('POST', '/api/consciousness-stream/narrate').then(function(r) {
+          var el = document.getElementById('csNarration');
+          if (el) el.textContent = r.narration || 'No narration available';
+        });
+      };
+      var tickBtn = document.getElementById('csTick');
+      if (tickBtn) tickBtn.onclick = function() { api5('POST', '/api/consciousness-stream/tick').then(function() { window.loadAgiConsciousness(container); }); };
+    });
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRUNER — Module Dead Weight Detector
+  // ═══════════════════════════════════════════════════════════════
+  window.loadAgiPruner = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('✂️', 'Module Pruner') + '<div id="prunerBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    api5('GET', '/api/pruner').then(function(d) {
+      var b = document.getElementById('prunerBody');
+      if (!b) return;
+      if (d.error || !d.modules) {
+        b.innerHTML = card('<div style="color:#fa0;">No report yet.</div><div style="margin-top:10px;"><button id="prunerRunBtn" style="' + btnStyle() + '">Run Analysis</button></div>');
+        var rb = document.getElementById('prunerRunBtn');
+        if (rb) rb.onclick = function() { api5('POST', '/api/pruner/analyze').then(function() { window.loadAgiPruner(container); }); };
+        return;
+      }
+      var html = '';
+      // Summary
+      var s = d.summary || {};
+      html += card(
+        row('Modules Analyzed', d.moduleCount || 0) +
+        row('Average Score', s.avgScore || 0, '#0ff') +
+        row('Healthy', s.healthyCount || 0, '#0f0') +
+        row('Marginal', s.marginalCount || 0, '#fa0') +
+        row('Dead Weight', s.criticalCount || 0, '#f44') +
+        '<div style="margin-top:8px;"><button id="prunerRerunBtn" style="' + btnStyle() + '">Re-analyze</button></div>'
+      );
+
+      // Efficiency Ranking Table
+      html += '<div style="color:#0ff;font-size:13px;font-weight:600;margin:12px 0 6px;">Efficiency Ranking</div>';
+      html += '<div style="max-height:300px;overflow-y:auto;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+      html += '<tr style="color:#888;border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;">Module</th><th style="text-align:center;padding:4px;">Score</th><th style="text-align:center;padding:4px;">Priority</th><th style="text-align:center;padding:4px;">Value/Cost</th><th style="text-align:left;padding:4px;">Bar</th></tr>';
+      (d.efficiencyRanking || []).forEach(function(m) {
+        var color = m.score >= 0.6 ? '#0f0' : m.score >= 0.35 ? '#fa0' : '#f44';
+        var barW = Math.round(m.score * 100);
+        html += '<tr style="border-bottom:1px solid #1a1a1a;">';
+        html += '<td style="padding:4px;color:#ccc;">' + escH(m.moduleId) + '</td>';
+        html += '<td style="text-align:center;padding:4px;color:' + color + ';">' + m.score.toFixed(3) + '</td>';
+        html += '<td style="text-align:center;padding:4px;">' + badge(m.priority, m.priority === 'CRITICAL' ? '#f44' : m.priority === 'HIGH' ? '#fa0' : '#888') + '</td>';
+        html += '<td style="text-align:center;padding:4px;color:#0ff;">' + (m.valueRatio || 0) + '</td>';
+        html += '<td style="padding:4px;"><div style="background:#222;border-radius:3px;height:10px;width:100px;overflow:hidden;"><div style="width:' + barW + '%;height:100%;background:' + color + ';border-radius:3px;"></div></div></td>';
+        html += '</tr>';
+      });
+      html += '</table></div>';
+
+      // Dead Weight
+      html += '<div style="color:#f44;font-size:13px;font-weight:600;margin:16px 0 6px;">Dead Weight (' + (d.deadWeight || []).length + ')</div>';
+      if ((d.deadWeight || []).length === 0) {
+        html += card('<div style="color:#0f0;font-size:12px;">✅ No dead weight detected!</div>');
+      } else {
+        (d.deadWeight || []).forEach(function(dw) {
+          html += card(
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><span style="color:#f44;font-weight:600;">' + escH(dw.moduleId) + '</span> ' + badge(dw.priority, '#f44') + ' <span style="color:#888;font-size:11px;">score: ' + dw.score.toFixed(3) + '</span></div>' +
+            '<button class="pruner-impact-btn" data-module="' + escH(dw.moduleId) + '" style="' + btnStyle('linear-gradient(135deg,#f44,#f80)') + '">Suggest Prune</button>' +
+            '</div>'
+          );
+        });
+      }
+
+      // Merge Candidates
+      html += '<div style="color:#0ff;font-size:13px;font-weight:600;margin:16px 0 6px;">Merge Candidates (' + (d.mergeCandidates || []).length + ')</div>';
+      if ((d.mergeCandidates || []).length === 0) {
+        html += card('<div style="color:#888;font-size:12px;">No merge candidates found.</div>');
+      } else {
+        (d.mergeCandidates || []).forEach(function(mc) {
+          html += card(
+            '<div style="color:#0ff;">🔀 ' + escH(mc.moduleA) + ' + ' + escH(mc.moduleB) + '</div>' +
+            row('Similarity', (mc.similarity * 100).toFixed(0) + '%', mc.similarity > 0.5 ? '#f44' : '#fa0') +
+            row('Overlapping events', mc.overlapCount)
+          );
+        });
+      }
+
+      // Impact Analysis Viewer
+      html += '<div style="color:#0ff;font-size:13px;font-weight:600;margin:16px 0 6px;">Impact Analysis</div>';
+      html += card(
+        '<div style="display:flex;gap:8px;align-items:center;">' +
+        '<input id="prunerImpactInput" type="text" placeholder="module-id" style="flex:1;background:#111;border:1px solid #333;color:#eee;padding:6px 10px;border-radius:4px;font-size:12px;">' +
+        '<button id="prunerImpactBtn" style="' + btnStyle() + '">Analyze Impact</button>' +
+        '</div>' +
+        '<div id="prunerImpactResult" style="margin-top:8px;"></div>'
+      );
+
+      b.innerHTML = html;
+
+      // Wire up buttons
+      var rerunBtn = document.getElementById('prunerRerunBtn');
+      if (rerunBtn) rerunBtn.onclick = function() { api5('POST', '/api/pruner/analyze').then(function() { window.loadAgiPruner(container); }); };
+
+      var impactBtns = document.querySelectorAll('.pruner-impact-btn');
+      for (var i = 0; i < impactBtns.length; i++) {
+        impactBtns[i].addEventListener('click', function() {
+          var mod = this.getAttribute('data-module');
+          document.getElementById('prunerImpactInput').value = mod;
+          document.getElementById('prunerImpactBtn').click();
+        });
+      }
+
+      var impBtn = document.getElementById('prunerImpactBtn');
+      if (impBtn) impBtn.onclick = function() {
+        var mod = document.getElementById('prunerImpactInput').value.trim();
+        if (!mod) return;
+        var res = document.getElementById('prunerImpactResult');
+        res.innerHTML = '<div style="color:#888;">Analyzing...</div>';
+        api5('GET', '/api/pruner/impact/' + encodeURIComponent(mod)).then(function(imp) {
+          if (imp.error) { res.innerHTML = '<div style="color:#f44;">' + escH(imp.error) + '</div>'; return; }
+          var riskColors = { SAFE: '#0f0', LOW: '#0ff', MEDIUM: '#fa0', HIGH: '#f44', CRITICAL: '#f00' };
+          var ih = '<div style="margin-bottom:8px;">' + badge(imp.riskLevel, riskColors[imp.riskLevel] || '#888') + ' <span style="color:#ccc;font-weight:600;">' + escH(imp.moduleId) + '</span></div>';
+          ih += row('Priority', imp.priority);
+          ih += row('Can Prune?', imp.canPrune ? 'Yes' : 'No', imp.canPrune ? '#0f0' : '#f44');
+          ih += row('Total Impact', imp.totalImpact + ' modules');
+          if (imp.directDependents && imp.directDependents.length > 0) {
+            ih += '<div style="color:#fa0;font-size:11px;margin-top:6px;">Direct dependents:</div>';
+            imp.directDependents.forEach(function(dep) { ih += '<div style="font-size:11px;color:#ccc;padding-left:12px;">• ' + escH(dep) + '</div>'; });
+          }
+          if (imp.cascadeBreaks && imp.cascadeBreaks.length > 0) {
+            ih += '<div style="color:#f44;font-size:11px;margin-top:6px;">Cascade breaks:</div>';
+            imp.cascadeBreaks.forEach(function(cb) { ih += '<div style="font-size:11px;color:#ccc;padding-left:12px;">• ' + escH(cb) + '</div>'; });
+          }
+          if (imp.eventConsumers && imp.eventConsumers.length > 0) {
+            ih += '<div style="color:#0ff;font-size:11px;margin-top:6px;">Event consumers affected:</div>';
+            imp.eventConsumers.forEach(function(ec) { ih += '<div style="font-size:11px;color:#ccc;padding-left:12px;">• ' + escH(ec.module) + ' (' + ec.affectedEvents.join(', ') + ')</div>'; });
+          }
+          ih += '<div style="margin-top:8px;padding:8px;background:#111;border-radius:4px;font-size:11px;color:#aaa;">' + escH(imp.recommendation) + '</div>';
+          res.innerHTML = ih;
+        });
+      };
+    }).catch(function() { var b = document.getElementById('prunerBody'); if (b) b.innerHTML = '<span style="color:#f44;">Failed to load</span>'; });
+  };
+
+  // ══════════════════════════════════════════
+  // AGI HOT RELOAD PANEL
+  // ══════════════════════════════════════════
+
+  window.loadAgiHotReload = function(container) {
+    function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function statusColor(s) { return s === 'loaded' ? '#0f0' : s === 'error' ? '#f44' : '#fa0'; }
+    function timeAgo(iso) {
+      if (!iso) return 'never';
+      var d = Date.now() - new Date(iso).getTime();
+      if (d < 60000) return Math.round(d/1000) + 's ago';
+      if (d < 3600000) return Math.round(d/60000) + 'm ago';
+      return Math.round(d/3600000) + 'h ago';
+    }
+
+    function render(data) {
+      var stats = data.stats || {};
+      var registry = data.registry || [];
+      var status = data.status || {};
+
+      var html = '<div style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">';
+      html += '<h2 style="margin:0;color:#0ff;">🔄 Hot Reload</h2>';
+      html += '<span style="background:' + (status.watching ? '#0a4' : '#333') + ';color:' + (status.watching ? '#000' : '#888') + ';padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;">' + (status.watching ? '👁️ Watching' : '⏸️ Not Watching') + '</span>';
+      html += '<button id="hrToggleWatch" style="background:#1a1a2e;color:#0ff;border:1px solid #0ff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">' + (status.watching ? '⏹ Stop Watch' : '▶ Start Watch') + '</button>';
+      html += '<button id="hrReloadAll" style="background:linear-gradient(135deg,#f80,#f44);color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">🔄 Reload All</button>';
+      html += '<button id="hrDiscover" style="background:#1a1a2e;color:#8b5cf6;border:1px solid #8b5cf6;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">🔍 Discover</button>';
+      html += '</div>';
+
+      // Stats cards
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:16px;">';
+      var cards = [
+        { label: 'Modules', value: stats.registeredModules || 0, color: '#0ff' },
+        { label: 'Reloads', value: stats.totalReloads || 0, color: '#0f0' },
+        { label: 'Failures', value: stats.totalFailures || 0, color: stats.totalFailures > 0 ? '#f44' : '#0f0' },
+        { label: 'Success', value: (stats.successRate || 100) + '%', color: stats.successRate >= 90 ? '#0f0' : '#fa0' },
+        { label: 'Avg Time', value: (stats.avgReloadMs || 0) + 'ms', color: '#08f' },
+        { label: 'Watchers', value: stats.watcherCount || 0, color: '#8b5cf6' }
+      ];
+      for (var i = 0; i < cards.length; i++) {
+        html += '<div style="background:#0a0a0a;border:1px solid #222;border-radius:8px;padding:10px;text-align:center;">';
+        html += '<div style="font-size:24px;font-weight:700;color:' + cards[i].color + ';">' + cards[i].value + '</div>';
+        html += '<div style="color:#888;font-size:11px;">' + cards[i].label + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+
+      // Module list
+      html += '<h3 style="color:#ddd;margin:16px 0 8px;">Registered Modules (' + registry.length + ')</h3>';
+      if (registry.length === 0) {
+        html += '<div style="color:#888;padding:20px;text-align:center;">No modules registered. Click <b>Discover</b> to scan core/ directory.</div>';
+      } else {
+        html += '<div style="max-height:400px;overflow-y:auto;border:1px solid #222;border-radius:8px;">';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+        html += '<thead><tr style="background:#111;color:#888;text-align:left;"><th style="padding:8px;">Module</th><th style="padding:8px;">Status</th><th style="padding:8px;">Reloads</th><th style="padding:8px;">Avg</th><th style="padding:8px;">Last</th><th style="padding:8px;">State</th><th style="padding:8px;">Action</th></tr></thead>';
+        html += '<tbody>';
+        for (var j = 0; j < registry.length; j++) {
+          var m = registry[j];
+          html += '<tr style="border-bottom:1px solid #1a1a1a;">';
+          html += '<td style="padding:6px 8px;color:#ddd;font-family:monospace;">' + escH(m.name) + '</td>';
+          html += '<td style="padding:6px 8px;"><span style="color:' + statusColor(m.status) + ';font-weight:600;">' + escH(m.status) + '</span></td>';
+          html += '<td style="padding:6px 8px;color:#0ff;">' + (m.reloadCount || 0) + '</td>';
+          html += '<td style="padding:6px 8px;color:#888;">' + (m.avgReloadMs || 0) + 'ms</td>';
+          html += '<td style="padding:6px 8px;color:#888;">' + timeAgo(m.lastReload) + '</td>';
+          html += '<td style="padding:6px 8px;">' + (m.hasSerialize ? '💾' : '—') + '</td>';
+          html += '<td style="padding:6px 8px;"><button class="hr-reload-btn" data-module="' + escH(m.name) + '" style="background:#0ff;color:#000;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:11px;font-weight:600;">↻</button></td>';
+          html += '</tr>';
+          if (m.lastError) {
+            html += '<tr><td colspan="7" style="padding:2px 8px 6px;color:#f44;font-size:11px;font-family:monospace;">⚠ ' + escH(m.lastError) + '</td></tr>';
+          }
+        }
+        html += '</tbody></table></div>';
+      }
+
+      container.innerHTML = html;
+
+      // Bind events
+      var toggleBtn = document.getElementById('hrToggleWatch');
+      if (toggleBtn) toggleBtn.onclick = function() {
+        var action = status.watching ? 'stop' : 'start';
+        api5('POST', 'hot-reload/watch', { action: action }).then(function() { refresh(); });
+      };
+      var reloadAllBtn = document.getElementById('hrReloadAll');
+      if (reloadAllBtn) reloadAllBtn.onclick = function() {
+        reloadAllBtn.textContent = '⏳ Reloading...';
+        api5('POST', 'hot-reload/reload-all').then(function(r) {
+          reloadAllBtn.textContent = '✅ Done (' + (r.succeeded||0) + '/' + (r.total||0) + ')';
+          setTimeout(refresh, 1000);
+        }).catch(function() { reloadAllBtn.textContent = '❌ Failed'; });
+      };
+      var discoverBtn = document.getElementById('hrDiscover');
+      if (discoverBtn) discoverBtn.onclick = function() {
+        api5('POST', 'hot-reload/discover').then(function(r) {
+          discoverBtn.textContent = '✅ Found ' + (r.discovered||0);
+          setTimeout(refresh, 1000);
+        });
+      };
+
+      // Individual reload buttons
+      var btns = container.querySelectorAll('.hr-reload-btn');
+      for (var k = 0; k < btns.length; k++) {
+        btns[k].onclick = function() {
+          var btn = this;
+          var mod = btn.getAttribute('data-module');
+          btn.textContent = '⏳';
+          api5('POST', 'hot-reload/reload', { module: mod }).then(function(r) {
+            btn.textContent = r.success ? '✅' : '❌';
+            setTimeout(refresh, 1000);
+          }).catch(function() { btn.textContent = '❌'; });
+        };
+      }
+    }
+
+    function renderHistory(history) {
+      var el = document.getElementById('hrHistoryLog');
+      if (!el) return;
+      if (!history || history.length === 0) {
+        el.innerHTML = '<div style="color:#888;text-align:center;padding:16px;">No reload history yet.</div>';
+        return;
+      }
+      var html = '<div style="max-height:300px;overflow-y:auto;font-family:monospace;font-size:11px;">';
+      for (var i = 0; i < history.length && i < 50; i++) {
+        var h = history[i];
+        var icon = h.success ? '✅' : '❌';
+        var color = h.success ? '#0f0' : '#f44';
+        html += '<div style="padding:3px 0;border-bottom:1px solid #111;color:' + color + ';">';
+        html += icon + ' <span style="color:#888;">' + (h.ts || '').substring(0, 19).replace('T', ' ') + '</span> ';
+        html += '<span style="color:#0ff;">' + escH(h.module) + '</span> ';
+        html += '<span style="color:#888;">' + escH(h.action) + '</span>';
+        if (h.durationMs) html += ' <span style="color:#8b5cf6;">' + h.durationMs + 'ms</span>';
+        if (h.error) html += ' <span style="color:#f44;">— ' + escH(h.error) + '</span>';
+        if (h.statePreserved) html += ' 💾';
+        html += '</div>';
+      }
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function api5(method, path, body) {
+      var opts = { method: method, headers: { 'Content-Type': 'application/json', 'x-aries-key': 'aries-api-2026', 'Authorization': 'Bearer ' + (localStorage.getItem('aries-auth-token') || '') } };
+      if (body) opts.body = JSON.stringify(body);
+      return fetch('/api/' + path, opts).then(function(r) { return r.json(); });
+    }
+
+    function refresh() {
+      api5('GET', 'hot-reload').then(function(data) {
+        render(data);
+        // Add history section after render
+        var histDiv = document.createElement('div');
+        histDiv.style.marginTop = '16px';
+        histDiv.innerHTML = '<h3 style="color:#ddd;margin:0 0 8px;">Reload History</h3><div id="hrHistoryLog"></div>';
+        container.appendChild(histDiv);
+        // Load history
+        api5('GET', 'hot-reload/history?limit=50').then(function(hData) {
+          renderHistory(hData.history || []);
+        });
+      }).catch(function(e) {
+        container.innerHTML = '<div style="color:#f44;padding:20px;">Failed to load hot reload data: ' + escH(e.message) + '</div>';
+      });
+    }
+
+    refresh();
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // BACKBONE — Unified Runtime Dashboard
+  // ═══════════════════════════════════════════════════════════════════
+  window.loadAgiBackbone = function(container) {
+    container.innerHTML = '<div style="padding:16px;">' + heading('⚙️', 'Backbone Runtime') + '<div id="bbBody" style="color:#666;font-size:12px;">Loading...</div></div>';
+    Promise.all([
+      api5('GET', '/api/backbone'),
+      api5('GET', '/api/backbone/boot-order'),
+      api5('GET', '/api/backbone/dispatch-stats'),
+      api5('GET', '/api/backbone/health'),
+      api5('GET', '/api/backbone/bottlenecks')
+    ]).then(function(results) {
+      var status = results[0], boot = results[1], dispatch = results[2], health = results[3], bn = results[4];
+      var b = document.getElementById('bbBody');
+      if (!b) return;
+      var html = '';
+
+      // Status overview
+      var stateColor = status.state === 'running' ? '#0f0' : status.state === 'stopped' ? '#fa0' : status.state === 'error' ? '#f44' : '#888';
+      var hScore = (health.current && health.current.score) || 0;
+      var hColor = hScore > 70 ? '#0f0' : hScore > 40 ? '#fa0' : '#f44';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px;">';
+      html += '<div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #222;"><div style="font-size:20px;font-weight:700;color:' + stateColor + ';">' + escH((status.state || 'idle').toUpperCase()) + '</div><div style="font-size:10px;color:#666;">State</div></div>';
+      html += '<div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #222;"><div style="font-size:20px;font-weight:700;color:' + hColor + ';">' + hScore + '</div><div style="font-size:10px;color:#666;">Health</div></div>';
+      html += '<div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #222;"><div style="font-size:20px;font-weight:700;color:#0ff;">' + (status.moduleCount || 0) + '</div><div style="font-size:10px;color:#666;">Modules</div></div>';
+      html += '<div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #222;"><div style="font-size:20px;font-weight:700;color:#08f;">' + (status.tickCount || 0) + '</div><div style="font-size:10px;color:#666;">Ticks</div></div>';
+      html += '<div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #222;"><div style="font-size:20px;font-weight:700;color:#f0f;">' + (dispatch.totalDispatched || 0) + '</div><div style="font-size:10px;color:#666;">Dispatched</div></div>';
+      html += '<div style="background:#111;padding:12px;border-radius:8px;text-align:center;border:1px solid #222;"><div style="font-size:20px;font-weight:700;color:' + ((bn.bottlenecks || []).length > 0 ? '#f44' : '#0f0') + ';">' + (bn.bottlenecks || []).length + '</div><div style="font-size:10px;color:#666;">Bottlenecks</div></div>';
+      html += '</div>';
+
+      // Actions
+      html += '<div style="margin-bottom:16px;display:flex;gap:8px;">';
+      html += '<button id="bbRestartBtn" style="' + btnStyle() + '">🔄 Restart</button>';
+      html += '<button id="bbRefreshBtn" style="' + btnStyle('linear-gradient(135deg,#08f,#0ff)') + '">🔄 Refresh</button>';
+      html += '</div>';
+
+      // Boot Order
+      html += '<div style="color:#0ff;font-size:14px;font-weight:600;margin:12px 0 8px;">🚀 Boot Order</div>';
+      var bootMods = boot.modules || [];
+      if (bootMods.length === 0) {
+        html += '<div style="color:#666;font-size:12px;">No modules in boot order. Init the backbone first.</div>';
+      } else {
+        html += '<div style="max-height:300px;overflow-y:auto;">';
+        bootMods.forEach(function(m, idx) {
+          var sc = m.state === 'ready' ? '#0f0' : m.state === 'error' ? '#f44' : m.state === 'timeout' ? '#fa0' : '#888';
+          var phaseColor = m.phase === 'pre' ? '#08f' : m.phase === 'post' ? '#f0f' : '#0ff';
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:11px;border-bottom:1px solid #1a1a1a;">';
+          html += '<span style="color:#555;width:24px;text-align:right;">' + (idx + 1) + '</span>';
+          html += '<span style="width:8px;height:8px;border-radius:50%;background:' + sc + ';flex-shrink:0;"></span>';
+          html += '<span style="color:#eee;flex:1;">' + escH(m.moduleId) + '</span>';
+          html += badge(m.phase, phaseColor) + ' ';
+          html += badge(m.priority, m.priority === 'CRITICAL' ? '#f44' : m.priority === 'HIGH' ? '#fa0' : '#888');
+          if (m.bootTime != null) html += ' <span style="color:#555;font-size:10px;">' + m.bootTime + 'ms</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      // Dispatch Stats
+      html += '<div style="color:#0ff;font-size:14px;font-weight:600;margin:16px 0 8px;">⚡ Dispatch Stats</div>';
+      html += card(
+        row('Total Dispatched', dispatch.totalDispatched || 0, '#0ff') +
+        row('Total Matched', dispatch.totalMatched || 0, '#0f0') +
+        row('Total Dropped', dispatch.totalDropped || 0, (dispatch.totalDropped || 0) > 0 ? '#fa0' : '#0f0') +
+        row('Total Errors', dispatch.totalErrors || 0, (dispatch.totalErrors || 0) > 0 ? '#f44' : '#0f0') +
+        row('Avg Dispatch Time', (dispatch.avgDispatchTimeUs || 0) + ' μs', '#08f') +
+        row('Registered Event Types', dispatch.registeredEventTypes || 0, '#888') +
+        row('Compiled Reductions', dispatch.reductions || 0, '#f0f')
+      );
+      if (dispatch.byEventType && Object.keys(dispatch.byEventType).length > 0) {
+        html += '<div style="color:#888;font-size:11px;margin:4px 0;">Event Types:</div>';
+        Object.keys(dispatch.byEventType).slice(0, 10).forEach(function(et) {
+          var s = dispatch.byEventType[et];
+          html += '<div style="font-size:10px;color:#aaa;padding:1px 8px;">' + escH(et) + ': ' + s.dispatched + ' dispatched, ' + s.matched + ' matched, ' + s.dropped + ' dropped</div>';
+        });
+      }
+
+      // Health
+      html += '<div style="color:#0ff;font-size:14px;font-weight:600;margin:16px 0 8px;">💓 Health</div>';
+      html += card(
+        '<div style="color:' + hColor + ';font-size:24px;font-weight:700;text-align:center;">' + hScore + '/100</div>' +
+        gauge(hScore, hColor)
+      );
+      var mHealth = health.moduleHealth || [];
+      if (mHealth.length > 0) {
+        html += '<div style="color:#888;font-size:11px;margin:4px 0;">Module Health (slowest first):</div>';
+        mHealth.slice(0, 10).forEach(function(m) {
+          var mc = m.isSlow ? '#fa0' : m.state === 'error' ? '#f44' : '#0f0';
+          html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 8px;color:#aaa;">';
+          html += '<span>' + escH(m.moduleId) + '</span>';
+          html += '<span style="color:' + mc + ';">' + m.avgTickMs + 'ms avg, ' + m.errors + ' errs, ' + m.timeouts + ' timeouts</span>';
+          html += '</div>';
+        });
+      }
+
+      // Bottlenecks
+      html += '<div style="color:#0ff;font-size:14px;font-weight:600;margin:16px 0 8px;">🔥 Bottlenecks</div>';
+      var bns = bn.bottlenecks || [];
+      if (bns.length === 0) {
+        html += '<div style="color:#0f0;font-size:12px;padding:8px;">✅ No bottlenecks detected</div>';
+      } else {
+        bns.forEach(function(b) {
+          var bColor = b.type === 'slow-module' ? '#fa0' : b.type === 'error-prone' ? '#f44' : b.type === 'event-drop' ? '#f0f' : '#888';
+          html += '<div style="font-size:11px;padding:6px 8px;margin:3px 0;border-radius:4px;background:#111;border-left:3px solid ' + bColor + ';">';
+          html += '<span style="color:' + bColor + ';font-weight:600;">' + escH(b.type) + '</span> ';
+          if (b.moduleId) html += escH(b.moduleId) + ' ';
+          if (b.eventType) html += escH(b.eventType) + ' ';
+          if (b.avgMs) html += '(' + b.avgMs + 'ms avg) ';
+          if (b.errorRate) html += '(' + b.errorRate + '% error rate) ';
+          if (b.dropRate) html += '(' + b.dropRate + '% drop rate) ';
+          if (b.dependentCount) html += '(' + b.dependentCount + ' dependents) ';
+          html += '</div>';
+        });
+      }
+
+      // Slow modules
+      var slows = bn.slowModules || [];
+      if (slows.length > 0) {
+        html += '<div style="color:#fa0;font-size:12px;margin:10px 0 4px;">🐌 Slow Modules</div>';
+        slows.forEach(function(s) {
+          html += '<div style="font-size:11px;color:#aaa;padding:2px 8px;">⏱ ' + escH(s.moduleId) + ' — ' + s.avgMs + 'ms avg (' + s.count + ' slow ticks)</div>';
+        });
+      }
+
+      // Critical path
+      var cp = bn.criticalPath || [];
+      if (cp.length > 0) {
+        html += '<div style="color:#f0f;font-size:12px;margin:10px 0 4px;">🔗 Critical Path (' + cp.length + ' modules)</div>';
+        html += '<div style="font-size:11px;color:#aaa;padding:2px 8px;">' + cp.map(function(m) { return escH(m); }).join(' → ') + '</div>';
+      }
+
+      b.innerHTML = html;
+
+      // Wire buttons
+      var restartBtn = document.getElementById('bbRestartBtn');
+      if (restartBtn) restartBtn.onclick = function() {
+        restartBtn.disabled = true;
+        restartBtn.textContent = '⏳ Restarting...';
+        api5('POST', '/api/backbone/restart').then(function() {
+          window.loadAgiBackbone(container);
+        }).catch(function() { restartBtn.disabled = false; restartBtn.textContent = '🔄 Restart'; });
+      };
+      var refreshBtn = document.getElementById('bbRefreshBtn');
+      if (refreshBtn) refreshBtn.onclick = function() { window.loadAgiBackbone(container); };
+    }).catch(function(e) {
+      var b = document.getElementById('bbBody');
+      if (b) b.innerHTML = '<span style="color:#f44;">Failed to load backbone: ' + escH(e.message || String(e)) + '</span>';
+    });
   };
 
 })();
+

@@ -261,6 +261,27 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     pathname = pathname.slice(0, -1);
   }
 
+  // ── SSE (Server-Sent Events) endpoint ──
+  if (pathname === '/api/sse' && method === 'GET') {
+    const sseManager = require('./sse-manager');
+    sseManager.handleRequest(req, res);
+    return true;
+  }
+
+  // ── SSE Stats endpoint ──
+  if (pathname === '/api/sse/stats' && method === 'GET') {
+    const sseManager = require('./sse-manager');
+    json(res, 200, sseManager.getStats());
+    return true;
+  }
+
+  // ── SSE Channels list ──
+  if (pathname === '/api/sse/channels' && method === 'GET') {
+    const sseManager = require('./sse-manager');
+    json(res, 200, { channels: sseManager.getChannels() });
+    return true;
+  }
+
   // ── Swarm Status alias ──
   if (pathname === '/api/swarm/status' && method === 'GET') {
     // Redirect to the actual swarm info from refs
@@ -1265,6 +1286,52 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     if (threadMatch && method === 'GET') {
       const thread = stream.getThread(threadMatch[1]);
       json(res, thread ? 200 : 404, thread || { error: 'Thread not found' }); return true;
+    }
+  }
+
+  // ── Consciousness Stream (unified signal aggregator) ──
+  if (pathname.startsWith('/api/consciousness-stream')) {
+    let cs;
+    try {
+      if (refs.consciousnessStream) { cs = refs.consciousnessStream; }
+      else { const CS = require('./consciousness-stream'); cs = new CS(refs); }
+    } catch (e) {
+      json(res, 501, { error: 'Consciousness stream not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/consciousness-stream' && method === 'GET') {
+      json(res, 200, { state: cs.getCurrentState(), stats: cs.getStats(), recent: cs.getRecent(20) }); return true;
+    }
+    if (pathname === '/api/consciousness-stream/state' && method === 'GET') {
+      json(res, 200, cs.getCurrentState()); return true;
+    }
+    if (pathname === '/api/consciousness-stream/stats' && method === 'GET') {
+      json(res, 200, cs.getStats()); return true;
+    }
+    if (pathname === '/api/consciousness-stream/recent' && method === 'GET') {
+      const limit = parseInt(parsed.searchParams.get('limit') || '20', 10);
+      json(res, 200, { signals: cs.getRecent(limit) }); return true;
+    }
+    if (pathname === '/api/consciousness-stream/push' && method === 'POST') {
+      json(res, 200, cs.push(body)); return true;
+    }
+    if (pathname === '/api/consciousness-stream/narrate' && method === 'POST') {
+      cs.narrate().then(n => json(res, 200, n)).catch(e => json(res, 500, { error: e.message })); return true;
+    }
+    if (pathname === '/api/consciousness-stream/mood' && method === 'GET') {
+      const periods = parseInt(parsed.searchParams.get('periods') || '20', 10);
+      json(res, 200, { history: cs.getMoodHistory(periods), current: cs.getCurrentState().mood }); return true;
+    }
+    if (pathname === '/api/consciousness-stream/focus' && method === 'POST') {
+      json(res, 200, cs.focus(body.topic)); return true;
+    }
+    if (pathname === '/api/consciousness-stream/unfocus' && method === 'POST') {
+      json(res, 200, cs.unfocus()); return true;
+    }
+    if (pathname === '/api/consciousness-stream/threshold' && method === 'POST') {
+      json(res, 200, cs.setAttentionThreshold(body.level || 0)); return true;
+    }
+    if (pathname === '/api/consciousness-stream/tick' && method === 'POST') {
+      json(res, 200, cs.tick()); return true;
     }
   }
 
@@ -3989,6 +4056,34 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     }
   }
 
+  // ── Module Pruner ──
+  if (pathname.startsWith('/api/pruner')) {
+    let mp;
+    try { const MP = require('./module-pruner'); mp = new MP(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/pruner' && method === 'GET') {
+      json(res, 200, mp.getLatestReport() || { error: 'No report yet. Run POST /api/pruner/analyze first.' }); return true;
+    }
+    if (pathname === '/api/pruner/analyze' && method === 'POST') {
+      json(res, 200, mp.analyze()); return true;
+    }
+    if (pathname === '/api/pruner/dead-weight' && method === 'GET') {
+      const threshold = parseFloat(parsed.searchParams.get('threshold')) || 0.35;
+      json(res, 200, { deadWeight: mp.getDeadWeight(threshold) }); return true;
+    }
+    if (pathname === '/api/pruner/merge-candidates' && method === 'GET') {
+      json(res, 200, { mergeCandidates: mp.getMergeCandidates() }); return true;
+    }
+    if (pathname === '/api/pruner/ranking' && method === 'GET') {
+      json(res, 200, { ranking: mp.getEfficiencyRanking() }); return true;
+    }
+    if (pathname.startsWith('/api/pruner/impact/') && method === 'GET') {
+      const moduleId = pathname.replace('/api/pruner/impact/', '');
+      json(res, 200, mp.suggestPrune(decodeURIComponent(moduleId))); return true;
+    }
+  }
+
   // ── Recursive Dream Engine ──
   if (pathname.startsWith('/api/recursive-dreams')) {
     let rde;
@@ -4051,6 +4146,217 @@ async function handleApi(method, pathname, parsed, req, res, refs) {
     if (pathname === '/api/event-optimizer/scan' && method === 'POST') {
       const body = await jsonBody(req);
       json(res, 200, eqo.antibodyScan(body.thought)); return true;
+    }
+  }
+
+  // ── 💾 Shared Memory Store ──
+  if (pathname === '/api/memory-store' && method === 'GET') {
+    try {
+      const { getInstance } = require('./shared-memory-store');
+      const store = getInstance();
+      json(res, 200, {
+        stats: store.getStats(),
+        memoryUsage: store.getMemoryUsage(),
+        namespaces: store.getNamespaceDetails(),
+      });
+    } catch (e) {
+      json(res, 500, { error: e.message });
+    }
+    return true;
+  }
+  if (pathname.startsWith('/api/memory-store/namespace/') && method === 'GET') {
+    try {
+      const { getInstance } = require('./shared-memory-store');
+      const store = getInstance();
+      const ns = pathname.split('/api/memory-store/namespace/')[1];
+      if (!ns) { json(res, 400, { error: 'Missing namespace' }); return true; }
+      const data = store.getNamespace(decodeURIComponent(ns));
+      json(res, 200, { namespace: decodeURIComponent(ns), keys: Object.keys(data).length, data });
+    } catch (e) {
+      json(res, 500, { error: e.message });
+    }
+    return true;
+  }
+  if (pathname === '/api/memory-store/flush' && method === 'POST') {
+    try {
+      const { getInstance } = require('./shared-memory-store');
+      const store = getInstance();
+      const body = await jsonBody(req).catch(() => ({}));
+      await store.flush(body.namespace || undefined);
+      json(res, 200, { flushed: true, stats: store.getStats() });
+    } catch (e) {
+      json(res, 500, { error: e.message });
+    }
+    return true;
+  }
+
+  // ── Module Dependency Graph ──
+  if (pathname.startsWith('/api/dependency-graph')) {
+    let depGraph;
+    try { const MDG = require('./module-dependency-graph'); depGraph = new MDG(); } catch (e) {
+      json(res, 501, { error: 'Dependency graph not available: ' + e.message }); return true;
+    }
+    if (depGraph.modules.size === 0) depGraph.loadDefaults();
+
+    if (pathname === '/api/dependency-graph' && method === 'GET') {
+      json(res, 200, depGraph.getStatus()); return true;
+    }
+    if (pathname === '/api/dependency-graph/tick-order' && method === 'GET') {
+      json(res, 200, { tickOrder: depGraph.getTickOrder() }); return true;
+    }
+    if (pathname === '/api/dependency-graph/validate' && method === 'POST') {
+      json(res, 200, depGraph.validate()); return true;
+    }
+    if (pathname === '/api/dependency-graph/graph' && method === 'GET') {
+      json(res, 200, depGraph.getGraph()); return true;
+    }
+    if (pathname === '/api/dependency-graph/clusters' && method === 'GET') {
+      json(res, 200, depGraph.getClusters()); return true;
+    }
+    if (pathname === '/api/dependency-graph/bottlenecks' && method === 'GET') {
+      json(res, 200, { bottlenecks: depGraph.getBottlenecks() }); return true;
+    }
+    if (pathname === '/api/dependency-graph/critical-path' && method === 'GET') {
+      json(res, 200, { criticalPath: depGraph.getCriticalPath() }); return true;
+    }
+    if (pathname.startsWith('/api/dependency-graph/impact/') && method === 'GET') {
+      const moduleId = pathname.split('/api/dependency-graph/impact/')[1];
+      if (!moduleId) { json(res, 400, { error: 'Missing moduleId' }); return true; }
+      json(res, 200, depGraph.getImpact(decodeURIComponent(moduleId))); return true;
+    }
+  }
+
+  // ── Cognitive Loop ──
+  if (pathname.startsWith('/api/cognitive-loop')) {
+    let loop;
+    try { const CL = require('./cognitive-loop'); loop = new CL(refs); } catch (e) {
+      json(res, 501, { error: 'Module not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/cognitive-loop/state' && method === 'GET') {
+      json(res, 200, loop.getSystemState()); return true;
+    }
+    if (pathname === '/api/cognitive-loop/summary' && method === 'GET') {
+      json(res, 200, loop.getSummary()); return true;
+    }
+    if (pathname === '/api/cognitive-loop/health' && method === 'GET') {
+      json(res, 200, loop.getHealth()); return true;
+    }
+    if (pathname === '/api/cognitive-loop/tick-stats' && method === 'GET') {
+      json(res, 200, loop.getTickStats()); return true;
+    }
+    if (pathname === '/api/cognitive-loop/tick-history' && method === 'GET') {
+      const limit = parseInt(parsed.searchParams.get('limit') || '20', 10);
+      json(res, 200, { history: loop.getTickHistory(limit) }); return true;
+    }
+    if (pathname === '/api/cognitive-loop/bottlenecks' && method === 'GET') {
+      json(res, 200, loop.getBottlenecks()); return true;
+    }
+    if (pathname === '/api/cognitive-loop/registry' && method === 'GET') {
+      json(res, 200, { modules: loop.getRegistry() }); return true;
+    }
+    if (pathname === '/api/cognitive-loop/decisions' && method === 'GET') {
+      json(res, 200, { queue: loop.getDecisionQueue(), history: loop.getDecisionHistory(50) }); return true;
+    }
+    if (pathname === '/api/cognitive-loop/decisions/queue' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 201, loop.queueDecision(body.decision, body.context, body.urgency)); return true;
+    }
+    if (pathname === '/api/cognitive-loop/decisions/process' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, loop.processDecision(body.id)); return true;
+    }
+    if (pathname === '/api/cognitive-loop/start' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, loop.start(body.interval)); return true;
+    }
+    if (pathname === '/api/cognitive-loop/stop' && method === 'POST') {
+      json(res, 200, loop.stop()); return true;
+    }
+    if (pathname === '/api/cognitive-loop/force-tick' && method === 'POST') {
+      const result = await loop.forceTick();
+      json(res, 200, result); return true;
+    }
+    if (pathname === '/api/cognitive-loop/interval' && method === 'POST') {
+      const body = await jsonBody(req);
+      json(res, 200, loop.setInterval(body.interval)); return true;
+    }
+  }
+
+  // ── Hot Reload ──
+  if (pathname.startsWith('/api/hot-reload')) {
+    let hr;
+    try { const HR = require('./hot-reload'); hr = new HR(); } catch (e) {
+      json(res, 501, { error: 'Hot reload not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/hot-reload' && method === 'GET') {
+      json(res, 200, { stats: hr.getStats(), status: hr.getStatus(), registry: hr.getRegistry() }); return true;
+    }
+    if (pathname === '/api/hot-reload/reload' && method === 'POST') {
+      const body = await jsonBody(req);
+      if (!body.module) { json(res, 400, { error: 'Missing module name' }); return true; }
+      // Register module if not already registered
+      const moduleName = body.module;
+      const coreDir = path.join(__dirname);
+      const filePath = path.join(coreDir, moduleName + (moduleName.endsWith('.js') ? '' : '.js'));
+      if (hr.getRegistry().filter(function(m) { return m.name === moduleName; }).length === 0) {
+        try {
+          const mod = require(filePath);
+          let inst = mod;
+          if (typeof mod === 'function') { try { inst = new mod(); } catch (e) { inst = mod; } }
+          hr.register(moduleName, filePath, inst, {});
+        } catch (e) { json(res, 500, { error: 'Cannot load module: ' + e.message }); return true; }
+      }
+      const result = hr.reload(moduleName);
+      json(res, result.success ? 200 : 500, result); return true;
+    }
+    if (pathname === '/api/hot-reload/reload-all' && method === 'POST') {
+      if (hr.getRegistry().length === 0) hr.discoverModules();
+      const result = hr.reloadAll();
+      json(res, 200, result); return true;
+    }
+    if (pathname === '/api/hot-reload/watch' && method === 'POST') {
+      const body = await jsonBody(req);
+      if (body.action === 'stop') {
+        json(res, 200, hr.stopWatching()); return true;
+      }
+      json(res, 200, hr.startWatching(body.paths || undefined)); return true;
+    }
+    if (pathname === '/api/hot-reload/history' && method === 'GET') {
+      const limit = parseInt(parsed.searchParams.get('limit') || '100', 10);
+      json(res, 200, { history: hr.getHistory(limit) }); return true;
+    }
+    if (pathname === '/api/hot-reload/discover' && method === 'POST') {
+      json(res, 200, hr.discoverModules()); return true;
+    }
+    if (pathname === '/api/hot-reload/clear-history' && method === 'POST') {
+      json(res, 200, hr.clearHistory()); return true;
+    }
+  }
+
+  // ── Backbone Runtime ──
+  if (pathname.startsWith('/api/backbone')) {
+    let backbone;
+    try { const BackboneRuntime = require('./backbone-runtime'); backbone = new BackboneRuntime(refs); } catch (e) {
+      json(res, 501, { error: 'Backbone runtime not available: ' + e.message }); return true;
+    }
+    if (pathname === '/api/backbone' && method === 'GET') {
+      json(res, 200, backbone.getStatus()); return true;
+    }
+    if (pathname === '/api/backbone/boot-order' && method === 'GET') {
+      json(res, 200, backbone.getBootOrder()); return true;
+    }
+    if (pathname === '/api/backbone/dispatch-stats' && method === 'GET') {
+      json(res, 200, backbone.getDispatchStats()); return true;
+    }
+    if (pathname === '/api/backbone/restart' && method === 'POST') {
+      const result = await backbone.restart();
+      json(res, 200, result); return true;
+    }
+    if (pathname === '/api/backbone/health' && method === 'GET') {
+      json(res, 200, backbone.getHealth()); return true;
+    }
+    if (pathname === '/api/backbone/bottlenecks' && method === 'GET') {
+      json(res, 200, backbone.getBottlenecks()); return true;
     }
   }
 

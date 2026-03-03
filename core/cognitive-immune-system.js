@@ -19,10 +19,13 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const EventEmitter = require('events');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'cognitive-immune-system';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'immune');
 const PATHOGENS_PATH = path.join(DATA_DIR, 'pathogens.json');
@@ -32,9 +35,9 @@ const QUARANTINE_PATH = path.join(DATA_DIR, 'quarantine.json');
 const HEALTH_PATH = path.join(DATA_DIR, 'cognitive-health.json');
 const MEMORY_PATH = path.join(DATA_DIR, 'immune-memory.json');
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fb; } }
-function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fb) { return store.get(NS, path.basename(p, '.json'), fb); }
+function writeJSON(p, d) { store.set(NS, path.basename(p, '.json'), d); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 const RESPONSE_LEVELS = {
@@ -117,6 +120,19 @@ class CognitiveImmuneSystem extends EventEmitter {
 
     this._tickTimer = null;
     this._startTick();
+    this._initSSE();
+  }
+
+  _initSSE() {
+    try {
+      const sse = require('./sse-manager');
+      this.on('scan:complete', (d) => sse.broadcastToChannel('immune', 'scan-complete', d));
+      this.on('immune:detect', (d) => sse.broadcastToChannel('immune', 'threat-detected', d));
+      this.on('immune:warn', (d) => sse.broadcastToChannel('immune', 'threat-detected', d));
+      this.on('immune:block', (d) => sse.broadcastToChannel('immune', 'threat-detected', d));
+      this.on('immune:quarantine', (d) => sse.broadcastToChannel('immune', 'threat-detected', d));
+      this.on('immune:exhausted', (d) => sse.broadcastToChannel('immune', 'autoimmune', d));
+    } catch (_) {}
   }
 
   /* ── Lifecycle ─────────────────────────────────────────── */

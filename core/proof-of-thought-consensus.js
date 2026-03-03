@@ -15,9 +15,12 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'proof-of-thought-consensus';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'reasoning');
 const CONSENSUS_PATH = path.join(DATA_DIR, 'consensus.json');
@@ -25,9 +28,9 @@ const THRESHOLDS_PATH = path.join(DATA_DIR, 'thresholds.json');
 const ACCURACY_PATH = path.join(DATA_DIR, 'accuracy.json');
 const DISSENT_PATH = path.join(DATA_DIR, 'dissent-log.json');
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fb; } }
-function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fb) { return store.get(NS, path.basename(p, '.json'), fb); }
+function writeJSON(p, d) { store.set(NS, path.basename(p, '.json'), d); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 const CONSENSUS_LEVELS = {

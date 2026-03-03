@@ -9,9 +9,12 @@
 'use strict';
 
 const EventEmitter = require('events');
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'autonomous-experiment-engine';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'experiments');
 const EXPERIMENTS_PATH = path.join(DATA_DIR, 'experiments.json');
@@ -26,9 +29,9 @@ const STATUSES = ['pending', 'running', 'paused', 'concluded', 'aborted', 'budge
 const MAX_CONCURRENT = 5;
 const MAX_HISTORY = 500;
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fb; } }
-function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fb) { return store.get(NS, path.basename(p, '.json'), fb); }
+function writeJSON(p, d) { store.set(NS, path.basename(p, '.json'), d); }
 function uid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 function now() { return Date.now(); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

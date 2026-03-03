@@ -133,6 +133,7 @@
         <a class="nav-item" data-panel="analytics">📊 Analytics</a>
         <a class="nav-item" data-panel="timetravel">⏪ Time Travel</a>
         <a class="nav-item" data-panel="security">🛡️ Security</a>
+        <a class="nav-item" data-panel="agi-memory-store">💾 Memory Store</a>
       </div>
       <!-- CODING -->
       <div class="nav-group" data-admin="true" style="display:none">
@@ -260,8 +261,15 @@
         <a class="nav-item" data-panel="agi-phantom">👻 Phantom Limb</a>
         <a class="nav-item" data-panel="agi-paradox">🔄 Paradox Engine</a>
         <a class="nav-item" data-panel="agi-entangle">🔗 Entanglement</a>
+        <a class="nav-item" data-panel="agi-pruner">✂️ Pruner</a>
         <a class="nav-item" data-panel="agi-recursive-dreams">🌀 Dream Layers</a>
         <a class="nav-item" data-panel="agi-event-optimizer">⚡ Event Optimizer</a>
+        <a class="nav-item" data-panel="agi-consciousness">🌊 Consciousness</a>
+        <a class="nav-item" data-panel="agi-cognitive-loop">🧠 Cognitive Loop</a>
+        <a class="nav-item" data-panel="agi-benchmarks">📊 Benchmarks</a>
+        <a class="nav-item" data-panel="agi-dependency-graph">🔗 Dependencies</a>
+        <a class="nav-item" data-panel="agi-backbone">⚙️ Backbone</a>
+        <a class="nav-item" data-panel="agi-hot-reload">🔄 Hot Reload</a>
       </div>
       <div class="sidebar-footer">
         <span id="loggedInUser" style="color:#00ffc8;font-size:11px"></span><br>
@@ -3299,8 +3307,15 @@
       <section id="panel-agi-phantom" class="panel"><div id="agiPhantomContent" style="padding:16px"></div></section>
       <section id="panel-agi-paradox" class="panel"><div id="agiParadoxContent" style="padding:16px"></div></section>
       <section id="panel-agi-entangle" class="panel"><div id="agiEntangleContent" style="padding:16px"></div></section>
+      <section id="panel-agi-pruner" class="panel"><div id="agiPrunerContent" style="padding:16px"></div></section>
       <section id="panel-agi-recursive-dreams" class="panel"><div id="agiRecursiveDreamsContent" style="padding:16px"></div></section>
       <section id="panel-agi-event-optimizer" class="panel"><div id="agiEventOptimizerContent" style="padding:16px"></div></section>
+    <section id="panel-agi-consciousness" class="panel"><div id="agiConsciousnessContent" style="padding:16px"></div></section>
+      <section id="panel-agi-cognitive-loop" class="panel"><div id="agiCognitiveLoopContent" style="padding:16px"></div></section>
+      <section id="panel-agi-benchmarks" class="panel"><div id="agiBenchmarksContent" style="padding:16px"></div></section>
+      <section id="panel-agi-dependency-graph" class="panel"><div id="agiDepGraphContent" style="padding:16px"></div></section>
+      <section id="panel-agi-backbone" class="panel"><div id="agiBackboneContent" style="padding:16px"></div></section>
+      <section id="panel-agi-hot-reload" class="panel"><div id="agiHotReloadContent" style="padding:16px"></div></section>
 
     </main>
   </div>
@@ -3327,6 +3342,7 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
+  <script src="sse-client.js"></script>
   <script src="app.js?v=20260301b"></script>
 <script src="features.js"></script>
 <script src="features-v2.js"></script>
@@ -4880,6 +4896,68 @@
   });
   </script>
 
+  <!-- 💾 Memory Store Panel -->
+  <section id="panel-agi-memory-store" class="panel">
+    <div class="panel-header"><h2>💾 Shared Memory Store</h2><button class="btn-sm" onclick="loadMemoryStorePanel()">🔄 Refresh</button><button class="btn-sm" onclick="flushMemoryStore()" style="margin-left:6px">💾 Flush All</button></div>
+    <div id="memStoreStats" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
+    <div id="memStoreNamespaces" style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:16px">
+      <h3 style="color:#00fff7;margin:0 0 12px">Namespaces</h3>
+      <div id="memStoreNsList">Loading...</div>
+    </div>
+    <div id="memStoreDetail" style="display:none;background:#0d0d1a;border:1px solid #22c55e;border-radius:8px;padding:16px;margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 id="memStoreDetailTitle" style="color:#22c55e;margin:0">Namespace</h3>
+        <button onclick="document.getElementById('memStoreDetail').style.display='none'" style="background:#333;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer">✕ Close</button>
+      </div>
+      <pre id="memStoreDetailContent" style="background:#111;border:1px solid #333;border-radius:4px;padding:12px;color:#ccc;max-height:400px;overflow:auto;font-size:12px;white-space:pre-wrap"></pre>
+    </div>
+  </section>
+  <script>
+  function loadMemoryStorePanel() {
+    _apiFetchMS('/api/memory-store').then(function(d) {
+      if (!d || d.error) { document.getElementById('memStoreNsList').textContent = d ? d.error : 'Failed'; return; }
+      var s = d.stats || {};
+      var mem = d.memoryUsage || 0;
+      var cards = [
+        { label: 'Namespaces', value: s.namespaces || 0, color: '#00fff7' },
+        { label: 'Total Keys', value: s.totalKeys || 0, color: '#22c55e' },
+        { label: 'Dirty', value: s.dirtyNamespaces || 0, color: s.dirtyNamespaces > 0 ? '#f59e0b' : '#666' },
+        { label: 'Hit Rate', value: s.hitRate + '%', color: '#a855f7' },
+        { label: 'Flushes', value: s.flushCount || 0, color: '#3b82f6' },
+        { label: 'Avg Flush', value: (s.avgFlushMs || 0) + 'ms', color: '#ec4899' },
+        { label: 'Memory', value: _fmtBytes(mem), color: '#f97316' },
+        { label: 'Auto-flush', value: s.autoFlush ? 'ON' : 'OFF', color: s.autoFlush ? '#22c55e' : '#666' },
+      ];
+      document.getElementById('memStoreStats').innerHTML = cards.map(function(c) {
+        return '<div style="background:#0d0d1a;border:1px solid #333;border-radius:8px;padding:12px 16px;min-width:120px;flex:1"><div style="color:' + c.color + ';font-size:22px;font-weight:bold">' + c.value + '</div><div style="color:#888;font-size:11px;margin-top:4px">' + c.label + '</div></div>';
+      }).join('');
+      var nss = d.namespaces || [];
+      if (nss.length === 0) { document.getElementById('memStoreNsList').innerHTML = '<div style="color:#666;padding:20px;text-align:center">No namespaces loaded. Store may not be initialized yet.</div>'; return; }
+      document.getElementById('memStoreNsList').innerHTML = '<table style="width:100%;border-collapse:collapse"><tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#888;font-size:12px">Namespace</th><th style="text-align:right;padding:8px;color:#888;font-size:12px">Keys</th><th style="text-align:center;padding:8px;color:#888;font-size:12px">Dirty</th><th style="text-align:right;padding:8px;color:#888;font-size:12px">Last Access</th><th style="padding:8px"></th></tr>' + nss.map(function(n) {
+        var ago = n.lastAccess ? _timeAgo(n.lastAccess) : '—';
+        return '<tr style="border-bottom:1px solid #222"><td style="padding:8px;color:#00fff7;font-family:monospace">' + n.name + '</td><td style="padding:8px;text-align:right;color:#ccc">' + n.keys + '</td><td style="padding:8px;text-align:center">' + (n.dirty ? '<span style="color:#f59e0b">●</span>' : '<span style="color:#333">○</span>') + '</td><td style="padding:8px;text-align:right;color:#888;font-size:12px">' + ago + '</td><td style="padding:8px"><button onclick="browseMemStoreNs(\'' + n.name + '\')" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px">Browse</button></td></tr>';
+      }).join('') + '</table>';
+    }).catch(function(e) { document.getElementById('memStoreNsList').textContent = 'Error: ' + e.message; });
+  }
+  function browseMemStoreNs(ns) {
+    _apiFetchMS('/api/memory-store/namespace/' + encodeURIComponent(ns)).then(function(d) {
+      document.getElementById('memStoreDetailTitle').textContent = '📂 ' + ns + ' (' + d.keys + ' keys)';
+      document.getElementById('memStoreDetailContent').textContent = JSON.stringify(d.data, null, 2);
+      document.getElementById('memStoreDetail').style.display = '';
+    });
+  }
+  function flushMemoryStore() {
+    _apiFetchMS('/api/memory-store/flush', { method: 'POST', body: '{}' }).then(function() { loadMemoryStorePanel(); });
+  }
+  function _apiFetchMS(url, opts) {
+    var token = localStorage.getItem('aries-auth-token') || '';
+    var o = Object.assign({ headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' } }, opts || {});
+    return fetch(url, o).then(function(r) { return r.json(); });
+  }
+  function _fmtBytes(b) { if (b < 1024) return b + 'B'; if (b < 1048576) return (b/1024).toFixed(1) + 'KB'; return (b/1048576).toFixed(1) + 'MB'; }
+  function _timeAgo(ts) { var s = Math.floor((Date.now() - ts) / 1000); if (s < 60) return s + 's ago'; if (s < 3600) return Math.floor(s/60) + 'm ago'; return Math.floor(s/3600) + 'h ago'; }
+  </script>
+
   <div id="panel-instincts" class="panel">
     <h2 style="color:#00fff7;margin-bottom:16px">⚡ Agent Instincts — Pre-AI Reactions</h2>
     <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -6146,6 +6224,7 @@
     if (panel === 'theater') { setTimeout(loadTheaterPanel, 100); }
     if (panel === 'causal') { setTimeout(loadCausalPanel, 100); }
     if (panel === 'deep-self') { setTimeout(loadDeepSelf, 100); }
+    if (panel === 'agi-dependency-graph') { setTimeout(loadDepGraph, 100); }
   });
 
   // ═══════════════════════════════════════════
@@ -7231,10 +7310,98 @@
   window.loadImmuneTab = loadImmuneTab;
   window.loadReflexesTab = loadReflexesTab;
 
+  // ── Dependency Graph Panel ──
+  async function loadDepGraph() {
+    var el = document.getElementById('agiDepGraphContent');
+    if (!el) return;
+    el.innerHTML = '<div style="color:#888">Loading dependency graph...</div>';
+    var token = localStorage.getItem('aries-auth-token');
+    var headers = { 'Authorization': 'Bearer ' + token };
+    try {
+      var [status, graph, validation] = await Promise.all([
+        fetch('/api/dependency-graph', { headers }).then(r => r.json()),
+        fetch('/api/dependency-graph/graph', { headers }).then(r => r.json()),
+        fetch('/api/dependency-graph/validate', { method: 'POST', headers }).then(r => r.json())
+      ]);
+      var order = status.tickOrder || [];
+      var bp = status.byPhase || {};
+      var bpr = status.byPriority || {};
+      var bottlenecks = status.bottlenecks || [];
+      var cp = status.criticalPath || [];
+
+      var html = '<div style="font-size:20px;font-weight:700;margin-bottom:16px">🔗 Module Dependency Graph</div>';
+
+      // Stats row
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px">';
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;text-align:center;border:1px solid #333"><div style="font-size:24px;font-weight:700;color:#00e5ff">' + status.moduleCount + '</div><div style="font-size:11px;color:#888">Modules</div></div>';
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;text-align:center;border:1px solid #333"><div style="font-size:24px;font-weight:700;color:#22c55e">' + (graph.edgeCount||0) + '</div><div style="font-size:11px;color:#888">Edges</div></div>';
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;text-align:center;border:1px solid #333"><div style="font-size:24px;font-weight:700;color:' + (validation.valid?'#22c55e':'#ef4444') + '">' + (validation.valid?'✓ Valid':'✗ Invalid') + '</div><div style="font-size:11px;color:#888">Status</div></div>';
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;text-align:center;border:1px solid #333"><div style="font-size:24px;font-weight:700;color:#eab308">' + status.totalEnergyCost + '</div><div style="font-size:11px;color:#888">Energy/Tick</div></div>';
+      html += '</div>';
+
+      // Phase breakdown
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">';
+      ['pre','main','post'].forEach(function(p) {
+        var colors = {pre:'#ef4444',main:'#3b82f6',post:'#a78bfa'};
+        html += '<div style="background:#1a1a2e;padding:10px;border-radius:8px;border-left:3px solid '+colors[p]+';border:1px solid #333"><span style="color:'+colors[p]+';font-weight:700;text-transform:uppercase">'+p+'</span> <span style="color:#aaa;float:right">'+(bp[p]||0)+' modules</span></div>';
+      });
+      html += '</div>';
+
+      // Validation
+      if (!validation.valid) {
+        html += '<div style="background:#2a1a1a;padding:12px;border-radius:8px;border:1px solid #ef4444;margin-bottom:16px">';
+        html += '<div style="font-weight:700;color:#ef4444;margin-bottom:6px">⚠ Validation Errors</div>';
+        (validation.errors||[]).forEach(function(e) { html += '<div style="color:#f87171;font-size:12px;margin-left:8px">• '+e.type+': '+(e.missing||e.modules||JSON.stringify(e.cycles)||'')+'</div>'; });
+        html += '</div>';
+      }
+
+      // Critical Path
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;margin-bottom:16px;border:1px solid #333">';
+      html += '<div style="font-weight:700;color:#f59e0b;margin-bottom:8px">🔥 Critical Path (longest chain: '+cp.length+')</div>';
+      html += '<div style="font-size:12px;color:#aaa;display:flex;flex-wrap:wrap;gap:4px;align-items:center">';
+      cp.forEach(function(m,i) { html += '<span style="background:#2a2a3e;padding:2px 8px;border-radius:4px;color:#eab308">'+m+'</span>'; if(i<cp.length-1) html += '<span style="color:#555">→</span>'; });
+      html += '</div></div>';
+
+      // Bottlenecks
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;margin-bottom:16px;border:1px solid #333">';
+      html += '<div style="font-weight:700;color:#ef4444;margin-bottom:8px">🎯 Bottlenecks (most dependents)</div>';
+      bottlenecks.forEach(function(b) {
+        var w = Math.min(100, (b.dependentCount / (status.moduleCount||1)) * 300);
+        html += '<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:#ccc">'+b.moduleId+'</span><span style="color:#888">'+b.dependentCount+' dependents</span></div>';
+        html += '<div style="height:4px;background:#333;border-radius:2px;margin-top:2px"><div style="height:100%;width:'+w+'%;background:#ef4444;border-radius:2px"></div></div></div>';
+      });
+      html += '</div>';
+
+      // Adjacency list
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;margin-bottom:16px;border:1px solid #333">';
+      html += '<div style="font-weight:700;color:#00e5ff;margin-bottom:8px">📊 Adjacency List</div>';
+      html += '<div style="max-height:300px;overflow-y:auto;font-size:11px;font-family:monospace">';
+      (graph.nodes||[]).forEach(function(n) {
+        var deps = (graph.edges||[]).filter(function(e){return e.to===n.id}).map(function(e){return e.from});
+        var pc = {CRITICAL:'#ef4444',HIGH:'#f59e0b',MEDIUM:'#3b82f6',LOW:'#22c55e'};
+        html += '<div style="padding:4px 0;border-bottom:1px solid #222"><span style="color:'+(pc[n.priority]||'#888')+'">●</span> <span style="color:#ccc">'+n.id+'</span>';
+        if (deps.length) html += ' <span style="color:#555">← '+deps.join(', ')+'</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      // Tick Order
+      html += '<div style="background:#1a1a2e;padding:14px;border-radius:10px;border:1px solid #333">';
+      html += '<div style="font-weight:700;color:#22c55e;margin-bottom:8px">⏱ Tick Order ('+order.length+' modules)</div>';
+      html += '<div style="max-height:250px;overflow-y:auto;font-size:11px;font-family:monospace">';
+      order.forEach(function(id,i) { html += '<div style="padding:2px 0;color:#aaa"><span style="color:#555;width:24px;display:inline-block;text-align:right">'+(i+1)+'.</span> '+id+'</div>'; });
+      html += '</div></div>';
+
+      el.innerHTML = html;
+    } catch(e) {
+      el.innerHTML = '<div style="color:#ef4444">Error loading dependency graph: '+e.message+'</div>';
+    }
+  }
+
   // ── Wire up panel loading ──
   (function() {
     var origSwitch = window.aries && window.aries.switchPanel;
-    var panelLoaders = { growth: loadGrowthPanel, commitments: loadCommitmentsPanel, world: loadWorldPanel, social: loadSocialPanel, lock: loadLockPanel, body: loadBodyPanel };
+    var panelLoaders = { growth: loadGrowthPanel, commitments: loadCommitmentsPanel, world: loadWorldPanel, social: loadSocialPanel, lock: loadLockPanel, body: loadBodyPanel, 'agi-dependency-graph': loadDepGraph };
     var loaded = {};
     if (origSwitch) {
       var _orig = origSwitch.bind(window.aries);

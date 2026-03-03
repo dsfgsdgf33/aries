@@ -9,10 +9,13 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const EventEmitter = require('events');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'epistemic-debt-tracker';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'cognitive-debt');
 const DEBTS_PATH = path.join(DATA_DIR, 'epistemic-debts.json');
@@ -59,9 +62,9 @@ const DEFAULT_CONFIG = {
   knowledgeBaseSize: 100,        // estimated verified knowledge items for ratio
 };
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
-function writeJSON(p, data) { ensureDir(); fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fallback) { return store.get(NS, path.basename(p, '.json'), fallback); }
+function writeJSON(p, data) { store.set(NS, path.basename(p, '.json'), data); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 class EpistemicDebtTracker extends EventEmitter {

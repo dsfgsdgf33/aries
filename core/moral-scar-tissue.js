@@ -16,18 +16,21 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+const SharedMemoryStore = require('./shared-memory-store');
+const store = SharedMemoryStore.getInstance();
+const NS = 'moral-scar-tissue';
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'moral');
 const SCARS_PATH = path.join(DATA_DIR, 'scars.json');
 const GROWTH_PATH = path.join(DATA_DIR, 'growth.json');
 const AUDIT_PATH = path.join(DATA_DIR, 'audit-trail.json');
 
-function ensureDir() { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); }
-function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fb; } }
-function writeJSON(p, d) { ensureDir(); fs.writeFileSync(p, JSON.stringify(d, null, 2)); }
+function ensureDir() {}
+function readJSON(p, fb) { return store.get(NS, path.basename(p, '.json'), fb); }
+function writeJSON(p, d) { store.set(NS, path.basename(p, '.json'), d); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'); }
 
 const CATEGORIES = ['HARM', 'DECEPTION', 'PRIVACY', 'FAIRNESS', 'AUTONOMY', 'CONSENT'];
@@ -563,7 +566,7 @@ class MoralScarTissue {
     }
   }
 
-  _save() { writeJSON(SCARS_PATH, this.scars); }
+  _save() { writeJSON(SCARS_PATH, this.scars); store.flush(NS); }
 
   _recordGrowthEvent(type, data) {
     this.growth.entries.push({ timestamp: Date.now(), type, ...data });
