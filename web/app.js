@@ -470,6 +470,8 @@
       case 'agi-cognitive-loop': if (window.loadAgiCognitiveLoop) { var c = document.getElementById('agiCognitiveLoopContent'); if (c) window.loadAgiCognitiveLoop(c); } break;
       case 'agi-backbone': if (window.loadAgiBackbone) { var c = document.getElementById('agiBackboneContent'); if (c) window.loadAgiBackbone(c); } break;
       case 'agi-hot-reload': if (window.loadAgiHotReload) { var c = document.getElementById('agiHotReloadContent'); if (c) window.loadAgiHotReload(c); } break;
+      case 'agi-dependency-graph': if (window.loadAgiDepGraph) { var c = document.getElementById('agiDepGraphContent'); if (c) window.loadAgiDepGraph(c); } else if (typeof loadDepGraph === 'function') { loadDepGraph(); } break;
+      case 'agi-memory-store': if (window.loadAgiMemoryStore) { var c = document.getElementById('agiMemoryStoreContent'); if (c) window.loadAgiMemoryStore(c); } else if (typeof loadMemoryStorePanel === 'function') { loadMemoryStorePanel(); } break;
     }
   }
 

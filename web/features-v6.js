@@ -1551,5 +1551,123 @@
     });
   };
 
+  // ═══ Memory Store Panel ═══
+  window.loadAgiMemoryStore = function(container) {
+    var token = localStorage.getItem('aries-auth-token') || '';
+    var hdrs = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function fmtBytes(b) { if(b<1024) return b+'B'; if(b<1048576) return (b/1024).toFixed(1)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+    function timeAgo(ts) { if(!ts) return '—'; var s=Math.floor((Date.now()-ts)/1000); if(s<60) return s+'s ago'; if(s<3600) return Math.floor(s/60)+'m ago'; return Math.floor(s/3600)+'h ago'; }
+
+    container.innerHTML = '<div style="text-align:center;color:#888;padding:40px">Loading memory store...</div>';
+
+    fetch('/api/memory-store', { headers: hdrs }).then(function(r){return r.json();}).then(function(d) {
+      if (!d || d.error) { container.innerHTML = '<span style="color:#f44">' + esc(d?d.error:'Failed') + '</span>'; return; }
+      var s = d.stats || {};
+      var mem = d.memoryUsage || 0;
+      var cards = [
+        { label:'Namespaces', value:s.namespaces||0, color:'#0ff' },
+        { label:'Total Keys', value:s.totalKeys||0, color:'#22c55e' },
+        { label:'Dirty', value:s.dirtyNamespaces||0, color:s.dirtyNamespaces>0?'#f59e0b':'#666' },
+        { label:'Hit Rate', value:(s.hitRate||0)+'%', color:'#a855f7' },
+        { label:'Flushes', value:s.flushCount||0, color:'#3b82f6' },
+        { label:'Avg Flush', value:(s.avgFlushMs||0)+'ms', color:'#ec4899' },
+        { label:'Memory', value:fmtBytes(mem), color:'#f97316' },
+        { label:'Auto-flush', value:s.autoFlush?'ON':'OFF', color:s.autoFlush?'#22c55e':'#666' }
+      ];
+      var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h2 style="color:#0ff;margin:0">💾 Shared Memory Store</h2><div><button id="msFlushBtn" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:8px">💾 Flush All</button><button id="msRefreshBtn" style="background:#0ff22;color:#0ff;border:1px solid #0ff4;padding:6px 14px;border-radius:6px;cursor:pointer">🔄 Refresh</button></div></div>';
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
+      cards.forEach(function(c) {
+        html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px 16px;min-width:110px;flex:1"><div style="color:'+c.color+';font-size:22px;font-weight:bold">'+c.value+'</div><div style="color:#888;font-size:11px;margin-top:4px">'+c.label+'</div></div>';
+      });
+      html += '</div>';
+      html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:16px"><h3 style="color:#0ff;margin:0 0 12px">Namespaces</h3>';
+      var nss = d.namespaces || [];
+      if (nss.length === 0) {
+        html += '<div style="color:#666;text-align:center;padding:20px">No namespaces loaded yet.</div>';
+      } else {
+        html += '<table style="width:100%;border-collapse:collapse"><tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#888;font-size:12px">Namespace</th><th style="text-align:right;padding:8px;color:#888;font-size:12px">Keys</th><th style="text-align:center;padding:8px;color:#888;font-size:12px">Dirty</th><th style="text-align:right;padding:8px;color:#888;font-size:12px">Last Access</th><th style="padding:8px"></th></tr>';
+        nss.forEach(function(n) {
+          html += '<tr style="border-bottom:1px solid #222"><td style="padding:8px;color:#0ff;font-family:monospace">'+esc(n.name)+'</td><td style="padding:8px;text-align:right;color:#ccc">'+n.keys+'</td><td style="padding:8px;text-align:center">'+(n.dirty?'<span style="color:#f59e0b">●</span>':'<span style="color:#333">○</span>')+'</td><td style="padding:8px;text-align:right;color:#888;font-size:12px">'+timeAgo(n.lastAccess)+'</td><td style="padding:8px"><button data-ns="'+esc(n.name)+'" class="ms-browse" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px">Browse</button></td></tr>';
+        });
+        html += '</table>';
+      }
+      html += '</div><div id="msDetail" style="display:none;background:#111;border:1px solid #22c55e;border-radius:8px;padding:16px;margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 id="msDetailTitle" style="color:#22c55e;margin:0"></h3><button id="msDetailClose" style="background:#333;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer">✕</button></div><pre id="msDetailPre" style="background:#0a0a0a;border:1px solid #333;border-radius:4px;padding:12px;color:#ccc;max-height:400px;overflow:auto;font-size:12px;white-space:pre-wrap"></pre></div>';
+      container.innerHTML = html;
+
+      document.getElementById('msRefreshBtn').onclick = function() { window.loadAgiMemoryStore(container); };
+      document.getElementById('msFlushBtn').onclick = function() {
+        fetch('/api/memory-store/flush', { method:'POST', headers:hdrs, body:'{}' }).then(function() { window.loadAgiMemoryStore(container); });
+      };
+      document.getElementById('msDetailClose').onclick = function() { document.getElementById('msDetail').style.display='none'; };
+      container.querySelectorAll('.ms-browse').forEach(function(btn) {
+        btn.onclick = function() {
+          var ns = btn.getAttribute('data-ns');
+          fetch('/api/memory-store/namespace/'+encodeURIComponent(ns), { headers:hdrs }).then(function(r){return r.json();}).then(function(nd) {
+            document.getElementById('msDetailTitle').textContent = '📂 '+ns+' ('+nd.keys+' keys)';
+            document.getElementById('msDetailPre').textContent = JSON.stringify(nd.data,null,2);
+            document.getElementById('msDetail').style.display = '';
+          });
+        };
+      });
+    }).catch(function(e) { container.innerHTML = '<span style="color:#f44">Error: '+esc(e.message)+'</span>'; });
+  };
+
+  // ═══ Dependency Graph Panel ═══
+  window.loadAgiDepGraph = function(container) {
+    var token = localStorage.getItem('aries-auth-token') || '';
+    var hdrs = { 'Authorization': 'Bearer ' + token };
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    container.innerHTML = '<div style="text-align:center;color:#888;padding:40px">Loading dependency graph...</div>';
+
+    Promise.all([
+      fetch('/api/dependency-graph', { headers:hdrs }).then(function(r){return r.json();}),
+      fetch('/api/dependency-graph/tick-order', { headers:hdrs }).then(function(r){return r.json();}),
+      fetch('/api/dependency-graph/bottlenecks', { headers:hdrs }).then(function(r){return r.json();}),
+      fetch('/api/dependency-graph/critical-path', { headers:hdrs }).then(function(r){return r.json();})
+    ]).then(function(results) {
+      var status = results[0], order = results[1], bottlenecks = results[2], critPath = results[3];
+      var s = status.stats || status;
+      var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h2 style="color:#0ff;margin:0">🔗 Module Dependencies</h2><button id="dgRefreshBtn" style="background:#0ff22;color:#0ff;border:1px solid #0ff4;padding:6px 14px;border-radius:6px;cursor:pointer">🔄 Refresh</button></div>';
+      var cards = [
+        { label:'Modules', value:s.moduleCount||s.modules||0, color:'#0ff' },
+        { label:'Edges', value:s.edgeCount||s.edges||0, color:'#22c55e' },
+        { label:'Valid', value:s.valid!==false?'✅':'❌', color:s.valid!==false?'#22c55e':'#f44' },
+        { label:'Phases', value:s.phases||6, color:'#a855f7' }
+      ];
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
+      cards.forEach(function(c) { html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px 16px;min-width:110px;flex:1"><div style="color:'+c.color+';font-size:22px;font-weight:bold">'+c.value+'</div><div style="color:#888;font-size:11px;margin-top:4px">'+c.label+'</div></div>'; });
+      html += '</div>';
+
+      // Critical path
+      var cp = critPath.path || critPath || [];
+      if (cp.length) {
+        html += '<div style="background:#111;border:1px solid #f59e0b;border-radius:8px;padding:16px;margin-bottom:16px"><h3 style="color:#f59e0b;margin:0 0 12px">⚡ Critical Path</h3><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+        cp.forEach(function(m,i) { html += '<span style="background:#f59e0b22;color:#f59e0b;padding:4px 10px;border-radius:4px;font-family:monospace;font-size:12px">'+esc(typeof m==='string'?m:m.id||m.name)+'</span>'; if(i<cp.length-1) html += '<span style="color:#555">→</span>'; });
+        html += '</div></div>';
+      }
+
+      // Bottlenecks
+      var bn = bottlenecks.bottlenecks || bottlenecks || [];
+      if (bn.length) {
+        html += '<div style="background:#111;border:1px solid #f44;border-radius:8px;padding:16px;margin-bottom:16px"><h3 style="color:#f44;margin:0 0 12px">🔥 Bottlenecks</h3>';
+        bn.forEach(function(b) { var name = typeof b==='string'?b:b.id||b.name||''; var score = b.score||b.dependents||''; html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #222"><span style="color:#ccc;font-family:monospace">'+esc(name)+'</span><span style="color:#f44">'+score+'</span></div>'; });
+        html += '</div>';
+      }
+
+      // Tick order
+      var to = order.order || order || [];
+      if (to.length) {
+        html += '<div style="background:#111;border:1px solid #333;border-radius:8px;padding:16px"><h3 style="color:#22c55e;margin:0 0 12px">📋 Boot / Tick Order ('+to.length+' modules)</h3><div style="max-height:300px;overflow:auto">';
+        to.forEach(function(m,i) { var name = typeof m==='string'?m:m.id||m.name||''; html += '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1a1a1a"><span style="color:#555;min-width:30px;text-align:right">#'+(i+1)+'</span><span style="color:#ccc;font-family:monospace">'+esc(name)+'</span></div>'; });
+        html += '</div></div>';
+      }
+
+      container.innerHTML = html;
+      document.getElementById('dgRefreshBtn').onclick = function() { window.loadAgiDepGraph(container); };
+    }).catch(function(e) { container.innerHTML = '<span style="color:#f44">Error: '+esc(e.message)+'</span>'; });
+  };
+
 })();
 
